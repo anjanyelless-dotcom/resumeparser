@@ -1,0 +1,4 @@
+-- Migration: Add 'duplicate' and 'merged' values to review_status enum
+-- review_status is a TEXT column in this database schema, so this is a no-op.
+-- ALTER TYPE review_status ADD VALUE IF NOT EXISTS 'duplicate';
+-- ALTER TYPE review_status ADD VALUE IF NOT EXISTS 'merged';

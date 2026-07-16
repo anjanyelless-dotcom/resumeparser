@@ -1,0 +1,657 @@
+// Resume Parser Database Schema
+// Generated from PostgreSQL database on January 30, 2026
+
+Project resume_parser {
+  database_type: 'PostgreSQL'
+  Note: 'Resume Parser and Candidate Management System'
+}
+
+// ============================================================
+// User Management
+// ============================================================
+
+Table users {
+  id uuid PK
+  email varchar(255) unique
+  hashed_password varchar(255)
+  is_active boolean
+  role varchar(50)
+  tenant_id varchar(100)
+  created_at timestamptz
+
+  Indexes {
+    email
+  }
+}
+
+Table roles {
+  id uuid PK
+  name varchar(255)
+  description text
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+Table permissions {
+  id uuid PK
+  name varchar(255)
+  description text
+  module varchar(255)
+  created_at timestamptz
+}
+
+Table role_permissions {
+  id uuid PK
+  role varchar(255)
+  permission_id uuid
+  created_at timestamptz
+
+  Note: 'Maps roles to permissions'
+}
+
+Table api_keys {
+  id uuid PK
+  key_hash varchar(64) unique
+  role varchar(50)
+  subject varchar(255)
+  created_at timestamptz
+  revoked_at timestamptz
+}
+
+Table revoked_tokens {
+  id uuid PK
+  jti varchar(64) unique
+  subject varchar(255)
+  expires_at timestamptz
+  revoked_at timestamptz
+}
+
+// ============================================================
+// Audit & System
+// ============================================================
+
+Table audit_logs {
+  id uuid PK
+  user_id varchar(255)
+  action varchar(100)
+  resource_type varchar(100)
+  resource_id varchar(255)
+  ip_address varchar(64)
+  details jsonb
+  created_at timestamptz
+}
+
+Table system_settings {
+  key varchar(100) PK
+  value jsonb
+  updated_at timestamptz
+}
+
+// ============================================================
+// Candidates
+// ============================================================
+
+Table candidates {
+  id uuid PK
+  email varchar(255)
+  email_hash varchar(64)
+  full_name varchar(150)
+  phone varchar(50)
+  location varchar(150)
+  linkedin_url varchar(500)
+  github_url varchar(500)
+  summary text
+  resume_file_path varchar(500)
+  original_filename varchar(255)
+  file_type varchar(20)
+  resume_hash varchar(64)
+  raw_resume_text text
+  years_of_experience integer
+  current_job_title varchar(255)
+  current_company varchar(200)
+  resume_quality_score integer
+  confidence_score numeric(5,4)
+  match_score double
+  progress integer
+  expected_salary_min numeric
+  expected_salary_max numeric
+  projects jsonb
+  companies jsonb
+  job_titles jsonb
+  education_degrees jsonb
+  universities jsonb
+  status candidate_status
+  review_status review_status
+  review_assigned_to varchar(255)
+  review_notes text
+  review_confidence double
+  review_flags jsonb
+  review_flagged_at timestamptz
+  review_approved_at timestamptz
+  review_approved_by varchar(255)
+  review_rejected_at timestamptz
+  review_rejected_by varchar(255)
+  consent_given boolean
+  consent_date timestamptz
+  other_information text
+  tenant_id varchar(100)
+  deleted_at timestamptz
+  summary_manually_edited boolean
+  error_message text
+  created_at timestamptz
+  updated_at timestamptz
+
+  Indexes {
+    email
+    full_name
+    match_score
+    resume_hash
+    status
+    email_hash
+    created_at
+  }
+
+  Note: 'Core candidate table with profile fields from AI parser'
+}
+
+Table candidate_achievements {
+  id uuid PK
+  candidate_id uuid
+  title text
+  year integer
+  confidence double
+  created_at timestamptz
+
+  Indexes {
+    candidate_id
+  }
+}
+
+Table candidate_skills {
+  id serial PK
+  candidate_id uuid
+  skill_id uuid
+  proficiency_level proficiency_level
+  years_experience numeric
+  is_primary boolean
+  mention_count integer
+  created_at timestamptz
+
+  Indexes {
+    candidate_id
+    skill_id
+  }
+
+  Note: 'Join table for candidate-skill relationships'
+}
+
+Table work_history {
+  id uuid PK
+  candidate_id uuid
+  job_title varchar(255)
+  company_name varchar(255)
+  start_date date
+  end_date date
+  is_current boolean
+  location varchar(255)
+  description text
+  display_order integer
+  client_name varchar(200)
+  created_at timestamptz
+
+  Indexes {
+    candidate_id
+  }
+
+  Note: 'The ONLY work experience table'
+}
+
+Table education {
+  id uuid PK
+  candidate_id uuid
+  institution varchar(255)
+  degree varchar(255)
+  field_of_study varchar(255)
+  start_date date
+  end_date date
+  gpa double
+  description text
+
+  Indexes {
+    candidate_id
+  }
+}
+
+Table certifications {
+  id uuid PK
+  candidate_id uuid
+  name text
+  issuing_organization text
+  issue_date date
+  expiry_date date
+  credential_id varchar(100)
+
+  Indexes {
+    candidate_id
+  }
+}
+
+Table duplicate_candidates {
+  id uuid PK
+  candidate_id_1 uuid
+  candidate_id_2 uuid
+  similarity_score double
+  status varchar(20)
+  created_at timestamptz
+
+  Indexes {
+    candidate_id_1
+    candidate_id_2
+  }
+
+  Note: 'Tracks duplicate candidate detection'
+}
+
+Table corrections {
+  id uuid PK
+  candidate_id uuid
+  field_name varchar(200)
+  original_value text
+  corrected_value text
+  corrected_by varchar(255)
+  corrected_at timestamptz
+
+  Indexes {
+    candidate_id
+    field_name
+  }
+}
+
+// ============================================================
+// Skills
+// ============================================================
+
+Table skills {
+  id uuid PK
+  name varchar(150) unique
+  normalized_name varchar(150)
+  category varchar(100)
+
+  Indexes {
+    name
+    category
+  }
+
+  Note: 'Global skill catalog'
+}
+
+Table skill_suggestions {
+  id uuid PK
+  skill_name varchar(200)
+  normalized_name varchar(200)
+  source varchar(200)
+  notes text
+  created_at timestamptz
+
+  Indexes {
+    skill_name
+    normalized_name
+  }
+}
+
+Table correction_patterns {
+  id uuid PK
+  field_name varchar(200)
+  original_value text
+  corrected_value text
+  count integer
+  last_seen_at timestamptz
+
+  Indexes {
+    field_name
+  }
+}
+
+Table correction_stats {
+  field_name varchar(200) PK
+  correction_count integer
+}
+
+// ============================================================
+// Parsing & AI
+// ============================================================
+
+Table parsing_jobs {
+  id uuid PK
+  candidate_id uuid
+  filename varchar(255)
+  file_path varchar(500)
+  file_type varchar(10)
+  status parsing_job_status
+  task_id varchar(255)
+  last_stage varchar(100)
+  raw_text text
+  parsed_data jsonb
+  confidence_score double
+  ocr_confidence double
+  error_message text
+  progress integer
+  processing_duration_ms integer
+  original_file_copy_path varchar(500)
+  extracted_text_path varchar(500)
+  parsed_json_path varchar(500)
+  started_at timestamptz
+  completed_at timestamptz
+  updated_at timestamptz
+  created_at timestamptz
+
+  Indexes {
+    candidate_id
+    status
+  }
+
+  Note: 'Tracks resume parsing jobs'
+}
+
+Table labeled_data {
+  id uuid PK
+  candidate_id uuid
+  corrected_fields jsonb
+  labeled_by uuid
+  action varchar(20)
+  version integer
+  model_version varchar(50)
+  labeled_at timestamptz
+  created_at timestamptz
+  updated_at timestamptz
+
+  Indexes {
+    candidate_id
+  }
+
+  Note: 'Human review / training data labels'
+}
+
+// ============================================================
+// Jobs & Matching
+// ============================================================
+
+Table job_descriptions {
+  id uuid PK
+  title varchar(255)
+  department varchar(255)
+  description text
+  required_skills jsonb
+  preferred_skills jsonb
+  min_experience_years integer
+  max_experience_years integer
+  education_level varchar(100)
+  education_requirement varchar(255)
+  seniority_level varchar(100)
+  location varchar(255)
+  employment_type varchar(50)
+  work_mode varchar(50)
+  salary_min integer
+  salary_max integer
+  salary_range varchar(255)
+  currency varchar(10)
+  salary_period varchar(20)
+  number_of_openings integer
+  notice_period varchar(50)
+  status varchar(50)
+  created_at timestamptz
+  updated_at timestamptz
+
+  Indexes {
+    title
+    department
+    status
+  }
+
+  Note: 'The ONLY jobs table'
+}
+
+Table job_skills {
+  id uuid PK
+  job_id uuid
+  skill_name varchar(255)
+  skill_type varchar(50)
+  created_at timestamptz
+
+  Indexes {
+    job_id
+  }
+
+  Note: 'Job-specific skills (required/preferred)'
+}
+
+Table job_recruiter_assignments {
+  id uuid PK
+  job_id uuid
+  recruiter_id uuid
+  assigned_by uuid
+  priority varchar(50)
+  assigned_at timestamptz
+  updated_at timestamptz
+
+  Note: 'Maps recruiters to jobs'
+}
+
+Table match_scores {
+  id uuid PK
+  candidate_id uuid
+  job_id uuid
+  overall_score double
+  skill_score double
+  experience_score double
+  education_score double
+  role_score numeric
+  project_score numeric
+  certification_score numeric
+  matching_skills text[]
+  missing_skills text[]
+  extra_skills text[]
+  experience_gap_years double
+  experience_match_text varchar(100)
+  recommendation varchar(100)
+  reason text
+  match_summary text
+  match_label varchar(50)
+  jd_hash varchar(64)
+  created_at timestamptz
+  updated_at timestamptz
+
+  Indexes {
+    candidate_id
+    job_id
+    overall_score
+  }
+
+  Note: 'The ONLY matching results table'
+}
+
+Table jd_match_results {
+  // Legacy table - consider migrating to match_scores
+}
+
+// ============================================================
+// Submissions
+// ============================================================
+
+Table submissions {
+  id uuid PK
+  job_id uuid
+  candidate_id uuid
+  submitted_by uuid
+  status varchar(50)
+  rejection_reason text
+  submitted_at timestamptz
+  updated_at timestamptz
+
+  Note: 'Candidate submissions to jobs'
+}
+
+// ============================================================
+// Clients
+// ============================================================
+
+Table clients {
+  id uuid PK
+  company_name varchar(255)
+  industry varchar(255)
+  address text
+  city varchar(255)
+  country varchar(255)
+  owner_user_id uuid
+  is_archived boolean
+  tenant_id varchar(100)
+  created_at timestamptz
+  pipeline_stage varchar(50)
+  updated_at timestamptz
+
+  Note: 'Client companies for BDM/Client Manager'
+}
+
+Table client_contacts {
+  id uuid PK
+  client_id uuid
+  contact_name varchar(255)
+  designation varchar(255)
+  email varchar(255)
+  phone varchar(255)
+  is_primary boolean
+  created_at timestamptz
+
+  Note: 'Contact persons for clients'
+}
+
+Table client_communications {
+  id uuid PK
+  client_id uuid
+  contact_id uuid
+  logged_by uuid
+  communication_type varchar(50)
+  subject varchar(255)
+  notes text
+  follow_up_date date
+  tenant_id varchar(100)
+  created_at timestamptz
+
+  Note: 'Communication logs with clients'
+}
+
+Table client_pipeline_history {
+  id uuid PK
+  client_id uuid
+  from_stage varchar(50)
+  to_stage varchar(50)
+  changed_by uuid
+  notes text
+  changed_at timestamptz
+
+  Note: 'Tracks client pipeline stage changes'
+}
+
+// ============================================================
+// Legacy / Duplicate Tables (for cleanup)
+// ============================================================
+
+Table jobs {
+  Note: 'Duplicate of job_descriptions - should be removed'
+}
+
+Table work_experience {
+  Note: 'Duplicate of work_history - should be removed'
+}
+
+// ============================================================
+// Evaluation Tables (for AI model testing)
+// ============================================================
+
+Table evaluation_test_suites {
+  // AI model testing
+}
+
+Table evaluation_test_cases {
+  // AI model testing
+}
+
+Table evaluation_test_results {
+  // AI model testing
+}
+
+Table evaluation_summary {
+  // AI model testing
+}
+
+Table evaluation_performance_metrics {
+  // AI model testing
+}
+
+Table evaluation_confidence_scores {
+  // AI model testing
+}
+
+Table evaluation_debug_logs {
+  // AI model testing
+}
+
+Table evaluation_error_logs {
+  // AI model testing
+}
+
+// ============================================================
+// Migration Tables
+// ============================================================
+
+Table alembic_version {
+  version_num varchar(32) PK
+}
+
+Table schema_migrations {
+  // Migration tracking
+}
+
+// ============================================================
+// Relationships
+// ============================================================
+
+Ref: candidates.user_id > users.id
+Ref: candidates.review_assigned_to > users.id
+Ref: candidates.review_approved_by > users.id
+Ref: candidates.review_rejected_by > users.id
+
+Ref: candidate_achievements.candidate_id > candidates.id [cascade]
+Ref: candidate_skills.candidate_id > candidates.id [cascade]
+Ref: candidate_skills.skill_id > skills.id [cascade]
+Ref: corrections.candidate_id > candidates.id [cascade]
+Ref: work_history.candidate_id > candidates.id [cascade]
+Ref: education.candidate_id > candidates.id [cascade]
+Ref: certifications.candidate_id > candidates.id [cascade]
+Ref: duplicate_candidates.candidate_id_1 > candidates.id [cascade]
+Ref: duplicate_candidates.candidate_id_2 > candidates.id [cascade]
+Ref: parsing_jobs.candidate_id > candidates.id [cascade]
+Ref: labeled_data.candidate_id > candidates.id [cascade]
+
+Ref: match_scores.candidate_id > candidates.id [cascade]
+Ref: match_scores.job_id > job_descriptions.id [set null]
+
+Ref: job_skills.job_id > job_descriptions.id [cascade]
+Ref: job_recruiter_assignments.job_id > job_descriptions.id
+Ref: job_recruiter_assignments.recruiter_id > users.id
+
+Ref: submissions.job_id > job_descriptions.id
+Ref: submissions.candidate_id > candidates.id
+Ref: submissions.submitted_by > users.id
+
+Ref: clients.owner_user_id > users.id
+Ref: client_contacts.client_id > clients.id
+Ref: client_communications.client_id > clients.id
+Ref: client_communications.logged_by > users.id
+Ref: client_communications.contact_id > client_contacts.id
+Ref: client_pipeline_history.client_id > clients.id
+Ref: client_pipeline_history.changed_by > users.id
+
+Ref: role_permissions.permission_id > permissions.id
+
+Ref: audit_logs.user_id > users.id

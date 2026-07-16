@@ -1,0 +1,54 @@
+                     List of relations
+ Schema |              Name              | Type  |  Owner   
+--------+--------------------------------+-------+----------
+ public | activity_log                   | table | postgres
+ public | alembic_version                | table | postgres
+ public | api_keys                       | table | postgres
+ public | audit_logs                     | table | postgres
+ public | candidate_achievements         | table | postgres
+ public | candidate_skills               | table | postgres
+ public | candidates                     | table | postgres
+ public | certifications                 | table | postgres
+ public | client_communications          | table | postgres
+ public | client_contacts                | table | postgres
+ public | client_pipeline_history        | table | postgres
+ public | clients                        | table | postgres
+ public | companies                      | table | postgres
+ public | company_contacts               | table | postgres
+ public | company_jobs                   | table | postgres
+ public | correction_patterns            | table | postgres
+ public | correction_stats               | table | postgres
+ public | corrections                    | table | postgres
+ public | duplicate_candidates           | table | postgres
+ public | education                      | table | postgres
+ public | evaluation_confidence_scores   | table | postgres
+ public | evaluation_debug_logs          | table | postgres
+ public | evaluation_error_logs          | table | postgres
+ public | evaluation_performance_metrics | table | postgres
+ public | evaluation_summary             | table | postgres
+ public | evaluation_test_cases          | table | postgres
+ public | evaluation_test_results        | table | postgres
+ public | evaluation_test_suites         | table | postgres
+ public | jd_match_results               | table | postgres
+ public | job_descriptions               | table | postgres
+ public | job_recruiter_assignments      | table | postgres
+ public | job_skills                     | table | postgres
+ public | jobs                           | table | postgres
+ public | labeled_data                   | table | postgres
+ public | match_scores                   | table | postgres
+ public | parsing_jobs                   | table | postgres
+ public | permissions                    | table | postgres
+ public | revoked_tokens                 | table | postgres
+ public | role_permissions               | table | postgres
+ public | roles                          | table | postgres
+ public | schema_migrations              | table | postgres
+ public | scrape_jobs                    | table | postgres
+ public | skill_suggestions              | table | postgres
+ public | skills                         | table | postgres
+ public | submissions                    | table | postgres
+ public | system_settings                | table | postgres
+ public | users                          | table | postgres
+ public | work_experience                | table | postgres
+ public | work_history                   | table | postgres
+(49 rows)
+

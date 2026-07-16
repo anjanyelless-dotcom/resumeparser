@@ -1,0 +1,4 @@
+Twitch,Seattle WA,Senior Video Platform Engineer,December 2020,Present
+Roku,San Jose CA,Software Engineer II,June 2017,November 2020
+Hexaware Technologies,Chennai India,Junior Software Engineer,August 2014,May 2017
+B.Tech:Electronics and Computer Engineering,NIT Trichy,Tamil Nadu India(2010-2014)

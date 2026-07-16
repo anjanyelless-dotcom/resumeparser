@@ -1,0 +1,51 @@
+JANE SMITH
+Data Scientist
+Email: jane.smith@company.com
+Phone: (555) 987-6543
+LinkedIn: linkedin.com/in/janesmith
+
+PROFESSIONAL SUMMARY
+Data Scientist with 5+ years of experience in machine learning, statistical analysis,
+and data visualization. Expertise in Python, TensorFlow, and SQL. Strong background
+in developing predictive models and delivering data-driven insights to stakeholders.
+
+WORK EXPERIENCE
+Senior Data Scientist
+DataCorp
+Cambridge, MA | 2019 - Present
+• Built machine learning models for customer churn prediction with 85% accuracy
+• Developed real-time data processing pipelines using Apache Spark
+• Led data visualization initiatives using Tableau and Power BI
+• Collaborated with product teams to implement A/B testing frameworks
+• Technologies: Python, TensorFlow, SQL, Tableau, Excel, Spark, AWS
+
+Data Analyst
+Analytics Inc
+Boston, MA | 2017 - 2019
+• Analyzed large datasets to identify business trends and opportunities
+• Created interactive dashboards and reports for executive leadership
+• Implemented statistical models for sales forecasting
+• Conducted ad-hoc analysis to support strategic decision-making
+• Tools: Python, R, SQL, Tableau, Excel, Machine Learning, Data Analysis
+
+EDUCATION
+Master of Science in Data Science
+MIT
+Cambridge, MA | 2015 - 2017
+GPA: 3.9/4.0
+Thesis: "Deep Learning Approaches to Natural Language Processing"
+
+Bachelor of Science in Statistics
+Harvard University
+Boston, MA | 2011 - 2015
+GPA: 3.7/4.0
+Magna Cum Laude
+Relevant Coursework: Statistical Methods, Machine Learning, Data Mining, Probability Theory
+
+TECHNICAL SKILLS
+Programming Languages: Python, R, SQL, MATLAB
+Machine Learning: TensorFlow, PyTorch, Scikit-learn, Keras
+Data Visualization: Tableau, Power BI, Matplotlib, Seaborn
+Big Data: Apache Spark, Hadoop, Kafka
+Databases: PostgreSQL, MySQL, MongoDB, Redis
+Tools: Excel, Git, Docker, AWS, Jupyter Notebook

@@ -1,0 +1,4 @@
+Nvidia,Santa Clara,CA,Principal Systems Architect,March 2022,Present
+Qualcomm,San Diego,CA,Senior Embedded Engineer,August 2018,February 2022
+Tech Mahindra,Hyderabad,India,Software Engineer,January 2015,July 2018
+Bachelor of Science:Electrical Engineering,IIT Madras,Chennai India(2011-2015)

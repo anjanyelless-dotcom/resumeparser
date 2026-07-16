@@ -1,0 +1,375 @@
+        table_name         |         column_name         |          data_type          | is_nullable |                column_default                
+---------------------------+-----------------------------+-----------------------------+-------------+----------------------------------------------
+ activity_log              | id                          | uuid                        | NO          | uuid_generate_v4()
+ activity_log              | user_id                     | uuid                        | NO          | 
+ activity_log              | activity_type               | character varying           | NO          | 
+ activity_log              | related_id                  | uuid                        | YES         | 
+ activity_log              | created_at                  | timestamp with time zone    | NO          | now()
+ audit_logs                | id                          | uuid                        | NO          | uuid_generate_v4()
+ audit_logs                | user_id                     | character varying           | YES         | 
+ audit_logs                | action                      | character varying           | NO          | 
+ audit_logs                | resource_type               | character varying           | NO          | 
+ audit_logs                | resource_id                 | character varying           | YES         | 
+ audit_logs                | ip_address                  | character varying           | YES         | 
+ audit_logs                | details                     | jsonb                       | YES         | 
+ audit_logs                | created_at                  | timestamp with time zone    | NO          | now()
+ candidate_skills          | id                          | integer                     | NO          | nextval('candidate_skills_id_seq'::regclass)
+ candidate_skills          | candidate_id                | uuid                        | NO          | 
+ candidate_skills          | skill_id                    | uuid                        | NO          | 
+ candidate_skills          | proficiency_level           | character varying           | YES         | 
+ candidate_skills          | years_of_experience         | numeric                     | YES         | 
+ candidate_skills          | created_at                  | timestamp without time zone | YES         | CURRENT_TIMESTAMP
+ candidate_skills          | updated_at                  | timestamp without time zone | YES         | CURRENT_TIMESTAMP
+ candidate_skills          | years_experience            | numeric                     | YES         | 
+ candidates                | id                          | uuid                        | NO          | uuid_generate_v4()
+ candidates                | full_name                   | character varying           | YES         | 
+ candidates                | email                       | character varying           | YES         | 
+ candidates                | phone                       | character varying           | YES         | 
+ candidates                | location                    | character varying           | YES         | 
+ candidates                | linkedin_url                | text                        | YES         | 
+ candidates                | github_url                  | text                        | YES         | 
+ candidates                | summary                     | text                        | YES         | 
+ candidates                | raw_resume_text             | text                        | YES         | 
+ candidates                | file_path                   | text                        | YES         | 
+ candidates                | file_type                   | character varying           | YES         | 
+ candidates                | created_at                  | timestamp with time zone    | YES         | now()
+ candidates                | updated_at                  | timestamp with time zone    | YES         | now()
+ candidates                | status                      | character varying           | NO          | 'pending'::character varying
+ candidates                | review_status               | character varying           | YES         | 'pending'::character varying
+ candidates                | years_of_experience         | character varying           | YES         | 
+ candidates                | projects                    | text                        | YES         | 
+ candidates                | total_experience_years      | character varying           | YES         | 
+ candidates                | total_years_exp             | jsonb                       | YES         | 
+ candidates                | match_score                 | numeric                     | YES         | 
+ candidates                | current_title               | character varying           | YES         | 
+ candidates                | current_company             | character varying           | YES         | 
+ candidates                | resume_score                | integer                     | YES         | 
+ candidates                | portfolio_url               | character varying           | YES         | 
+ candidates                | notice_period               | character varying           | YES         | 
+ candidates                | expected_salary_min         | integer                     | YES         | 
+ candidates                | expected_salary_max         | integer                     | YES         | 
+ candidates                | skills_summary              | text                        | YES         | 
+ candidates                | experience_level            | character varying           | YES         | 
+ candidates                | is_active                   | boolean                     | YES         | true
+ candidates                | tenant_id                   | character varying           | YES         | 'default'::character varying
+ candidates                | deleted_at                  | timestamp with time zone    | YES         | 
+ candidates                | is_deleted                  | boolean                     | YES         | false
+ candidates                | resume_file_path            | character varying           | YES         | 
+ candidates                | original_filename           | character varying           | YES         | 
+ candidates                | companies                   | jsonb                       | YES         | '[]'::jsonb
+ candidates                | job_titles                  | jsonb                       | YES         | '[]'::jsonb
+ candidates                | education_degrees           | jsonb                       | YES         | '[]'::jsonb
+ candidates                | universities                | jsonb                       | YES         | '[]'::jsonb
+ candidates                | consent_given               | boolean                     | NO          | false
+ candidates                | consent_date                | timestamp with time zone    | YES         | 
+ candidates                | other_information           | text                        | YES         | 
+ candidates                | summary_manually_edited     | boolean                     | NO          | false
+ candidates                | error_message               | text                        | YES         | 
+ candidates                | current_job_title           | character varying           | YES         | 
+ candidates                | resume_hash                 | character varying           | YES         | 
+ candidates                | resume_quality_score        | integer                     | YES         | 
+ candidates                | confidence_score            | numeric                     | YES         | 
+ candidates                | progress                    | integer                     | YES         | 0
+ candidates                | review_flags                | jsonb                       | YES         | 
+ candidates                | review_flagged_at           | timestamp with time zone    | YES         | 
+ candidates                | review_approved_at          | timestamp with time zone    | YES         | 
+ candidates                | review_approved_by          | character varying           | YES         | 
+ candidates                | review_rejected_at          | timestamp with time zone    | YES         | 
+ candidates                | review_rejected_by          | character varying           | YES         | 
+ candidates                | review_confidence           | double precision            | YES         | 
+ candidates                | email_hash                  | character varying           | YES         | 
+ certifications            | id                          | uuid                        | NO          | uuid_generate_v4()
+ certifications            | candidate_id                | uuid                        | NO          | 
+ certifications            | name                        | character varying           | NO          | 
+ certifications            | created_at                  | timestamp with time zone    | YES         | now()
+ client_communications     | id                          | uuid                        | NO          | uuid_generate_v4()
+ client_communications     | client_id                   | uuid                        | NO          | 
+ client_communications     | contact_id                  | uuid                        | YES         | 
+ client_communications     | logged_by                   | uuid                        | NO          | 
+ client_communications     | communication_type          | character varying           | NO          | 
+ client_communications     | subject                     | character varying           | YES         | 
+ client_communications     | notes                       | text                        | YES         | 
+ client_communications     | follow_up_date              | date                        | YES         | 
+ client_communications     | tenant_id                   | character varying           | NO          | 'default'::character varying
+ client_communications     | created_at                  | timestamp with time zone    | NO          | now()
+ client_contacts           | id                          | uuid                        | NO          | uuid_generate_v4()
+ client_contacts           | client_id                   | uuid                        | NO          | 
+ client_contacts           | contact_name                | character varying           | YES         | 
+ client_contacts           | designation                 | character varying           | YES         | 
+ client_contacts           | email                       | character varying           | YES         | 
+ client_contacts           | phone                       | character varying           | YES         | 
+ client_contacts           | is_primary                  | boolean                     | YES         | false
+ client_contacts           | created_at                  | timestamp with time zone    | YES         | now()
+ client_pipeline_history   | id                          | uuid                        | NO          | uuid_generate_v4()
+ client_pipeline_history   | client_id                   | uuid                        | NO          | 
+ client_pipeline_history   | from_stage                  | character varying           | YES         | 
+ client_pipeline_history   | to_stage                    | character varying           | NO          | 
+ client_pipeline_history   | changed_by                  | uuid                        | YES         | 
+ client_pipeline_history   | notes                       | text                        | YES         | 
+ client_pipeline_history   | changed_at                  | timestamp with time zone    | NO          | now()
+ client_pipeline_history   | created_at                  | timestamp with time zone    | NO          | now()
+ clients                   | id                          | uuid                        | NO          | uuid_generate_v4()
+ clients                   | company_name                | character varying           | NO          | 
+ clients                   | industry                    | character varying           | YES         | 
+ clients                   | address                     | text                        | YES         | 
+ clients                   | city                        | character varying           | YES         | 
+ clients                   | country                     | character varying           | YES         | 
+ clients                   | owner_user_id               | uuid                        | YES         | 
+ clients                   | is_archived                 | boolean                     | YES         | false
+ clients                   | tenant_id                   | character varying           | NO          | 'default'::character varying
+ clients                   | created_at                  | timestamp with time zone    | YES         | now()
+ clients                   | pipeline_stage              | character varying           | YES         | 'lead'::character varying
+ companies                 | id                          | uuid                        | NO          | uuid_generate_v4()
+ companies                 | name                        | character varying           | NO          | 
+ companies                 | website                     | character varying           | YES         | 
+ companies                 | industry                    | character varying           | YES         | 
+ companies                 | company_size                | character varying           | YES         | 
+ companies                 | about_text                  | text                        | YES         | 
+ companies                 | hiring_score                | integer                     | YES         | 
+ companies                 | hiring_status               | USER-DEFINED                | YES         | 'unknown'::hiring_status_enum
+ companies                 | ats_provider                | USER-DEFINED                | YES         | 'unknown'::ats_provider_enum
+ companies                 | career_url                  | character varying           | YES         | 
+ companies                 | linkedin_url                | character varying           | YES         | 
+ companies                 | last_scraped_at             | timestamp with time zone    | YES         | 
+ companies                 | is_active                   | boolean                     | YES         | true
+ companies                 | created_at                  | timestamp with time zone    | YES         | now()
+ companies                 | updated_at                  | timestamp with time zone    | YES         | now()
+ company_contacts          | id                          | uuid                        | NO          | uuid_generate_v4()
+ company_contacts          | company_id                  | uuid                        | NO          | 
+ company_contacts          | email                       | character varying           | YES         | 
+ company_contacts          | phone                       | character varying           | YES         | 
+ company_contacts          | source_page                 | character varying           | YES         | 
+ company_contacts          | contact_type                | USER-DEFINED                | YES         | 'unknown'::contact_type_enum
+ company_contacts          | created_at                  | timestamp with time zone    | YES         | now()
+ company_jobs              | id                          | uuid                        | NO          | uuid_generate_v4()
+ company_jobs              | company_id                  | uuid                        | NO          | 
+ company_jobs              | title                       | character varying           | NO          | 
+ company_jobs              | location                    | character varying           | YES         | 
+ company_jobs              | experience_level            | character varying           | YES         | 
+ company_jobs              | job_url                     | character varying           | YES         | 
+ company_jobs              | posted_date                 | date                        | YES         | 
+ company_jobs              | is_active                   | boolean                     | YES         | true
+ company_jobs              | first_seen_at               | timestamp with time zone    | YES         | now()
+ company_jobs              | last_seen_at                | timestamp with time zone    | YES         | now()
+ duplicate_candidates      | id                          | uuid                        | NO          | uuid_generate_v4()
+ duplicate_candidates      | candidate_id_1              | uuid                        | NO          | 
+ duplicate_candidates      | candidate_id_2              | uuid                        | NO          | 
+ duplicate_candidates      | similarity_score            | double precision            | NO          | 
+ duplicate_candidates      | status                      | character varying           | NO          | 'pending'::character varying
+ duplicate_candidates      | created_at                  | timestamp with time zone    | YES         | now()
+ education                 | id                          | uuid                        | NO          | uuid_generate_v4()
+ education                 | candidate_id                | uuid                        | NO          | 
+ education                 | degree                      | character varying           | YES         | 
+ education                 | institution                 | character varying           | YES         | 
+ education                 | field_of_study              | character varying           | YES         | 
+ education                 | start_date                  | date                        | YES         | 
+ education                 | end_date                    | date                        | YES         | 
+ education                 | gpa                         | numeric                     | YES         | 
+ interview_feedback        | id                          | uuid                        | NO          | uuid_generate_v4()
+ interview_feedback        | interview_id                | uuid                        | NO          | 
+ interview_feedback        | outcome                     | character varying           | NO          | 
+ interview_feedback        | notes                       | text                        | YES         | 
+ interview_feedback        | rating                      | integer                     | YES         | 
+ interview_feedback        | given_by                    | uuid                        | NO          | 
+ interview_feedback        | created_at                  | timestamp with time zone    | NO          | now()
+ interviews                | id                          | uuid                        | NO          | uuid_generate_v4()
+ interviews                | submission_id               | uuid                        | NO          | 
+ interviews                | round_name                  | character varying           | NO          | 
+ interviews                | scheduled_at                | timestamp with time zone    | NO          | 
+ interviews                | mode                        | character varying           | NO          | 'video'::character varying
+ interviews                | status                      | character varying           | NO          | 'scheduled'::character varying
+ interviews                | scheduled_by                | uuid                        | NO          | 
+ interviews                | created_at                  | timestamp with time zone    | NO          | now()
+ interviews                | updated_at                  | timestamp with time zone    | NO          | now()
+ job_descriptions          | id                          | uuid                        | NO          | uuid_generate_v4()
+ job_descriptions          | title                       | character varying           | NO          | 
+ job_descriptions          | department                  | character varying           | YES         | 
+ job_descriptions          | description                 | text                        | YES         | 
+ job_descriptions          | required_skills             | jsonb                       | YES         | '[]'::jsonb
+ job_descriptions          | experience_years            | integer                     | YES         | 
+ job_descriptions          | created_at                  | timestamp with time zone    | YES         | now()
+ job_descriptions          | location                    | character varying           | YES         | 
+ job_descriptions          | employment_type             | character varying           | YES         | 
+ job_descriptions          | min_experience_years        | integer                     | YES         | 
+ job_descriptions          | max_experience_years        | integer                     | YES         | 
+ job_descriptions          | education_level             | character varying           | YES         | 
+ job_descriptions          | salary_min                  | integer                     | YES         | 
+ job_descriptions          | salary_max                  | integer                     | YES         | 
+ job_descriptions          | updated_at                  | timestamp with time zone    | YES         | now()
+ job_descriptions          | education_requirement       | character varying           | YES         | 
+ job_descriptions          | seniority_level             | character varying           | YES         | 
+ job_descriptions          | salary_range                | character varying           | YES         | 
+ job_descriptions          | status                      | character varying           | YES         | 'active'::character varying
+ job_descriptions          | preferred_skills            | jsonb                       | YES         | '[]'::jsonb
+ job_descriptions          | currency                    | character varying           | YES         | 'USD'::character varying
+ job_descriptions          | salary_period               | character varying           | YES         | 'Yearly'::character varying
+ job_descriptions          | work_mode                   | character varying           | YES         | 
+ job_descriptions          | number_of_openings          | integer                     | YES         | 1
+ job_descriptions          | notice_period               | character varying           | YES         | 
+ job_descriptions          | created_by_user_id          | character varying           | YES         | 
+ job_descriptions          | client_id                   | character varying           | YES         | 
+ job_descriptions          | updated_by_user_id          | character varying           | YES         | 
+ job_descriptions          | country                     | character varying           | YES         | 
+ job_descriptions          | state                       | character varying           | YES         | 
+ job_descriptions          | city                        | character varying           | YES         | 
+ job_descriptions          | pincode                     | character varying           | YES         | 
+ job_descriptions          | latitude                    | character varying           | YES         | 
+ job_descriptions          | longitude                   | character varying           | YES         | 
+ job_descriptions          | location_source             | character varying           | YES         | 'manual'::character varying
+ job_recruiter_assignments | id                          | uuid                        | NO          | uuid_generate_v4()
+ job_recruiter_assignments | job_id                      | uuid                        | NO          | 
+ job_recruiter_assignments | recruiter_id                | uuid                        | NO          | 
+ job_recruiter_assignments | assigned_by                 | uuid                        | NO          | 
+ job_recruiter_assignments | priority                    | character varying           | NO          | 'normal'::character varying
+ job_recruiter_assignments | assigned_at                 | timestamp with time zone    | NO          | now()
+ job_recruiter_assignments | updated_at                  | timestamp with time zone    | NO          | now()
+ job_skills                | id                          | uuid                        | NO          | uuid_generate_v4()
+ job_skills                | job_id                      | uuid                        | NO          | 
+ job_skills                | skill_name                  | character varying           | NO          | 
+ job_skills                | skill_type                  | character varying           | NO          | 
+ labeled_data              | id                          | uuid                        | NO          | uuid_generate_v4()
+ labeled_data              | candidate_id                | uuid                        | NO          | 
+ labeled_data              | corrected_fields            | jsonb                       | YES         | 
+ labeled_data              | action                      | character varying           | YES         | 
+ labeled_data              | created_at                  | timestamp with time zone    | YES         | now()
+ match_scores              | id                          | uuid                        | NO          | uuid_generate_v4()
+ match_scores              | candidate_id                | uuid                        | NO          | 
+ match_scores              | job_id                      | uuid                        | NO          | 
+ match_scores              | overall_score               | numeric                     | YES         | 
+ match_scores              | skill_score                 | numeric                     | YES         | 
+ match_scores              | experience_score            | numeric                     | YES         | 
+ match_scores              | education_score             | numeric                     | YES         | 
+ match_scores              | created_at                  | timestamp with time zone    | YES         | now()
+ match_scores              | recommendation              | character varying           | YES         | 
+ match_scores              | missing_skills              | ARRAY                       | YES         | 
+ match_scores              | skill_details               | jsonb                       | YES         | 
+ match_scores              | experience_details          | jsonb                       | YES         | 
+ match_scores              | education_details           | jsonb                       | YES         | 
+ match_scores              | matched_at                  | timestamp without time zone | YES         | CURRENT_TIMESTAMP
+ match_scores              | extra_skills                | ARRAY                       | YES         | 
+ match_scores              | skill_match_count           | integer                     | YES         | 
+ match_scores              | experience_match_count      | integer                     | YES         | 
+ match_scores              | education_match_count       | integer                     | YES         | 
+ match_scores              | total_years_experience      | numeric                     | YES         | 
+ match_scores              | portfolio_experience_months | integer                     | YES         | 
+ match_scores              | parsed_resume_text          | text                        | YES         | 
+ match_scores              | parsed_at                   | timestamp without time zone | YES         | 
+ match_scores              | experience_gap_years        | numeric                     | YES         | 
+ match_scores              | skill_gap_count             | integer                     | YES         | 
+ match_scores              | education_gap_count         | integer                     | YES         | 
+ match_scores              | location_match              | boolean                     | YES         | 
+ match_scores              | salary_match                | boolean                     | YES         | 
+ match_scores              | overall_match               | boolean                     | YES         | 
+ match_scores              | role_score                  | numeric                     | YES         | 
+ match_scores              | project_score               | numeric                     | YES         | 
+ match_scores              | certification_score         | numeric                     | YES         | 
+ match_scores              | experience_match_text       | character varying           | YES         | 
+ match_scores              | reason                      | text                        | YES         | 
+ match_scores              | match_summary               | text                        | YES         | 
+ match_scores              | match_label                 | character varying           | YES         | 
+ match_scores              | jd_hash                     | character varying           | YES         | 
+ match_scores              | updated_at                  | timestamp with time zone    | YES         | now()
+ match_scores              | matched_skills              | ARRAY                       | YES         | 
+ match_scores              | matching_skills             | ARRAY                       | YES         | '{}'::text[]
+ parsing_jobs              | id                          | uuid                        | NO          | uuid_generate_v4()
+ parsing_jobs              | candidate_id                | uuid                        | NO          | 
+ parsing_jobs              | status                      | character varying           | NO          | 'pending'::character varying
+ parsing_jobs              | confidence_score            | numeric                     | YES         | 
+ parsing_jobs              | parsed_data                 | jsonb                       | YES         | 
+ parsing_jobs              | error_message               | text                        | YES         | 
+ parsing_jobs              | created_at                  | timestamp with time zone    | YES         | now()
+ parsing_jobs              | completed_at                | timestamp with time zone    | YES         | 
+ parsing_jobs              | started_at                  | timestamp with time zone    | YES         | 
+ parsing_jobs              | filename                    | text                        | YES         | 
+ parsing_jobs              | updated_at                  | timestamp with time zone    | YES         | now()
+ parsing_jobs              | file_type                   | character varying           | YES         | 
+ parsing_jobs              | task_id                     | character varying           | YES         | 
+ parsing_jobs              | last_stage                  | character varying           | YES         | 
+ parsing_jobs              | raw_text                    | text                        | YES         | 
+ parsing_jobs              | ocr_confidence              | double precision            | YES         | 
+ parsing_jobs              | progress                    | integer                     | YES         | 0
+ parsing_jobs              | processing_duration_ms      | integer                     | YES         | 
+ parsing_jobs              | original_file_copy_path     | character varying           | YES         | 
+ parsing_jobs              | extracted_text_path         | character varying           | YES         | 
+ parsing_jobs              | parsed_json_path            | character varying           | YES         | 
+ permissions               | id                          | uuid                        | NO          | uuid_generate_v4()
+ permissions               | module_name                 | character varying           | NO          | 
+ permissions               | action_name                 | character varying           | NO          | 
+ permissions               | description                 | text                        | YES         | 
+ permissions               | created_at                  | timestamp with time zone    | YES         | now()
+ placements                | id                          | uuid                        | NO          | uuid_generate_v4()
+ placements                | candidate_id                | uuid                        | NO          | 
+ placements                | job_id                      | uuid                        | NO          | 
+ placements                | client_id                   | uuid                        | NO          | 
+ placements                | recruiter_id                | uuid                        | NO          | 
+ placements                | billing_amount              | numeric                     | YES         | 
+ placements                | placed_at                   | timestamp with time zone    | YES         | now()
+ role_permissions          | id                          | uuid                        | NO          | uuid_generate_v4()
+ role_permissions          | role_id                     | uuid                        | NO          | 
+ role_permissions          | permission_id               | uuid                        | NO          | 
+ role_permissions          | granted_at                  | timestamp with time zone    | YES         | now()
+ role_permissions          | granted_by                  | uuid                        | YES         | 
+ roles                     | id                          | uuid                        | NO          | uuid_generate_v4()
+ roles                     | name                        | character varying           | NO          | 
+ roles                     | description                 | text                        | YES         | 
+ roles                     | created_at                  | timestamp with time zone    | YES         | now()
+ roles                     | updated_at                  | timestamp with time zone    | YES         | now()
+ schema_migrations         | version                     | character varying           | NO          | 
+ schema_migrations         | applied_at                  | timestamp with time zone    | NO          | now()
+ schema_migrations         | description                 | text                        | YES         | 
+ scrape_jobs               | id                          | uuid                        | NO          | uuid_generate_v4()
+ scrape_jobs               | company_id                  | uuid                        | NO          | 
+ scrape_jobs               | status                      | USER-DEFINED                | YES         | 'queued'::scrape_status_enum
+ scrape_jobs               | level_reached               | integer                     | YES         | 
+ scrape_jobs               | error_message               | text                        | YES         | 
+ scrape_jobs               | started_at                  | timestamp with time zone    | YES         | 
+ scrape_jobs               | completed_at                | timestamp with time zone    | YES         | 
+ scrape_jobs               | created_at                  | timestamp with time zone    | YES         | now()
+ skills                    | id                          | uuid                        | NO          | uuid_generate_v4()
+ skills                    | candidate_id                | uuid                        | NO          | 
+ skills                    | skill_name                  | character varying           | NO          | 
+ skills                    | category                    | character varying           | YES         | 
+ skills                    | proficiency_level           | character varying           | YES         | 
+ skills                    | years_experience            | numeric                     | YES         | 
+ skills                    | confidence_score            | numeric                     | YES         | 
+ skills                    | name                        | character varying           | YES         | 
+ skills                    | normalized_name             | character varying           | YES         | 
+ submissions               | id                          | uuid                        | NO          | uuid_generate_v4()
+ submissions               | job_id                      | uuid                        | NO          | 
+ submissions               | candidate_id                | uuid                        | NO          | 
+ submissions               | submitted_by                | uuid                        | NO          | 
+ submissions               | status                      | character varying           | NO          | 'submitted'::character varying
+ submissions               | rejection_reason            | text                        | YES         | 
+ submissions               | submitted_at                | timestamp with time zone    | NO          | now()
+ submissions               | updated_at                  | timestamp with time zone    | NO          | now()
+ system_settings           | key                         | character varying           | NO          | 
+ system_settings           | value                       | jsonb                       | NO          | 
+ system_settings           | updated_at                  | timestamp with time zone    | YES         | now()
+ users                     | id                          | uuid                        | NO          | uuid_generate_v4()
+ users                     | email                       | character varying           | NO          | 
+ users                     | hashed_password             | character varying           | NO          | 
+ users                     | role                        | character varying           | NO          | 'recruiter'::character varying
+ users                     | created_at                  | timestamp with time zone    | YES         | now()
+ users                     | is_active                   | boolean                     | NO          | true
+ users                     | tenant_id                   | character varying           | NO          | 'default'::character varying
+ work_experience           | id                          | uuid                        | NO          | uuid_generate_v4()
+ work_experience           | candidate_id                | uuid                        | NO          | 
+ work_experience           | job_title                   | character varying           | YES         | 
+ work_experience           | company_name                | character varying           | YES         | 
+ work_experience           | start_date                  | date                        | YES         | 
+ work_experience           | end_date                    | date                        | YES         | 
+ work_experience           | is_current                  | boolean                     | YES         | false
+ work_experience           | description                 | text                        | YES         | 
+ work_experience           | location                    | character varying           | YES         | 
+ work_experience           | duration_string             | character varying           | YES         | 
+ work_history              | id                          | uuid                        | YES         | 
+ work_history              | candidate_id                | uuid                        | YES         | 
+ work_history              | job_title                   | character varying           | YES         | 
+ work_history              | company_name                | character varying           | YES         | 
+ work_history              | start_date                  | date                        | YES         | 
+ work_history              | end_date                    | date                        | YES         | 
+ work_history              | is_current                  | boolean                     | YES         | 
+ work_history              | description                 | text                        | YES         | 
+ work_history              | location                    | character varying           | YES         | 
+(371 rows)
+

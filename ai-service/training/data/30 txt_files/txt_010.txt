@@ -1,0 +1,39 @@
+[1]
+  Company   : Uber
+  Location  : San Francisco, CA
+  Title     : Sr. Platform Engineer
+  Duration  : August 2022 – Present
+
+[2]
+  Company   : Lyft
+  Location  : San Francisco, CA
+  Title     : Backend Engineer
+  Duration  : March 2020 – July 2022
+
+[3]
+  Company   : DoorDash
+  Location  : San Francisco, CA
+  Title     : Software Engineer
+  Duration  : June 2017 – February 2020
+
+[4]
+  Company   : Grubhub
+  Location  : Chicago, IL
+  Title     : API Developer
+  Duration  : October 2014 – May 2017
+
+[5]
+  Company   : Persistent Systems
+  Location  : Nagpur, India
+  Title     : Software Engineer
+  Duration  : August 2012 – September 2014
+
+[1]
+  Degree    : Master of Science: Computer Science
+  Institution: University of Illinois, Urbana-Champaign
+  Year      : 2010–2012
+
+[2]
+  Degree    : Bachelor of Engineering: Information Technology
+  Institution: Nagpur University, India
+  Year      : 2006–2010

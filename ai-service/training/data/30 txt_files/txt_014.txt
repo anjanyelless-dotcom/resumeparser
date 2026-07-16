@@ -1,0 +1,32 @@
+Position:     Sr. Data Engineer
+Employer:     Capital One
+Location:     McLean, VA
+Period:       June 2022 – Present
+
+Position:     Data Platform Developer
+Employer:     American Express
+Location:     Phoenix, AZ
+Period:       September 2019 – May 2022
+
+Position:     Software Engineer – Payments
+Employer:     Discover Financial
+Location:     Riverwoods, IL
+Period:       February 2017 – August 2019
+
+Position:     Backend Developer
+Employer:     Stripe
+Location:     San Francisco, CA
+Period:       August 2014 – January 2017
+
+Position:     Software Engineer
+Employer:     iGate
+Location:     Bengaluru, India
+Period:       July 2012 – July 2014
+
+Qualification: Master of Science: Computer Science
+Institution:   George Mason University, Fairfax, VA
+Completed:     2012
+
+Qualification: Bachelor of Technology: Computer Science
+Institution:   Manipal University, India
+Completed:     2010

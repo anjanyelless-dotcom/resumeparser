@@ -1,0 +1,27 @@
+>> Airbnb (San Francisco, CA)
+   Role     : Sr. Full Stack Engineer
+   Timeline : September 2022 → Now
+
+>> Booking.com (Amsterdam, Netherlands)
+   Role     : Backend Developer
+   Timeline : December 2019 → August 2022
+
+>> Expedia (Seattle, WA)
+   Role     : Software Engineer II
+   Timeline : April 2017 → November 2019
+
+>> TripAdvisor (Needham, MA)
+   Role     : Web Developer
+   Timeline : July 2014 → March 2017
+
+>> Polaris Software (Chennai, India)
+   Role     : Software Engineer
+   Timeline : June 2012 → June 2014
+
+>> Northeastern University
+   Degree   : Master of Science: Computer Science
+   Year     : 2010–2012
+
+>> Anna University
+   Degree   : Bachelor of Engineering: Information Science
+   Year     : 2006–2010

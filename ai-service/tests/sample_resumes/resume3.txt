@@ -1,0 +1,54 @@
+ROBERT JOHNSON
+DevOps Engineer
+Contact: robert.johnson@email.com | +1-555-456-7890
+GitHub: github.com/robertj
+
+PROFESSIONAL SUMMARY
+DevOps Engineer with 6+ years of experience in cloud infrastructure, automation,
+and system administration. Expertise in AWS, Docker, Kubernetes, and CI/CD pipelines.
+Passionate about infrastructure as code and optimizing deployment workflows.
+
+WORK EXPERIENCE
+DevOps Engineer
+CloudTech Solutions
+San Francisco, CA | 2020 - Present
+• Managed Kubernetes clusters serving production workloads for 500K+ users
+• Implemented CI/CD pipelines using Jenkins, GitLab CI, and GitHub Actions
+• Automated infrastructure provisioning using Terraform and Ansible
+• Reduced deployment time by 70% through pipeline optimization
+• Monitored system performance using Prometheus, Grafana, and ELK stack
+• Technologies: Linux, AWS, Docker, Kubernetes, Jenkins, Ansible, Terraform
+
+System Administrator
+TechCompany
+Mountain View, CA | 2018 - 2020
+• Maintained and optimized Linux servers for high-availability applications
+• Implemented backup and disaster recovery strategies
+• Managed user accounts, permissions, and security policies
+• Monitored system performance and troubleshooted issues
+• Tools: Linux, AWS, Docker, System Administration, Cloud Computing
+
+Junior DevOps Engineer
+StartupHub
+Palo Alto, CA | 2016 - 2018
+• Assisted in deployment automation and infrastructure management
+• Learned containerization with Docker and orchestration basics
+• Participated in on-call rotation and incident response
+• Gained experience with cloud platforms and monitoring tools
+
+EDUCATION
+Bachelor of Science in Information Technology
+State University
+San Francisco, CA | 2012 - 2016
+GPA: 3.5/4.0
+Relevant Coursework: Network Administration, System Security, Cloud Computing, Database Management
+
+TECHNICAL SKILLS
+Cloud Platforms: AWS, Azure, Google Cloud Platform
+Containerization: Docker, Kubernetes, Podman
+CI/CD Tools: Jenkins, GitLab CI, GitHub Actions, CircleCI
+Infrastructure as Code: Terraform, Ansible, Puppet, Chef
+Monitoring: Prometheus, Grafana, ELK Stack, Nagios
+Operating Systems: Linux (Ubuntu, CentOS), Windows Server
+Scripting: Bash, Python, PowerShell
+Databases: PostgreSQL, MySQL, Redis, MongoDB

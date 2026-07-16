@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Parser - Section-Wise Display Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            margin-bottom: 30px;
+        }
+        input[type="file"] {
+            display: block;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 4px;
+            width: 100%;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .console-note {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #ffc107;
+            margin-top: 20px;
+        }
+        .console-note strong {
+            color: #856404;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 Resume Parser with Section-Wise Display</h1>
+        <p class="subtitle">Upload a resume to see section-wise formatted output in browser console</p>
+        
+        <div class="upload-section">
+            <input type="file" id="resumeFile" accept=".pdf,.docx,.txt">
+            <button id="uploadBtn" onclick="uploadResume()">Upload & Parse Resume</button>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="console-note">
+            <strong>💡 How to view section-wise output:</strong><br>
+            1. Open browser console: <code>F12</code> or <code>Right-click → Inspect → Console</code><br>
+            2. Upload a resume file<br>
+            3. Check console for formatted sections display
+        </div>
+    </div>
+
+    <script>
+        async function uploadResume() {
+            const fileInput = document.getElementById('resumeFile');
+            const statusDiv = document.getElementById('status');
+            const uploadBtn = document.getElementById('uploadBtn');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showStatus('Please select a resume file first', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            // Disable button during upload
+            uploadBtn.disabled = true;
+            showStatus('Uploading and parsing resume...', 'info');
+            
+            try {
+                // Create FormData
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                // Upload directly to AI service (port 8000) instead of backend API
+                // This avoids CORS issues when opening as a local file
+                const response = await fetch('http://localhost:8000/parse', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        file_path: file.name,
+                        candidate_id: 'test-' + Date.now()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Upload failed: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                // Display formatted sections in console
+                displayFormattedSectionsInConsole(result);
+                
+                showStatus('✅ Resume parsed successfully! Check browser console for section-wise output.', 'success');
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                showStatus(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        }
+        
+        function displayFormattedSectionsInConsole(result) {
+            console.clear();
+            console.log('%c════════════════════════════════════════════════════════════════════════════════', 'color: #4CAF50; font-weight: bold;');
+            console.log('%c📋 RESUME SECTION-WISE FORMATTING (DEBUG)', 'color: #4CAF50; font-size: 16px; font-weight: bold;');
+            console.log('%c════════════════════════════════════════════════════════════════════════════════', 'color: #4CAF50; font-weight: bold;');
+            
+            // Check if formatted_sections exists in the response
+            if (result.formatted_sections) {
+                const { sections, formatted_text, section_summary } = result.formatted_sections;
+                
+                // Display each section separately
+                console.log('\n%c📑 DETECTED SECTIONS:', 'color: #2196F3; font-size: 14px; font-weight: bold;');
+                console.log('─────────────────────────────────────────────────────────────────────────────────\n');
+                
+                for (const [sectionName, sectionContent] of Object.entries(sections)) {
+                    console.log(`%c### ${sectionName} ###`, 'color: #FF9800; font-weight: bold; font-size: 13px;');
+                    console.log(sectionContent);
+                    console.log(''); // Empty line
+                }
+                
+                // Display formatted text
+                console.log('\n%c════════════════════════════════════════════════════════════════════════════════', 'color: #4CAF50; font-weight: bold;');
+                console.log('%c📄 FORMATTED RESUME (SECTION-WISE)', 'color: #4CAF50; font-size: 14px; font-weight: bold;');
+                console.log('%c════════════════════════════════════════════════════════════════════════════════', 'color: #4CAF50; font-weight: bold;');
+                console.log('\n' + formatted_text);
+                
+                // Display section summary
+                console.log('\n%c════════════════════════════════════════════════════════════════════════════════', 'color: #4CAF50; font-weight: bold;');
+                console.log('%c📊 SECTION SUMMARY:', 'color: #4CAF50; font-size: 14px; font-weight: bold;');
+                console.log('%c════════════════════════════════════════════════════════════════════════════════', 'color: #4CAF50; font-weight: bold;');
+                
+                for (const [section, lineCount] of Object.entries(section_summary)) {
+                    console.log(`  • ${section}: ${lineCount} lines`);
+                }
+                
+                console.log('\n%c════════════════════════════════════════════════════════════════════════════════', 'color: #4CAF50; font-weight: bold;');
+                
+            } else {
+                console.warn('⚠️ formatted_sections not found in API response');
+                console.log('Full response:', result);
+            }
+            
+            // Also display parsed data summary
+            console.log('\n%c📊 PARSED DATA SUMMARY:', 'color: #9C27B0; font-size: 14px; font-weight: bold;');
+            console.log('─────────────────────────────────────────────────────────────────────────────────');
+            console.log('Name:', result.name || 'N/A');
+            console.log('Email:', result.email || 'N/A');
+            console.log('Phone:', result.phone || 'N/A');
+            console.log('Skills:', result.skills?.length || 0);
+            console.log('Work Experience:', result.work_experience?.length || 0);
+            console.log('Education:', result.education?.length || 0);
+            console.log('─────────────────────────────────────────────────────────────────────────────────\n');
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

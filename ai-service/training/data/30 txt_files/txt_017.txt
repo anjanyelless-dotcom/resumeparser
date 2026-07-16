@@ -1,0 +1,27 @@
+Organisation : Northrop Grumman
+Designation  : Sr. Software Engineer
+Location     : Falls Church, VA
+Duration     : March 2022 – Till Date
+
+Organisation : General Dynamics
+Designation  : Systems Software Developer
+Location     : Fairfax, VA
+Duration     : June 2019 – February 2022
+
+Organisation : Lockheed Martin
+Designation  : Software Engineer – Defense
+Location     : Bethesda, MD
+Duration     : September 2016 – May 2019
+
+Organisation : SAIC
+Designation  : Application Developer
+Location     : Reston, VA
+Duration     : February 2014 – August 2016
+
+Organisation : Tata Elxsi
+Designation  : Software Engineer
+Location     : Trivandrum, India
+Duration     : June 2012 – January 2014
+
+Qualification : Master of Science: Computer Engineering | Virginia Tech, Blacksburg, VA | 2010–2012
+Qualification : Bachelor of Technology: Computer Science | College of Engineering Trivandrum, India | 2006–2010

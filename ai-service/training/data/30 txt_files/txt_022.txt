@@ -1,0 +1,4 @@
+Meta,Menlo Park,CA|Staff Infrastructure Engineer|September 2020–Present
+Twitter,San Francisco,CA|Senior Backend Engineer|April 2017–August 2020
+Accenture,Chicago,IL|Software Developer|June 2014–March 2017
+B.Tech:Electronics and Communication,IIT Bombay,Mumbai,India(2010–2014)

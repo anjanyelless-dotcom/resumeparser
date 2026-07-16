@@ -1,0 +1,109 @@
+                                                               KRISHNA GARA
+JD:
+Cloud Engineering and Operations (8+ years)
+Advanced understanding of AWS services
+Understanding of Cloud based services (GitHub, ServiceNow, Orca, Datadog, Broadcom, Fivetran)
+Hands on experience with Release Management and deployment
+Advanced understanding of Linux Administration (log files, command line, system services, custom and managed package installations).
+Knowledge of network protocols, security and compliance
+Strong knowledge of scripting (Python, PHP, Bash)
+Knowledge of application integration technologies (API, Middleware, Webhooks)
+Application Performance Monitoring and Logging (8+ years)
+Highly experience with Datadog (from installing agents and/ or creating integrations, to customizing dashboards/ alerts)
+Advanced understanding of AWS services
+Understanding of Cloud based services (GitHub, Jenkins, ServiceNow, AccelQ, Broadcom, Fivetran)
+Strong knowledge of a programming language (Python, Java, PHP)
+Strong experience in a Linux environment (log files, command line, system services, custom and managed package installations)
+Knowledge of the Boomi platform
+Understanding of network protocols, security and architecture
+
+
+ANALYSIS:
+KEYWORDS:
+Scripting &programming language :(Python, Java, PHP)
+Cloud: AWS
+Cloud based services (, ServiceNow, Orca, Broadcom, Fivetran)
+CI/CD Tool: GitHub, Jenkins 
+MON: DATADOG
+OS: Linux
+
+PROFESSIONAL SUMMARY:
+AWS services expertise demonstrated through extensive implementation of AWS cloud infrastructure, including EC2, S3, RDS, and Lambda, while optimizing performance and cost-efficiency across large-scale distributed systems
+Proven track record in Cloud-based services integration, leveraging GitHub, ServiceNow, Orca, Datadog, Broadcom, and Fivetran to create cohesive, scalable solutions that enhance operational efficiency and streamline development workflows
+Spearheaded Release Management processes, implementing robust deployment strategies using CI/CD pipelines, ensuring seamless software releases while maintaining system stability and minimizing downtime across multiple environments
+Advanced Linux Administration skills showcased through sophisticated management of log files, command-line operations, system services, and both custom and managed package installations, optimizing system performance and security
+Demonstrated expertise in network protocols, security, and compliance, implementing comprehensive security measures to protect cloud infrastructure and ensure adherence to industry standards and regulatory requirements
+Developed complex Python scripts to automate critical operational tasks, leveraging Python's extensive libraries to create efficient, scalable solutions for data processing, system monitoring, and infrastructure management
+Implemented and managed various application integration technologies, including APIs, Middleware, and Webhooks, to facilitate seamless communication between diverse systems and enhance overall application ecosystem functionality
+Extensive experience with Datadog, from agent installation and integration creation to dashboard and alert customization, enabling comprehensive monitoring and proactive issue resolution across cloud environments
+Utilized AWS services to architect and deploy highly available, fault-tolerant systems, implementing auto-scaling, load balancing, and disaster recovery solutions to ensure optimal performance and reliability
+Leveraged cloud-based CI/CD tools such as GitHub and Jenkins to streamline development processes, improve code quality, and accelerate release cycles while maintaining robust version control and collaboration
+Developed sophisticated Python applications for data analysis, system automation, and performance optimization, demonstrating strong programming skills and the ability to solve complex technical challenges
+Showcased advanced Linux expertise through the design and implementation of custom system services, security hardening, and performance tuning, ensuring optimal system stability and resource utilization
+Implemented and managed the Boomi platform to facilitate seamless data integration and transformation across multiple systems, improving data accuracy and reducing manual processes
+Demonstrated in-depth understanding of network protocols and architecture, designing and implementing secure, scalable network solutions to support growing cloud infrastructure requirements
+Utilized PHP scripting to develop custom web applications and automate backend processes, improving system efficiency and user experience while ensuring code maintainability and scalability
+Implemented comprehensive Application Performance Monitoring solutions, utilizing Datadog and other tools to proactively identify and resolve performance bottlenecks and ensure optimal system health
+Developed and maintained robust logging systems across cloud environments, enabling efficient troubleshooting, security analysis, and compliance reporting while optimizing storage and retrieval processes
+Leveraged Bash scripting to automate routine system administration tasks, create custom monitoring tools, and streamline operational processes, improving overall efficiency and reducing manual intervention
+
+PROFESSIONAL SUMMARY:
+Client Details - (American Airlines, Senior DevOps/ Site Reliability Engineer, Airlines)
+Implemented and managed AWS-based infrastructure for airline operations, utilizing AWS CloudFormation for infrastructure as code, and AWS Lambda for serverless computing. Integrated AWS CloudWatch for real-time monitoring, significantly improving system reliability and reducing downtime.
+Developed and maintained CI/CD pipelines using Jenkins and GitHub Actions, automating deployment processes for airline booking systems. Implemented blue-green deployment strategies with Jenkins, ensuring zero-downtime updates and enhancing overall system stability.
+Designed and implemented a comprehensive monitoring solution using Datadog, integrating with airline-specific systems to provide real-time insights into flight operations. Utilized Datadog's APM features to optimize application performance and reduce response times for critical airline services.
+Orchestrated container deployments using Kubernetes on AWS EKS, ensuring scalability and high availability for airline reservation systems. Implemented Kubernetes-based auto-scaling policies to handle peak travel seasons, optimizing resource utilization and cost efficiency.
+Developed custom Python scripts for automating routine DevOps tasks, including log analysis and system health checks. Utilized Python's data processing libraries to create insightful reports on system performance and potential areas for improvement.
+Implemented security best practices using Orca Security platform, conducting regular vulnerability assessments and remediation for airline IT infrastructure. Integrated Orca's continuous monitoring capabilities with existing CI/CD pipelines to ensure security compliance throughout the development lifecycle.
+Managed and optimized ServiceNow ITSM processes, streamlining incident management and change control procedures for airline operations. Customized ServiceNow workflows to align with airline-specific requirements, improving overall IT service delivery and customer satisfaction.
+Designed and implemented RESTful APIs using Java and Spring Boot, facilitating seamless integration between various airline systems including booking, check-in, and loyalty programs. Utilized API gateway patterns to enhance security and manage API traffic effectively.
+Implemented data integration pipelines using Fivetran, ensuring real-time synchronization of critical airline data across multiple systems. Optimized Fivetran connectors for improved data transfer rates, enabling more accurate and timely reporting for business intelligence teams.
+Developed and maintained Bash scripts for system administration tasks, automating routine maintenance procedures for Linux-based airline systems. Utilized advanced Bash scripting techniques to create robust error handling and logging mechanisms, improving overall system reliability.
+Implemented middleware solutions using Boomi, facilitating seamless data exchange between legacy airline systems and modern cloud-based applications. Optimized Boomi processes for high-volume data transfers, ensuring minimal latency during peak operational hours.
+Designed and implemented webhook-based integrations for real-time event notifications in airline operations systems. Utilized webhook security best practices, including payload validation and encryption, to ensure the integrity of inter-system communications.
+Optimized PHP-based legacy applications for improved performance and security, implementing modern PHP 8.x features and best practices. Utilized PHP profiling tools to identify and resolve bottlenecks in critical airline booking and reservation systems.
+Implemented automated testing frameworks using AccelQ, significantly improving the quality assurance process for airline software releases. Integrated AccelQ test suites with CI/CD pipelines, enabling continuous testing and faster issue resolution.
+Utilized Broadcom's AIOps platform to enhance predictive maintenance capabilities for airline IT infrastructure. Implemented Broadcom's machine learning models to forecast potential system failures, reducing unplanned downtime and improving overall operational efficiency.
+
+ENVIRONMENT: AWS, GitHub, ServiceNow, Orca, Datadog, Broadcom, Fivetran, Linux, Python, PHP, Bash, API, Middleware, Webhooks, Jenkins, AccelQ, Java, Boomi
+
+Client Details - (Cigna Healthcare Dallas, Texas DevOps / Azure Engineer May 2019 to Aug 2022, DevOps / Azure Engineer, Healthcare/insurance )
+Implemented and managed AWS cloud infrastructure for healthcare data processing, utilizing EC2, S3, and RDS to ensure HIPAA compliance and data security. Leveraged AWS CloudFormation for infrastructure-as-code, reducing deployment time and improving consistency across environments.
+Developed and maintained CI/CD pipelines using Jenkins and GitHub for healthcare insurance applications, integrating automated testing with AccelQ to ensure code quality and reduce deployment errors. Implemented branch protection rules in GitHub to enforce code review processes.
+Designed and implemented monitoring solutions using Datadog and AWS CloudWatch, creating custom dashboards and alerts to proactively identify and resolve performance issues in healthcare systems. Utilized Datadog's APM features to optimize application performance and reduce response times.
+Automated incident management processes using ServiceNow and custom Python scripts, integrating with Datadog alerts to streamline issue resolution and minimize downtime for critical healthcare services. Developed ServiceNow workflows to automate ticket routing and escalation procedures.
+Managed and optimized Linux-based servers for healthcare applications, implementing security hardening measures and regular patch management using Ansible. Developed Bash scripts for routine maintenance tasks and log analysis to identify potential security threats.
+Implemented data integration solutions using Boomi and Fivetran to securely transfer and transform healthcare data between various systems, ensuring data accuracy and compliance with industry regulations. Developed custom Boomi processes for complex data transformations and validations.
+Designed and implemented API gateways using AWS API Gateway and custom middleware solutions, ensuring secure and efficient communication between healthcare microservices. Implemented OAuth 2.0 authentication and rate limiting to protect sensitive endpoints.
+Developed and maintained infrastructure security policies using Orca Security, conducting regular vulnerability assessments and implementing remediation measures to protect healthcare data. Integrated Orca findings with ServiceNow for automated ticket creation and tracking.
+Optimized database performance for healthcare insurance applications, implementing indexing strategies and query optimization techniques in MySQL and PostgreSQL. Developed Python scripts for database maintenance and data migration tasks.
+Implemented and managed containerization solutions using Docker and Kubernetes, improving application scalability and resource utilization for healthcare services. Developed Helm charts for streamlined Kubernetes deployments and implemented auto-scaling policies.
+Developed and maintained ETL processes using AWS Glue and Python, ensuring efficient and secure data processing for healthcare analytics. Implemented data masking techniques to protect sensitive information during ETL operations.
+Implemented log management and analysis solutions using ELK stack (Elasticsearch, Logstash, Kibana), enabling real-time monitoring and alerting for healthcare applications. Developed custom Logstash filters for parsing and enriching log data.
+Designed and implemented disaster recovery strategies using AWS services like S3 Cross-Region Replication and RDS Multi-AZ, ensuring business continuity for critical healthcare systems. Conducted regular disaster recovery drills to validate recovery procedures.
+Developed and maintained custom webhooks for integrating healthcare applications with third-party services, implementing security measures such as HMAC authentication and payload encryption. Used PHP to create webhook handlers and process incoming data.
+Implemented and managed configuration management using Ansible and AWS Systems Manager, ensuring consistent and secure configurations across healthcare infrastructure. Developed Ansible playbooks for automated server provisioning and application deployments.
+
+Client Details - (Target, DevOps Enginee, retail)
+
+Implemented and managed AWS infrastructure for retail applications, utilizing EC2, S3, and RDS services to ensure high availability and scalability. Leveraged AWS CloudFormation for infrastructure-as-code, improving deployment consistency and reducing manual configuration errors.
+Developed and maintained CI/CD pipelines using Jenkins and GitHub, automating build, test, and deployment processes for retail e-commerce platforms. Integrated AccelQ for automated testing, significantly reducing time-to-market for new features and updates.
+Orchestrated container deployments using Docker and Kubernetes on AWS EKS, ensuring efficient resource utilization and seamless scalability for retail microservices. Implemented Datadog for comprehensive monitoring and alerting of containerized applications.
+Designed and implemented middleware solutions using Java and Spring Boot, facilitating seamless integration between legacy retail systems and modern e-commerce platforms. Utilized Boomi for data transformation and API management, enhancing overall system interoperability.
+Managed and optimized Linux-based servers, implementing security hardening measures and performance tuning for retail application hosts. Utilized Bash scripting for automation of routine maintenance tasks and Linux system administration.
+Developed Python scripts for data processing and analysis of retail sales metrics, integrating with Fivetran for efficient ETL processes. Leveraged Python libraries like Pandas and NumPy for advanced data manipulation and reporting.
+Implemented robust security measures using Orca security platform, conducting regular vulnerability assessments and implementing remediation strategies. Integrated Orca with ServiceNow for streamlined incident management and response.
+Designed and maintained RESTful APIs using PHP and Laravel framework, enabling seamless communication between front-end e-commerce applications and back-end inventory systems. Implemented API rate limiting and caching mechanisms to optimize performance.
+Developed and maintained Webhooks for real-time event-driven integrations between retail systems and third-party services. Utilized Middleware solutions to ensure reliable message delivery and processing of webhook payloads.
+Implemented network monitoring and optimization using Broadcom network management tools, ensuring high availability and performance of retail network infrastructure. Integrated Broadcom solutions with existing monitoring systems for comprehensive visibility.
+ENVIRONMENT: AWS, GitHub, ServiceNow, Orca, Datadog, Broadcom, Fivetran, Linux, Python, PHP, Bash, API, Middleware, Webhooks, Jenkins, AccelQ, Java, Boomi
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,10 @@
+Company              | Location          | Role                            | Period
+Pfizer               | New York, NY      | Sr. Healthcare IT Developer     | February 2022 – Present
+Johnson & Johnson    | New Brunswick, NJ | Application Developer           | May 2019 – January 2022
+Medtronic            | Minneapolis, MN   | Software Engineer – Medical Devices | August 2016 – April 2019
+Abbott               | Abbott Park, IL   | Systems Developer               | January 2014 – July 2016
+Hexaware             | Nagpur, India     | Software Engineer               | July 2012 – December 2013
+
+Degree                    | Institution                        | Year
+Master of Science: Health | Indiana University, Indianapolis   | 2012
+Bachelor of Technology: B | SRM University, Chennai, India     | 2010

@@ -1,0 +1,194 @@
+
+
+GANESH B-NAME
+C I-NAME
+
+linkedin.com/in/ganesh-ch-903gch21 B-LINKEDIN
+  (513) 428-2353 B-NUMBER
+  chganesh886@gmail.com.  B-EMAIL
+
+Git Repository Migration: Proven experience migrating Git repositories between platforms (strong preference for GitLab to GitHub). Deep understanding of Git internals and migration strategies.
+CI/CD Pipelines: Extensive experience designing, implementing, and maintaining Continuous Integration and Continuous Delivery (CI/CD) pipelines.
+GitHub Actions: Strong proficiency with GitHub Actions and the GitHub ecosystem, including workflow syntax and best practices.
+TypeScript: Experience developing custom GitHub Actions using TypeScript is highly desirable.
+Containerization: Solid understanding of containerization technologies (Docker) and container orchestration (AWS ECS and EKS).
+Kubernetes Interaction: Proficiency in using kubectl for interacting with Kubernetes clusters (specifically EKS in this context).
+Package Management (Kubernetes): Experience with Helm for managing Kubernetes applications.
+Build and Dependency Management: Experience with build tools and dependency management for:
+Java: Maven, Gradle
+Node.js: NPM, Yarn
+Python: pip
+Git: Strong command-line Git skills and understanding of Git workflows (e.g., Gitflow, trunk-based development).
+Cloud Infrastructure: Familiarity with AWS services relevant to application hosting (ECS, EKS,S3 ,RDS ,EC2 ,Cloud Watch).GitLab API , GitHub API SSO Slack, Jira,Slack, Jira,Prometheus Garfana Data Dog Splunk,HA DR ,SLI SLO PCI DSS
+Deployment Automation: Experience with deployment tools, ideally including Argo CD for GitOps-based deployments.Docker Kubernetes ansible 
+Infrastructure as Code (IaC): Strong proficiency in Terraform, and awareness of Terraform Cloud is highly welcome.
+Scripting: Proficiency in scripting languages ( Bash, Python) for automation tasks.
+
+
+
+
+
+
+
+
+
+
+PROFESSIONAL SUMMARY:
+
+Migrated complex Git repositories from GitLab to GitHub, demonstrating deep expertise in Git internals and migration strategies. Developed custom scripts to automate the migration process, ensuring data integrity and preserving commit history across platforms.
+Designed and implemented robust CI/CD pipelines using GitHub Actions, optimizing build times and deployment efficiency. Integrated CI/CD workflows with multiple environments, incorporating security checks and automated testing to ensure code quality and reliability.
+Developed custom GitHub Actions using TypeScript, enhancing workflow capabilities and improving team productivity. Created reusable actions for common tasks, reducing code duplication and streamlining the development process across multiple projects.
+Orchestrated containerized applications using Docker and Kubernetes, specifically AWS ECS and EKS. Implemented best practices for container security, resource management, and scalability, ensuring optimal performance in production environments.
+Demonstrated proficiency in Kubernetes interaction through extensive use of kubectl for managing EKS clusters. Implemented advanced Kubernetes features such as custom resource definitions and operators to extend cluster functionality and improve manageability.
+Utilized Helm for managing complex Kubernetes applications, creating custom charts and templates for consistent deployments. Implemented Helm hooks for advanced lifecycle management, ensuring smooth upgrades and rollbacks across multiple environments.
+Managed build and dependency processes for diverse technology stacks, including Java (Maven, Gradle), Node.js (NPM, Yarn), and Python (pip). Optimized build configurations to reduce compilation times and improve overall development efficiency.
+Implemented advanced Git workflows, including Gitflow and trunk-based development, to streamline collaboration and code management. Conducted team training sessions on Git best practices, improving version control processes and reducing merge conflicts.
+Architected cloud infrastructure using AWS services, including ECS, EKS, S3, RDS, EC2, and CloudWatch. Implemented high availability and disaster recovery solutions, ensuring system resilience and minimal downtime during critical operations.
+Integrated various developer tools and services, including GitLab API, GitHub API, SSO, Slack, and Jira, to create a cohesive development ecosystem. Developed custom integrations to automate workflow processes and improve cross-team communication.
+Implemented monitoring and observability solutions using Prometheus, Grafana, DataDog, and Splunk. Established SLIs and SLOs to measure and improve system performance, while ensuring compliance with PCI DSS requirements for secure data handling.
+Utilized Argo CD for GitOps-based deployments, automating application updates and ensuring consistency between Git repositories and deployed environments. Implemented progressive delivery strategies to minimize risk during deployments.
+Demonstrated strong proficiency in Terraform for Infrastructure as Code (IaC), managing complex multi-region cloud environments. Leveraged Terraform Cloud for collaborative infrastructure management and implemented modular designs for reusable infrastructure components.
+Developed sophisticated Bash and Python scripts for automation tasks, improving operational efficiency and reducing manual errors. Created a comprehensive library of utility scripts for common DevOps tasks, enhancing team productivity.
+Implemented Docker best practices for building efficient and secure container images, optimizing for size and security. Created multi-stage Dockerfiles to separate build and runtime environments, reducing attack surface and improving deployment speed.
+Utilized Ansible for configuration management and application deployment across diverse environments. Developed reusable Ansible roles and playbooks to standardize server configurations and automate routine maintenance tasks.
+Implemented GitOps principles using Argo CD and Kubernetes, ensuring declarative and version-controlled infrastructure and application configurations. Established automated reconciliation processes to maintain desired state across all environments.
+Developed a comprehensive documentation system for all DevOps processes, tools, and workflows, improving knowledge sharing and onboarding efficiency. Created interactive runbooks and troubleshooting guides to empower team members in managing complex systems.
+
+
+
+Certification: Azure DevOps engineer expert (az-400)  
+                           Azure Developer Associate
+ Docker Foundations Professional
+ Monitoring and Observability with Datadog
+ Mastering Observability with Open Telemetry
+ Hashi Corp Certified: Terraform Associate 
+ 
+TECHNICAL SKILLS:
+
+Cloud Platforms: Microsoft Azure, AWS Cloud, Google cloud
+Build Tools: Maven, ANT, Gradle
+Version Control Tools: GIT, Bitbucket, SVN, Azure Repos, Dimensions, Spring test Suite
+CI/CD: Jenkins, Azure DevOps Pipeline (ADO), GitHub Actions, Argo CD
+Configuration & Automation Tools: Ansible, Terraform, Puppet, Chef, AWS CDK, Spinnaker
+Container Platforms: Docker, Kubernetes, OpenShift
+Monitoring & Logging Tools: Prometheus, Grafana, AWS CloudWatch, ELK Stack, Splunk
+APM Tools: App Dynamics, Data Dog, New Relic
+Languages: Python, Shell Scripting, Ruby, Groovy, Golang, java, YAML
+Artifactory: JFrog, Nexus, Quay, Registry Hub
+Web and Application Servers: Nginx, Rest, Soap, WebLogic, JBOSS, Nginx, Apache Tomcat, IIS
+Operation Systems: Microsoft Windows, UNIX, Linux (Red hat, Debian), VMware, Mac OS, Ubuntu.
+Tracking Tools: Jira, Service Now
+Code Scanning: SonarQube, Frog X ray, ECR Inspector
+Databases: Cosmos DB, MySQL, No SQL, Oracle, Big Query, MongoDB 
+Logging: Cloud Watch, Cloud Trail, Azure App Insights, Azure Monitor
+
+PROFESSIONAL EXPERIENCE 
+
+Visa                 Forster City, CA                                                                                                
+Site Reliability / DevOps Engineer								      Dec 2022 – Current
+
+
+
+Environment: Git, GitLab, GitHub, CI/CD, GitHub Actions, TypeScript, Docker, AWS ECS, AWS EKS, Kubernetes, kubectl, Helm, Maven, Gradle, Node.js, NPM, Yarn, Python, pip, AWS S3, AWS RDS, AWS EC2, AWS CloudWatch, GitLab API, GitHub API, SSO, Slack, Jira, Prometheus, Grafana, DataDog, Splunk, Argo CD, Terraform, Terraform Cloud, Bash, Java, AWS, PCI DSS, Ansible
+Implemented Kubernetes and AWS EKS to orchestrate containerized financial applications, improving scalability and resource utilization. Utilized Helm charts for streamlined deployments and kubectl for efficient cluster management, reducing downtime during updates.
+Designed and maintained CI/CD pipelines using GitLab and GitHub Actions, automating build, test, and deployment processes for critical finance systems. Integrated Docker containerization to ensure consistency across development, staging, and production environments.
+Developed Infrastructure as Code using Terraform and Terraform Cloud, managing AWS resources including EC2, RDS, and S3. Implemented version control with Git to track infrastructure changes and facilitate collaboration among team members.
+Configured and optimized Prometheus and Grafana for real-time monitoring of financial applications, creating custom dashboards to visualize key performance metrics. Integrated Grafana alerts with Slack for rapid incident response and improved system reliability.
+Implemented SSO solutions for secure access to financial systems, integrating with GitLab API and GitHub API for seamless authentication. Utilized TypeScript to develop custom SSO modules, enhancing security and user experience across platforms.
+Managed and scaled AWS ECS clusters for high-availability financial services, implementing auto-scaling policies based on CloudWatch metrics. Utilized ECS task definitions to optimize container resource allocation and improve overall system performance.
+Automated configuration management using Ansible, streamlining server provisioning and application deployments across finance environments. Developed Ansible playbooks to ensure consistent system configurations and reduce manual intervention in operational tasks.
+Implemented Argo CD for GitOps-based continuous deployment, ensuring synchronization between Git repositories and Kubernetes cluster states. Utilized Argo CD's declarative approach to manage application lifecycles and rollback capabilities for finance applications.
+Developed custom Python scripts for log analysis and automated reporting, integrating with Splunk for centralized log management. Utilized Python's data processing libraries to extract actionable insights from system logs and financial transaction data.
+Managed dependencies and build processes using Maven, Gradle, NPM, and Yarn, ensuring consistent and reproducible builds across finance projects. Implemented pip for Python package management, maintaining up-to-date libraries for data analysis and reporting tools.
+
+Target                                                                                                                                                       Minneapolis, MN
+SRE/ DevOps Engineer                                                                                                                     Mar 2020 – Nov 2022
+
+Environment: Git, GitLab, GitHub, CI/CD, GitHub Actions, TypeScript, Docker, AWS ECS, AWS EKS, Kubernetes, kubectl, Helm, Maven, Gradle, Node.js, NPM, Yarn, Python, pip, AWS S3, AWS RDS, AWS EC2, AWS CloudWatch, GitLab API, GitHub API, SSO, Slack, Jira, Prometheus, Grafana, DataDog, Splunk, Argo CD, Terraform, Terraform Cloud, Bash, Java, AWS, PCI DSS, Ansible
+
+Implemented Kubernetes and AWS EKS to orchestrate containerized retail applications, improving scalability and resource utilization. Utilized Helm charts for streamlined deployments and kubectl for efficient cluster management, resulting in reduced downtime and enhanced system reliability.
+Designed and executed CI/CD pipelines using GitLab and GitHub Actions, automating build, test, and deployment processes for retail e-commerce platforms. Integrated Docker containerization to ensure consistency across development, staging, and production environments, significantly reducing deployment errors.
+Developed and maintained Infrastructure as Code using Terraform and Terraform Cloud, managing AWS resources including EC2, S3, and RDS for retail data storage and processing. Implemented version control with Git to track infrastructure changes and facilitate collaboration among team members.
+Configured and optimized monitoring and alerting systems using Prometheus, Grafana, and CloudWatch to ensure high availability of retail services. Implemented custom DataDog dashboards for real-time visibility into system performance and customer experience metrics.
+Implemented SSO solutions for secure access management across retail applications and internal tools. Integrated with Slack and Jira for streamlined incident response and ticketing, improving team communication and reducing mean time to resolution (MTTR).
+Utilized Python and Bash scripting to automate routine SRE tasks, including log analysis, performance testing, and capacity planning. Developed custom Python modules for integrating with GitLab API and GitHub API to enhance workflow automation and reporting capabilities.
+Managed and optimized AWS ECS clusters for containerized microservices, ensuring efficient resource allocation and cost optimization. Implemented auto-scaling policies based on CloudWatch metrics to handle varying retail traffic loads during peak shopping seasons.
+Implemented Argo CD for GitOps-based continuous deployment, ensuring consistency between Git repositories and live Kubernetes cluster states. Utilized Helm for package management and deployments, streamlining the release process for retail applications.
+Developed TypeScript-based lambda functions for serverless data processing and API integrations in the retail ecosystem. Utilized NPM and Yarn for dependency management, ensuring consistent and secure package versions across development teams.
+Configured and maintained Splunk for centralized log management and analysis, enabling quick troubleshooting and security auditing. Implemented Ansible playbooks for consistent configuration management across retail infrastructure, reducing manual errors and improving system reliability.
+
+
+T-Mobile                                                                                                                                                               Bellevue, WA
+Sr. DevOps Engineer                                                                                                            Jun 2017 – Feb 2020 
+
+Environment: Git, GitLab, GitHub, CI/CD, GitHub Actions, TypeScript, Docker, AWS ECS, AWS EKS, Kubernetes, kubectl, Helm, Maven, Gradle, Node.js, NPM, Yarn, Python, pip, AWS S3, AWS RDS, AWS EC2, AWS CloudWatch, GitLab API, GitHub API, SSO, Slack, Jira, Prometheus, Grafana, DataDog, Splunk, Argo CD, Terraform, Terraform Cloud, Bash, Java, AWS, PCI DSS, Ansible
+
+Implemented and managed CI/CD pipelines using GitLab and GitHub Actions, reducing deployment time by hours. Utilized GitLab API and GitHub API to automate workflow processes, enhancing overall efficiency in the telecommunication software delivery pipeline.
+Orchestrated containerized applications using Docker and Kubernetes, improving scalability and resource utilization. Leveraged Helm charts for streamlined Kubernetes deployments, ensuring consistent and reproducible environments across the telecom infrastructure.
+Designed and maintained AWS ECS and EKS clusters for telecom applications, optimizing performance and cost. Utilized kubectl for cluster management and troubleshooting, while implementing Prometheus and Grafana for comprehensive monitoring and alerting.
+Developed Infrastructure as Code using Terraform and Terraform Cloud, enabling version-controlled and automated infrastructure provisioning. Implemented Terraform modules for managing AWS S3, RDS, and EC2 resources, ensuring consistency across telecom environments.
+Engineered robust CI/CD pipelines integrating Maven, Gradle, NPM, and Yarn for efficient build and dependency management. Implemented TypeScript in frontend projects, enhancing code quality and maintainability in telecom customer-facing applications.
+Implemented Argo CD for GitOps-based continuous delivery, ensuring declarative and version-controlled application deployments. Integrated Argo CD with Slack and Jira for enhanced visibility and collaboration across telecom development teams.
+Developed custom Python scripts for automating routine DevOps tasks and log analysis in telecom systems. Utilized Python libraries for interacting with AWS CloudWatch and Splunk, improving incident response times and system reliability.
+Implemented SSO solutions for secure access management across multiple telecom platforms and tools. Integrated DataDog for comprehensive application performance monitoring, enhancing visibility into system health and user experience.
+Created and maintained Ansible playbooks for configuration management of telecom infrastructure components. Utilized Ansible roles to standardize server configurations, ensuring consistency and reducing manual intervention in system setups.
+Developed Bash scripts for automated backup and recovery processes of critical telecom data stored in AWS S3 and RDS. Implemented Bash-based health check routines to proactively identify and address potential system issues.
+Implemented Git version control system for managing telecom network configuration files, improving collaboration and code quality. Utilized Git branching strategies to handle multiple network upgrades simultaneously, reducing conflicts and downtime.
+Developed CI/CD pipelines using GitHub Actions to automate the deployment of telecom billing software updates. Integrated TypeScript linting and testing into the workflow, ensuring code quality and reducing errors in production.
+Containerized legacy telecom applications using Docker, enabling easier deployment and scaling across different environments. Deployed containerized applications to AWS ECS for improved resource utilization and cost efficiency.
+Migrated on-premises telecom infrastructure to EKS, improving scalability and reliability of network management systems. Utilized kubectl for managing Kubernetes clusters and Helm charts for deploying complex telecom applications.
+Streamlined build processes for Java-based telecom projects using Maven and Gradle, reducing build times and improving developer productivity. Implemented dependency management best practices to ensure consistent builds across environments.
+Managed frontend dependencies for customer-facing telecom portals using NPM and Yarn, ensuring consistent package versions and reducing conflicts. Implemented automated security audits to identify and address vulnerabilities in third-party packages.
+Developed Python-based network monitoring tools, utilizing pip for package management and dependency resolution. Leveraged pip to create isolated virtual environments for different telecom projects, ensuring compatibility and reducing conflicts.
+Provisioned and managed EC2 instances for hosting telecom applications, implementing auto-scaling policies to handle peak call volumes. Utilized CloudWatch for monitoring instance health and performance metrics.
+Integrated GitLab API and GitHub API to automate code review processes for telecom software development teams. Implemented custom webhooks to trigger notifications and updates in project management tools.
+Implemented SSO solution for telecom customer portals, improving security and user experience. Integrated with existing identity providers to streamline authentication processes for both customers and internal staff.
+Developed custom Slack integrations for telecom network monitoring alerts, enabling faster response times to critical issues. Implemented chatbots for common network diagnostics and troubleshooting tasks.
+Configured Jira workflows tailored to telecom project management needs, improving visibility and tracking of network upgrade projects. Implemented custom fields and reports to capture telecom-specific metrics and KPIs.
+
+
+Southwest Airlines                                                                                                                                              Dallas, TX 
+Cloud DevOps Engineer                                                                                                                        Feb 2016 – May 2017
+Designed and optimized AWS infrastructure with a focus on fault tolerance, high availability, and auto-scaling to meet SLA and SLO requirements, utilizing services like EC2, ECS, ELB, S3, EBS, VPC, AMI, SNS, SQS, RDS, IAM, Route 53, Auto Scaling, CloudFront, CloudWatch, CloudTrail, and CloudFormation.
+Configured AWS cloud infrastructure, automated deployments using Terraform, and secured Kubernetes workloads with RBAC, IAM, and real-time monitoring solutions like New Relic, Prometheus, and Grafana dashboards.
+Managed CI/CD pipelines using Jenkins CI/CD, automated artifact management with JFrog, and secured source code repositories using Git, ensuring best practices for continuous deployment in AWS environments.
+Deployed Docker containers in Kubernetes, integrated Istio for traffic routing, and configured security policies using RBAC, IAM, and logging solutions like AWS CloudWatch, New Relic, and Prometheus.
+Configured MySQL and MongoDB databases in AWS RDS, automated backups using Shell Scripting, and optimized query performance with real-time monitoring using AWS CloudWatch, Grafana, and New Relic.
+Implemented CI/CD workflows using Jenkins CI/CD, automated builds with Maven and ANT, and integrated security scanning using SonarQube, ensuring compliance and vulnerability detection in AWS deployments.
+Automated containerized deployments in AWS using Helm, managed infrastructure as code with Terraform, and secured applications with RBAC, IAM, and best practices for AWS CloudWatch monitoring.
+Developed Python and Shell Scripting automation scripts, optimized deployment pipelines using Jenkins CI/CD, and configured observability tools like Prometheus, New Relic, and Grafana for monitoring cloud workloads.
+Deployed AWS RDS for high-availability MySQL databases, secured database transactions using IAM, and implemented automated failover strategies using Terraform and AWS CloudWatch.
+Configured SonarQube for static code analysis, optimized security compliance in Git, and automated deployment verification using Jenkins CI/CD pipelines with ANT, Maven, and Helm.
+Implemented Istio service mesh in Kubernetes, automated containerized workload deployments using Terraform, and ensured observability using Prometheus, Grafana, and New Relic dashboards.
+Managed cloud networking in AWS, enforced RBAC policies in Kubernetes, and automated access control security using IAM, Terraform, and infrastructure monitoring tools like AWS CloudWatch.
+Configured Helm charts for microservices deployments in Kubernetes, optimized API security with Istio, and ensured high availability in AWS RDS using Terraform automation.
+Automated security compliance for Docker containers using SonarQube, enforced CI/CD best practices with Jenkins CI/CD, and integrated monitoring solutions like Prometheus, AWS CloudWatch, and New Relic.
+Deployed cloud workloads in AWS, automated infrastructure provisioning using Terraform, and optimized application observability with Grafana, Prometheus, and real-time security monitoring using New Relic.
+Configured MongoDB and MySQL replication in AWS RDS, optimized queries using Shell Scripting, and automated alert notifications using AWS CloudWatch, Prometheus, and Grafana.
+Managed Kubernetes workloads in AWS, optimized deployments with Helm, and configured networking security using Istio, RBAC, and IAM for access control policies.
+Automated Jenkins CI/CD workflows for containerized applications, secured cloud workloads using Ansible, and optimized cloud cost efficiency using AWS CloudWatch, New Relic, and Prometheus.
+Developed Python scripts for cloud automation, secured API gateways using Istio, and optimized deployment workflows in AWS using Terraform, Jenkins CI/CD, and Helm.
+Implemented RBAC security policies in Kubernetes, automated AWS CloudWatch monitoring, and secured workloads using best practices with IAM, SonarQube, and Terraform.
+Configured New Relic and Prometheus for application performance monitoring, optimized deployments using Docker and Kubernetes, and secured workloads in AWS using IAM and RBAC policies.
+Environment: AWS, Git, JFrog, Jenkins CI/CD, Docker, Kubernetes, Istio, Terraform, Ansible, ANT, Maven, MySQL, MongoDB, SonarQube, Helm, AWS RDS, AWS CloudWatch, RBAC, IAM, New Relic, Prometheus, Grafana, Python, Shell Scripting.
+Tally Solutions                                                                                                                                              Bangalore, INDIA
+Linux Administrator/ System administrator                                                                                      Aug 2014 to Dec 2015  
+
+Participated in the Analysis and Design of the application using UML/Rational Rose and Agile methodology.
+Created and maintained user accounts in red hat Enterprise Linux (RHEL)and other operating systems. Troubleshooting and maintaining of TCP/IP, Apache HTTP/HTTPS, SMTP and DNS applications.
+Configuration of NIS, DNS, NFS, SENDMAIL, LDAP, TCP/IP, Send Mail, FTP, Remote access Apache Services on Linux &UNIX Environment.
+Migrated different projects from Perforce to SVN.Performing NIC bonding on Linux Systems for redundancy.
+Diagnosed and resolved problems associated with DNS, DHCP, VPN, NFS, and Apache. Created Bash/shell scripts to monitor system resources and system maintenance.
+Installed, tested, and deployed monitoring solutions with Splunk services. Resolved configuration-based issues in coordination with infrastructure support teams.
+Installing Software packages using RPM and YUM on Linux servers. Install, configure, manage, NIM server and installing clients using NIM resources.
+Experience on Live partition mobility on power servers. Frame migration on IBM P- systems from power6 to power7.
+Responsible for the basic administration tasks related to LDAP and WebSphere Portal.
+Developed automation scripts using Bash and Python to streamline cloud resource provisioning, server configurations, and application deployments, reducing manual intervention and increasing efficiency.
+
+Environment: RHEL, Windows, Shell Script, VMware servers, XEN, ESX, ESXi, WebSphere, Perforce, Splunk Enterprise Server5.x, SVN, Windows 2003 server, Kick Start, Solaris, MySQL, Java.
+
+EDUCATION: 
+
+CVR College of Engineering   2014
+Bachelor’s in computer science
+

@@ -1,0 +1,4 @@
+Stripe,South San Francisco,CA~VP of Engineering~February 2023~Present
+Shopify,Ottawa,Canada~Senior Cloud Engineer~July 2019~January 2023
+HCL Technologies,Noida,India~Software Engineer~January 2016~June 2019
+B.Sc:Information Systems,University of Waterloo,Ontario,Canada(2012-2016)

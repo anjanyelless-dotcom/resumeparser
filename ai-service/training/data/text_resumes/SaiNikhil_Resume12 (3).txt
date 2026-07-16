@@ -1,0 +1,215 @@
+Sai Nikhil Muriki
+Email:  sainikhil9112@gmail.com | Phone: +1 513-428-4662| LinkedIn: http://www.linkedin.com/in/sainikhil-m
+
+
+
+Should have good End to End knowledge of various Commerce subsystems which include at least Storefront, Core Commerce back end, Post Purchase processing, OMS, Store / Warehouse Management processes, Supply Chain and Logistic processes.
+Extensive backend development knowledge with core Java/J2EE and Microservice based event driven architecture.
+should be cognizant of key integrations undertaken in eCommerce and associated downstream subsystems which should include but not limited to different Search frameworks, Payment gateways, Product Lifecycle Management Systems, Loyalty platforms, Recommendation engines, Promotion frameworks etc.
+Experience in Service Oriented Architecture - Developing/securely exposing/consuming Web Services – RESTful and integrating headless applications.
+Good understanding of Data Structures and Entity models
+Should be able to understand system end-end, maintain application and troubleshoot issues.
+Should have basic understanding of building, deploying and maintaining server based as well as serverless applications on cloud, preferably AWS.
+Expertise in integrating synchronously and asynchronously with third party web services.
+Good to have knowledge on DevOps concepts like Continuous Integration (CI), Continuous delivery (CD), Infrastructure as Code (IaaS) and Cloud deployment.
+Should have concrete knowledge of AWS Lambda functions, API Gateway, AWS CloudWatch, SQS, SNS, Event bridge, Kinesis, Secret Manager, S3 storage, server architectural models etc.
+Knowledge on any major eCommerce / OMS platforms will have added advantage.
+Must have a working knowledge of Production Application Support.
+Working experience in interacting with offshore team (IND) who provide 24x7 coverage, help & guide during India night coverage.
+Should know how to gather & communicate SRE requirement from Tech and non-tech aspect from customer.
+Working experience on how to gather requirements on health of applications, services to monitor, setting service levels.
+Hands on experience in Monitoring, Logging, Alerting, Dashboarding, and report generation in any monitoring tools such as AppDynamics/Splunk/Dynatrace/Datadog/CloudWatch/ELK/Prome/New Relic). This engagement is a customer using NewRelic, PagerDuty hence it is good to have this expertise.
+Must have knowledge SRE principles such as Logs, metrics, availability metrics, uptime, ticket tracking, e-com services, ITIL framework specifically on Alerts, Incident, change management, CAB, Risk and mitigation plan, SLA, SLI
+Should be able to contribute P1 calls, brief about the P1 to customer, proactive in gathering leads/ customers into the P1 calls till RCA.
+Knowledge working with postman.
+Should have knowledge on building and executing SOP, runbooks, handling any ITSM platforms (JIRA/ServiceNow/BMC Remedy)
+
+
+PROFESSIONAL SUMMARY
+Developed end-to-end eCommerce solutions encompassing Storefront, Core Commerce backend, Post Purchase processing, OMS, Store/Warehouse Management, and Supply Chain logistics. Implemented robust microservices architecture to ensure scalability and performance across all commerce subsystems, while maintaining data integrity and security.
+Architected and implemented extensive Java/J2EE backend systems for large-scale eCommerce platforms. Leveraged Java/J2EE technologies to build high-performance, scalable microservices that handle millions of transactions daily, ensuring optimal system responsiveness and reliability under heavy load conditions.
+Integrated diverse eCommerce subsystems including Search frameworks, Payment gateways, Product Lifecycle Management Systems, Loyalty platforms, and Recommendation engines. Developed custom APIs and middleware to seamlessly connect these systems, improving overall platform functionality and user experience.
+Designed and implemented RESTful web services for headless commerce applications, ensuring secure exposure and consumption of APIs. Utilized Service Oriented Architecture principles to create modular, reusable services that enhanced system flexibility and reduced development time for new features.
+Demonstrated expertise in complex data structures and entity models for eCommerce platforms. Optimized database schemas and query performance to handle large volumes of product, order, and customer data, resulting in significant improvements in system response times and data retrieval efficiency.
+Led end-to-end system maintenance and troubleshooting efforts for mission-critical eCommerce applications. Implemented proactive monitoring and alerting systems to identify and resolve potential issues before they impacted users, maintaining 99.9% uptime for core services.
+Spearheaded the migration of legacy applications to AWS cloud infrastructure, leveraging both server-based and serverless architectures. Utilized AWS services such as EC2, Lambda, and ECS to optimize resource utilization and reduce operational costs while improving scalability and reliability.
+Developed sophisticated integration solutions for third-party web services, implementing both synchronous and asynchronous communication patterns. Created fault-tolerant, high-throughput systems capable of processing thousands of API calls per second with minimal latency.
+Implemented DevOps best practices including Continuous Integration (CI) and Continuous Delivery (CD) pipelines. Utilized Infrastructure as Code (IaC) techniques to automate deployment processes, reducing release cycles from weeks to days and improving overall software quality.
+Designed and developed complex AWS Lambda functions integrated with API Gateway, CloudWatch, SQS, SNS, and EventBridge. Created event-driven architectures that efficiently processed and routed millions of events daily, ensuring real-time data processing and system responsiveness.
+Gained extensive experience with major eCommerce and OMS platforms, customizing and extending their capabilities to meet specific business requirements. Implemented advanced features such as personalized product recommendations and dynamic pricing strategies, driving significant increases in conversion rates.
+Provided critical production support for high-traffic eCommerce applications, developing and maintaining comprehensive runbooks and standard operating procedures. Led incident response teams to quickly diagnose and resolve critical issues, minimizing downtime and impact on business operations.
+Collaborated effectively with offshore development teams, providing technical guidance and ensuring 24/7 coverage for critical systems. Implemented agile methodologies and communication tools to streamline workflows and improve productivity across geographically distributed teams.
+Gathered and documented detailed SRE requirements from both technical and non-technical stakeholders. Translated complex technical concepts into clear, actionable items for business users, ensuring alignment between IT operations and business objectives.
+Implemented comprehensive application health monitoring solutions using tools such as New Relic and PagerDuty. Designed custom dashboards and alerting mechanisms to provide real-time visibility into system performance and proactively identify potential issues.
+Applied SRE principles to improve system reliability and performance, focusing on key metrics such as availability, uptime, and response times. Implemented automated logging and metrics collection to facilitate rapid troubleshooting and continuous improvement of system reliability.
+Led critical incident management processes, including P1 call facilitation and stakeholder communication. Conducted thorough root cause analyses and implemented preventive measures to reduce the frequency and impact of high-severity incidents.
+Utilized Postman for API testing and documentation, ensuring comprehensive coverage of all endpoints. Developed and maintained extensive test suites to validate API functionality, performance, and security across multiple environments and use cases.
+
+
+
+TECHNICAL SKILLS:
+Cloud				              AWS, Azure, GCP
+Configuration Management Tools	              Chef, Puppet, Ansible, Terraform
+CI/CD tools				              Jenkins, GitLab, Bamboo
+Build Tools				              ANT, MAVEN, GRADLE
+Container Tools			              Docker, Kubernetes, OpenShift, Podman.
+Version Control Tools		              GIT, CVS, SVN, Bitbucket.
+Monitoring Tools			             Prometheus, Grafana, AWS CloudWatch, ELK Splunk, Nagios.
+APM tools				             AppDynamics, New Relic, Dynatrace, Datadog
+Databases				             My SQL, NoSQL (MongoDB, DynamoDB)
+Web and Application Servers		             WebLogic, JBOSS, Nginx, Apache Tomcat. 
+Operating systems			             Red Hat Linux, CentOS, Ubuntu, VMware, Mac OS 
+Virtualization Platforms		             VMware, Virtual Box, Azure, Citrix
+Scripting				             Perl, Python, YAML, Ruby, PHP, Bash, Shell, PowerShell, JSON.
+
+PROFESSIONAL EXPERIENCE
+
+Morgan Stan New York, NY                                                                                                                                
+Senior Site Reliability Engineer                                                                                       September 2021 – Present.
+Environment: Java, J2EE, Microservices, RESTful, AWS, AWS Lambda, API Gateway, AWS CloudWatch, SQS, SNS, Event Bridge, Kinesis, Secret Manager, S3, DevOps, CI/CD, Infrastructure as Code (IaaS), AppDynamics, Splunk, Dynatrace, Datadog, CloudWatch, ELK, Prometheus, New Relic, PagerDuty, Postman, JIRA, ServiceNow, BMC Remedy
+Designed and implemented a robust microservices architecture using Java 11 and Spring Boot, enhancing the bank's core transaction processing system. Utilized AWS Lambda and API Gateway to create serverless functions, improving scalability and reducing operational costs while maintaining high availability.
+Orchestrated the migration of legacy monolithic applications to a containerized microservices environment using Docker and Kubernetes. Implemented CI/CD pipelines with Jenkins and GitLab, resulting in faster deployment cycles and improved system reliability for critical banking operations.
+Developed and maintained RESTful APIs using Java and Spring Framework, ensuring seamless integration between various banking systems. Implemented OAuth 2.0 authentication and utilized AWS Secret Manager to enhance security measures across distributed services.
+Implemented comprehensive monitoring and alerting solutions using AppDynamics, Splunk, and AWS CloudWatch. Configured custom dashboards in Grafana to provide real-time visibility into system performance, enabling proactive issue resolution and minimizing downtime for critical banking services.
+Designed and implemented a fault-tolerant message processing system using AWS SQS and SNS, ensuring reliable communication between microservices. Utilized AWS Event Bridge and Kinesis for real-time data streaming, enabling efficient processing of high-volume financial transactions.
+Optimized database performance by fine-tuning SQL queries and implementing caching strategies using Redis. Conducted regular performance audits using New Relic and Dynatrace, resulting in improved response times for customer-facing banking applications.
+Led the implementation of Infrastructure as Code (IaC) practices using Terraform and AWS CloudFormation, automating the provisioning and management of cloud resources. Integrated Ansible for configuration management, ensuring consistent and repeatable deployments across multiple environments.
+Developed and maintained disaster recovery and business continuity plans for critical banking systems. Implemented automated failover mechanisms using AWS Route 53 and Elastic Load Balancing, ensuring high availability and minimizing potential financial losses due to system outages.
+Implemented log aggregation and analysis solutions using the ELK stack (Elasticsearch, Logstash, Kibana) and Splunk, enabling efficient troubleshooting and root cause analysis. Integrated PagerDuty for incident management, ensuring timely response to critical alerts.
+Collaborated with security teams to implement DevSecOps practices, integrating security scanning tools into the CI/CD pipeline. Utilized AWS IAM and Security Groups to enforce least privilege access controls, enhancing the overall security posture of banking applications and infrastructure.
+Implemented J2EE-based core banking system, enhancing transaction processing efficiency by 40%. Utilized J2EE frameworks to develop robust, scalable applications, improving overall system reliability and performance in the banking environment.
+Designed and developed REST APIs for account management services, enabling seamless integration with third-party financial platforms. Implemented REST principles to ensure secure and efficient data exchange between banking systems and external partners.
+Implemented message queuing system using SQS and SNS for asynchronous processing of high-volume banking transactions, improving system scalability and reducing processing time
+Utilized Event Bridge and Kinesis to build a real-time data streaming pipeline for transaction monitoring, enabling instant alerts for suspicious activities and improving overall bank security measures.
+Implemented Secret Manager for secure storage and management of sensitive banking credentials, enhancing overall system security and compliance with financial regulations.
+Developed a document management system using S3 for secure storage and retrieval of customer documents, improving accessibility and reducing physical storage costs. Implemented S3 versioning for maintaining document history and compliance requirements.
+Adopted DevOps practices to streamline the development and deployment pipeline, reducing time-to-market for new banking features. Implemented DevOps tools for continuous integration and delivery, enhancing overall software quality and reliability.
+Managed banking infrastructure using IaaS solutions, optimizing resource allocation and reducing operational costs. Leveraged IaaS capabilities to ensure high availability and disaster recovery for critical banking systems.
+Implemented AppDynamics for real-time performance monitoring of banking applications, enabling proactive issue resolution and improving overall system stability.
+Utilized Dynatrace for end-to-end transaction tracing in complex banking environments, identifying and resolving performance bottlenecks in critical financial workflows.
+Integrated Datadog for comprehensive monitoring of distributed banking systems, enabling real-time alerts and detailed performance analytics. Leveraged Datadog's custom dashboards to visualize key banking metrics and system health indicators.
+Implemented CloudWatch alarms and metrics to monitor and optimize the performance of AWS-hosted banking applications, ensuring high availability and responsiveness of critical financial services.
+Utilized ELK stack for centralized logging and analysis of banking transactions, enabling faster troubleshooting and improved security auditing capabilities.
+Implemented Prometheus for monitoring microservices-based banking applications, enabling detailed performance tracking and capacity planning. Utilized Prometheus alerting rules to ensure timely response to critical banking system issues.
+Utilized Postman for comprehensive API testing of banking services, ensuring reliability and security of data exchanges. Implemented Postman test suites for automated regression testing of REST APIs.
+Managed banking project workflows using JIRA, improving team collaboration and project visibility. Utilized JIRA's agile boards to track development progress and prioritize critical banking features.
+Implemented ServiceNow for IT service management in banking operations, streamlining incident management and change control processes. Utilized ServiceNow's automated workflows to improve response times for customer-facing banking issues.
+Utilized BMC Remedy for managing and tracking IT assets in the banking infrastructure, ensuring compliance with financial regulations. Leveraged BMC Remedy's CMDB for maintaining accurate records of critical banking hardware and software assets.
+
+
+
+Mastercard, Purchase New York, NY                                                                                                                           
+Site Reliability Engineer                                                                                               January 2019 – August 2021
+Environment: Java, J2EE, Microservices, RESTful, AWS, AWS Lambda, API Gateway, AWS CloudWatch, SQS, SNS, Event Bridge, Kinesis, Secret Manager, S3, DevOps, CI/CD, Infrastructure as Code (IaaS), AppDynamics, Splunk, Dynatrace, Datadog, CloudWatch, ELK, Prometheus, New Relic, PagerDuty, Postman, JIRA, ServiceNow, BMC Remedy
+Designed and implemented a robust microservices architecture for banking applications, utilizing AWS Lambda and API Gateway to create scalable and secure REST APIs. Leveraged microservices patterns to improve system resilience and reduce downtime in critical financial operations.
+Orchestrated DevOps practices to streamline CI/CD pipelines, integrating Jenkins and GitLab for automated testing and deployment. Implemented Infrastructure as Code using Terraform, enabling rapid and consistent provisioning of AWS resources for banking services.
+Developed comprehensive monitoring and alerting systems using AWS CloudWatch, Prometheus, and Splunk, ensuring real-time visibility into banking application performance. Utilized CloudWatch metrics to create custom dashboards for proactive issue detection and resolution.
+Implemented robust security measures using AWS Secrets Manager for secure storage and rotation of database credentials and API keys. Integrated Secrets Manager with Lambda functions to ensure secure access to sensitive banking information.
+Designed and maintained scalable data storage solutions using AWS S3, implementing versioning and lifecycle policies for efficient management of banking documents and transaction logs. Utilized S3 event notifications to trigger automated workflows for data processing and compliance checks.
+Utilized ELK stack (Elasticsearch, Logstash, Kibana) for centralized log management and analysis of banking applications. Created custom Kibana dashboards to visualize system performance metrics and identify potential security threats in real-time.
+Implemented distributed tracing using New Relic APM to monitor and optimize the performance of microservices in the banking ecosystem. Leveraged New Relic Insights to create custom queries for analyzing transaction patterns and identifying bottlenecks.
+Managed incident response and problem resolution using BMC Remedy, ensuring timely resolution of critical issues in banking systems. Integrated Remedy with Splunk for enhanced incident correlation and root cause analysis of system failures.
+Developed a robust notification system using SNS for critical banking alerts, integrating with Event Bridge for event-driven architecture. Implemented Secret Manager to securely store and manage sensitive customer data and API keys.
+Established DevOps practices to streamline banking software deployment, implementing CI/CD pipelines for automated testing and delivery. Utilized IaaS solutions to provision and manage scalable infrastructure for core banking applications.
+Configured ELK stack for centralized logging and analysis of banking transactions, integrating with Prometheus for real-time monitoring of system metrics. Implemented custom dashboards in BMC Remedy for efficient incident management and resolution.
+Designed and implemented a kafka-based event streaming platform for real-time data processing in fraud detection systems. Utilized terraform for infrastructure-as-code, enabling consistent and repeatable deployments across multiple environments.
+Containerized legacy banking applications using docker, improving portability and scalability. Implemented agile methodologies to enhance collaboration between development and operations teams, resulting in faster feature delivery and improved system reliability.
+Utilized git for version control and collaborative development of banking software, implementing branching strategies and code review processes. Integrated Event Bridge with custom banking applications to enable event-driven workflows and automate business processes.
+Implemented Secret Manager for secure storage and rotation of database credentials and API keys used in core banking systems. Utilized IaaS platforms to provision and manage scalable computing resources for data analytics and reporting workloads.
+Utilized kafka for building a real-time data pipeline for transaction monitoring and fraud detection. Implemented git-based workflows for managing infrastructure-as-code repositories, ensuring consistent and auditable changes to banking system configurations.
+Designed and implemented a RESTful API gateway for unified access to various banking services, improving integration capabilities with third-party financial systems. Utilized AWS Lambda for serverless processing of high-volume transaction data.
+Implemented API Gateway with custom authorizers to secure access to banking APIs, integrating with existing authentication systems. Utilized AWS CloudWatch for real-time monitoring and alerting of critical banking system metrics.
+Configured SNS topics for efficient distribution of critical banking notifications across multiple channels. Implemented Event Bridge rules to trigger automated workflows based on specific banking events and transactions.
+Utilized Secret Manager for secure storage and management of encryption keys used in banking data protection systems. Implemented DevOps practices to automate database schema migrations and data seeding processes for banking applications.
+Utilized BMC Remedy for managing and tracking IT service requests and incidents in the banking environment. Implemented terraform scripts for automated provisioning and configuration of cloud resources used in banking applications.
+
+
+
+Target                                                                                                                                                                              Minneapolis, MN Senior DevOps Engineer                                                                            Mar 2017 – Dec 2018        
+Environment: Java, J2EE, Microservices, RESTful, AWS, AWS Lambda, API Gateway, AWS CloudWatch, SQS, SNS, Event Bridge, Kinesis, Secret Manager, S3, DevOps, CI/CD, Infrastructure as Code (IaaS), AppDynamics, Splunk, Dynatrace, Datadog, CloudWatch, ELK, Prometheus, New Relic, PagerDuty, Postman, JIRA, ServiceNow, BMC Remedy
+Implemented and managed CI/CD pipelines using Jenkins and GitLab CI, integrating with AWS services like Lambda and API Gateway to automate deployments of microservices-based banking applications, resulting in faster release cycles and improved code quality.
+Designed and deployed a robust monitoring infrastructure utilizing AppDynamics, Splunk, and AWS CloudWatch, enabling real-time visibility into application performance and proactive issue resolution for critical banking systems.
+Orchestrated the migration of legacy monolithic applications to a microservices architecture on AWS, leveraging Java 8 and Spring Boot to develop RESTful APIs, improving scalability and maintainability of core banking services.
+Implemented comprehensive logging and alerting solutions using the ELK stack (Elasticsearch, Logstash, Kibana) and PagerDuty, enhancing incident response times and enabling data-driven decision-making for the DevOps team.
+Developed and maintained Infrastructure as Code (IaC) using Terraform and AWS CloudFormation, ensuring consistent and repeatable deployments of banking infrastructure while adhering to strict security and compliance requirements.
+Engineered a real-time data processing pipeline using AWS Kinesis and Lambda functions, enabling fraud detection and transaction monitoring for the bank's payment processing systems, improving overall security posture.
+Implemented secret management solutions using AWS Secrets Manager and HashiCorp Vault, ensuring secure storage and rotation of sensitive credentials and API keys for various banking applications and services.
+Designed and implemented auto-scaling solutions for microservices deployed on Amazon ECS and Kubernetes, optimizing resource utilization and ensuring high availability during peak transaction periods.
+Developed custom plugins for Prometheus and Grafana to monitor banking-specific metrics, providing real-time insights into transaction volumes, account balances, and other critical business KPIs.
+Implemented automated testing frameworks using JUnit and Selenium, integrated with CI/CD pipelines to ensure code quality and reliability of banking applications before deployment to production environments.
+Enhanced security measures by implementing Secret Manager for storing and managing sensitive banking credentials. Utilized S3 buckets for secure storage of customer documents and transaction records.
+Streamlined DevOps practices in the banking infrastructure, implementing IaaS solutions to improve scalability and reduce operational costs . Utilized AppDynamics for application performance monitoring.
+Integrated Splunk for log management and Dynatrace for real-time monitoring of banking applications. Implemented Datadog for comprehensive infrastructure monitoring and alerting.
+Optimized CloudWatch metrics and ELK stack for centralized logging of banking transactions. Implemented Prometheus for monitoring and alerting on key performance indicators.
+Utilized New Relic for application performance monitoring and PagerDuty for incident management in critical banking systems. Implemented Postman for API testing and documentation.
+Managed project workflows using JIRA and integrated ServiceNow for IT service management in the banking environment. Utilized BMC Remedy for ticketing and change management processes.
+Developed a robust IaaS strategy for the bank's cloud migration, leveraging S3 for data storage and Event Bridge for event-driven architectures.
+Implemented Dynatrace for real-time monitoring of customer-facing banking applications. Utilized Datadog for infrastructure monitoring and alerting in the cloud environment.
+Integrated New Relic for end-to-end transaction tracing in core banking systems. Utilized Postman for API testing and collaboration among development teams.
+Streamlined change management processes using JIRA for tracking and ServiceNow for implementing changes in the banking IT infrastructure.
+Implemented BMC Remedy for incident management and problem resolution in the banking help desk. Utilized grafana for creating custom dashboards for IT operations.
+Enhanced security measures by implementing Secret Manager for managing API keys and database credentials. Utilized Java for developing secure authentication modules.
+Optimized REST API performance by implementing caching mechanisms and connection pooling. Utilized API Gateway for rate limiting and request throttling.
+Implemented Event Bridge rules for automating responses to critical banking events. Utilized AWS Lambda for serverless processing of financial transactions.
+
+
+
+FedEx                                                                                                                                                                                     Memphis, TN                                                                                               DevOps Engineer	 	                                                                                                       February 2016 – February 2017
+Worked directly with AWS services including S3 for storage, RDS for databases, EBS for block storage, Elastic Load Balancer for traffic distribution, and Auto-scaling groups with EC2 instances using optimized volumes. Implemented cloud automation and deployments through Chef, Python scripting, and Cloud Formation Templates.
+Supported cloud infrastructure on Google Cloud Platform (GCP), managing services such as Compute engine, cloud load balancing, cloud storage, cloud SQL, Stack Driver monitoring, and cloud deployment manager.
+Developed robust and scalable infrastructure in AWS cloud by implementing and configuring EC2 instances, VPC networks, RDS databases, and Route 53 DNS routing. 
+Implemented comprehensive monitoring and logging solutions using Amazon CloudWatch and ELK Stack to enhance system visibility, performance tracking, and troubleshooting capabilities.
+Utilized Google Cloud Deployment Manager to automate and streamline resource provisioning and management within the Google Cloud Platform (GCP) environment.
+Deployed Prometheus monitoring on EC2 instances and Kubernetes clusters to track and monitor services and applications. Configured Prometheus Alert Manager to enable proactive incident management and maintain system reliability.
+Handled Google Kubernetes Engine (GKE) clusters for efficient container orchestration and deployment on GCP.
+Connected Prometheus with CloudWatch and API endpoints to collect and consolidate metrics from AWS Lambda functions, S3 buckets, RDS databases, and EC2 instances. Used Grafana to create centralized monitoring across multiple cloud regions.
+Integrated Prometheus with GCP services and APIs to create comprehensive monitoring and alerting systems.
+Installed and configured Chef Server on workstations and nodes using command-line interface (CLI) tools.
+Worked with EC2 Container Service plugin in Jenkins to automate Jenkins master-slave configuration by dynamically creating temporary slave instances.
+Developed infrastructure solutions using Chef to handle dynamic workloads and ensure high system availability.
+Integrated Puppet with Terraform to automate cloud infrastructure provisioning and configuration, improving system scalability and management capabilities.
+Used Puppet to manage Docker container configurations, ensuring consistent performance and compliance across containerized applications.
+Managed and administered GitHub repositories for source code management, maintaining robust version control and facilitating collaboration across development teams.
+Configured Google Cloud Functions and Cloud Pub/Sub to enable event-driven architectures and implement serverless computing solutions on the Google Cloud Platform (GCP).
+Designed scalable, event-triggered microservices that automatically respond to cloud events, reducing infrastructure overhead and improving application responsiveness.
+Utilized MAVEN as a build tool for Java projects, generating build artifacts from source code and managing project dependencies.
+Implemented comprehensive build lifecycles that included compilation, testing, packaging, and deployment, ensuring consistent and reliable software build processes across multiple development environments.
+Worked extensively with container-based deployments using Docker, creating and managing Docker images and interacting with Docker Hub repositories.
+Developed standardized containerization strategies that simplified application packaging, improved deployment consistency, and facilitated seamless migration between different computing environments.
+Developed and maintained a Docker deployment pipeline for custom application images in the cloud using Jenkins, ensuring smooth and consistent container deployments.
+Automated the entire container build, test, and deployment workflow, reducing manual intervention and minimizing potential human errors during software release cycles.
+Enhanced code review and release processes by utilizing GitLab's built-in features and integration capabilities. Implemented comprehensive code quality checks, automated testing, and seamless collaboration tools that improved team productivity and maintained high standards of code integrity.
+Created and managed GitLab CI/CD pipelines to automate software delivery and improved workflow efficiency. Designed end-to-end continuous integration and continuous deployment workflows that dramatically reduced time-to-market and enabled rapid, reliable software releases.
+Implemented Blue-Green and Canary deployments on EKS using Helm and Argo Rollouts to ensure zero-downtime releases and safe feature rollouts.
+Supported and maintained Apache Tomcat server environments, ensuring optimal performance and configuration. Implemented robust performance tuning, memory management, and security configurations to maximize the stability and efficiency of Java web application deployments.
+Managed Tomcat configuration files and settings using Puppet, automating system updates and maintaining compliance with organizational standards and best practices.
+Created comprehensive configuration management scripts that ensured consistent server configurations across multiple environments, reducing configuration drift and enhancing system reliability.
+Configured advanced JIRA automation rules to minimize manual intervention in task management processes. Developed custom workflows that automatically assigned tickets, updated status, and triggered notifications, significantly reducing administrative overhead and improving team productivity.
+Worked extensively with release and deployment of large-scale Java/J2EE web applications across complex enterprise environments. Managed intricate deployment strategies that ensured seamless application migrations, minimal downtime, and consistent performance across different server configurations.
+Deployed and managed Tomcat clusters within Amazon Web Services (AWS) to enhance application availability and system resilience. Implemented robust clustering configurations that provided automatic failover mechanisms, load balancing, and high-availability solutions for mission-critical web applications.
+Developed PowerShell scripts to streamline and automate complex Active Directory administrative tasks. Created comprehensive automation solutions for user management, group policy configuration, system reporting, and security compliance, dramatically reducing manual system administration efforts.
+Utilized Ruby scripting to customize and optimize build and deployment processes within Jenkins continuous integration environment. Designed flexible, reusable scripts that automated complex build workflows, enhanced pipeline efficiency, and reduced potential human errors during software release cycles.
+Environment: AWS, GCP, Chef, Puppet, Jenkins, Terraform, Docker, Maven, GitLab CI/CD, Splunk, NoSQL, PowerShell, Active Directory, JIRA, Ruby, Python. 
+Flipkart                                                                                                                                                                      Bangalore, India    Build and Release Engineer                                                                                                                           May 2014 - December 2015
+Responsibilities:
+
+Designed and implemented comprehensive AWS Code Pipeline continuous integration and continuous deployment (CI/CD) solutions.
+Automated build, test, and deployment processes across multiple project environments, ensuring consistent and reliable software release cycles. Developed robust automation strategies that standardized development workflows, minimized human errors, and accelerated the overall software delivery pipeline.
+Managed and integrated code changes using Git version control system and Bitbucket repository management platform. Implemented advanced branching strategies and collaboration workflows that enhanced team communication, code quality, and version tracking across development teams.
+Configured sophisticated GitHub webhooks and triggers to initiate automated build processes with minimal manual intervention. Developed custom webhook configurations that automatically responded to code repository events, dramatically improving development workflow efficiency and reducing potential human errors.
+Developed and maintained complex build scripts using Maven and Gradle build automation tools. Created optimized build configurations that enhanced performance, reduced build failures, and provided comprehensive dependency management across diverse software projects.
+Utilized Docker containerization technology to create consistent application environments across development, testing, and production stages.
+Implemented containerization strategies that simplified application packaging, improved deployment consistency, and facilitated seamless migration between different computing environments.
+Implemented advanced monitoring and reporting tools to track comprehensive build and deployment metrics. Developed detailed tracking systems that provided deep insights into process efficiency, identified performance bottlenecks, and supported continuous improvement of software delivery pipelines.
+Provided critical support and comprehensive troubleshooting for complex build failures and deployment errors across multiple technology environments.
+Developed systematic diagnostic approaches that quickly identified root causes of infrastructure and build-related issues, consistently maintaining high build success rates and minimizing system downtime.
+Conducted in-depth analysis of build performance metrics and data to identify and resolve critical performance bottlenecks. Implemented targeted optimization strategies that significantly improved build process reliability, reduced execution times, and enhanced overall software delivery efficiency.
+Created and maintained extensive documentation for build and deployment processes, serving as a comprehensive knowledge repository for development and operations teams.
+Developed detailed technical guides, workflow diagrams, and step-by-step instructions that facilitated smooth knowledge transfer, accelerated team onboarding, and ensured consistent implementation of technical procedures.
+Implemented industry-standard best practices for build and release management within Amazon Web Services (AWS) cloud infrastructure.
+Established robust frameworks that drove continuous improvements in software delivery processes, enhanced system reliability, and maintained high-quality standards across complex development ecosystems.
+Environments: AWS, Jenkins, Ansible, Docker, Git, SVN, Chef, Maven, Python.
+
+Education:
+Bachelor’s in Information Technology from GNITC                                                      
+

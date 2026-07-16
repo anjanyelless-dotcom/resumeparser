@@ -1,0 +1,4 @@
+ServiceNow,Santa Clara CA,Lead Cloud Architect,January 2022,Present
+Workday,Pleasanton CA,Senior Software Engineer,May 2018,December 2021
+Geometric Software,Nashik India,Developer,February 2015,April 2018
+Master of Science:Software Engineering,San Jose State University,San Jose CA(2013-2015)

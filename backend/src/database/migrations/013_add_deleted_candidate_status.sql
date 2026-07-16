@@ -1,0 +1,3 @@
+-- Migration: Add 'deleted' value to candidate_status enum
+-- candidate_status is a TEXT column in this database schema, so this is a no-op.
+-- ALTER TYPE candidate_status ADD VALUE IF NOT EXISTS 'deleted';
