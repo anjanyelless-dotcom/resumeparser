@@ -60,7 +60,7 @@ export const getDefaultRole = (): UserRole => 'recruiter';
 export const getCandidateRole = (): UserRole => 'candidate';
 
 export const hasPermission = (userRole: UserRole, permission: string): boolean => {
-  const permissions = ROLE_PERMISSIONS[userRole];
+  const permissions = ROLE_PERMISSIONS[userRole] as readonly string[];
   return permissions.includes('*') || permissions.includes(permission);
 };
 

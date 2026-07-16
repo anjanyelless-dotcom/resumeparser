@@ -121,7 +121,7 @@ export const createSocketServer = (httpServer: HTTPServer): SocketIOServer => {
   });
 
   // Global error handling
-  io.on("error", (error) => {
+  io.on("error", (error: any) => {
     console.error("❌ Socket.io server error:", error);
   });
 
