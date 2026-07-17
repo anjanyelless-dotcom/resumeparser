@@ -277,7 +277,7 @@ async function saveCandidatesBatch(
     // Step 3: Duplicate check and child table inserts ( batched where possible )
     const workHistoryRows: any[] = [];
     const educationRows: any[] = [];
-    const skillRows: any[] = [];
+    const candidateSkillMappings: { candidateId: string; skillName: string }[] = [];
     const certRows: any[] = [];
 
     for (const r of parsedResults) {
@@ -333,7 +333,7 @@ async function saveCandidatesBatch(
       for (const sk of rawSkills) {
         const skillName = typeof sk === "string" ? sk.trim() : (sk.name || sk.skill_name || "").trim();
         if (!skillName) continue;
-        skillRows.push([uuidv4(), r.candidateId, skillName, skillName, "technical"]);
+        candidateSkillMappings.push({ candidateId: r.candidateId, skillName });
       }
 
       // Certifications
@@ -347,7 +347,7 @@ async function saveCandidatesBatch(
 
     await batchInsert(client, "work_history", ["id", "candidate_id", "job_title", "company_name", "start_date", "end_date", "is_current", "description", "location"], workHistoryRows);
     await batchInsert(client, "education", ["id", "candidate_id", "degree", "institution", "field_of_study", "start_date", "end_date", "gpa"], educationRows);
-    await batchInsert(client, "skills", ["id", "candidate_id", "name", "skill_name", "category"], skillRows);
+    await saveSkillsBatch(client, candidateSkillMappings);
     await batchInsert(client, "certifications", ["id", "candidate_id", "name"], certRows);
 
     // Update candidate status to success
@@ -395,6 +395,70 @@ async function batchInsert(
   const colList = columns.join(", ");
   const query = `INSERT INTO ${table} (${colList}) VALUES ${values.join(", ")}`;
   await client.query(query, params);
+}
+
+async function saveSkillsBatch(
+  client: any,
+  mappings: { candidateId: string; skillName: string }[]
+): Promise<void> {
+  if (mappings.length === 0) return;
+
+  // 1) Build a unique set of skill names and prepare rows for global skills table
+  const uniqueSkills = new Map<string, { displayName: string; normalizedName: string }>();
+  for (const { skillName } of mappings) {
+    const displayName = skillName.trim();
+    const normalizedName = displayName.toLowerCase();
+    if (!uniqueSkills.has(normalizedName)) {
+      uniqueSkills.set(normalizedName, { displayName, normalizedName });
+    }
+  }
+
+  // 2) Upsert all unique skills in one query using ON CONFLICT (name)
+  const skillValues: string[] = [];
+  const skillParams: any[] = [];
+  let idx = 1;
+  for (const { displayName, normalizedName } of uniqueSkills.values()) {
+    skillValues.push(`($${idx}, $${idx + 1}, $${idx + 2}, 'technical')`);
+    skillParams.push(uuidv4(), displayName, normalizedName);
+    idx += 3;
+  }
+
+  if (skillValues.length > 0) {
+    await client.query(
+      `INSERT INTO skills (id, name, normalized_name, category)
+       VALUES ${skillValues.join(", ")}
+       ON CONFLICT (name) DO UPDATE SET normalized_name = EXCLUDED.normalized_name`,
+      skillParams
+    );
+  }
+
+  // 3) Retrieve skill IDs for all names
+  const allNames = Array.from(uniqueSkills.keys());
+  const idResult = await client.query(
+    `SELECT id, LOWER(name) as normalized_name FROM skills WHERE LOWER(name) = ANY($1)`,
+    [allNames]
+  );
+  const skillIdByName = new Map<string, string>();
+  for (const row of idResult.rows) {
+    skillIdByName.set(row.normalized_name, row.id);
+  }
+
+  // 4) Build and insert candidate_skills rows in batch
+  const csRows: any[][] = [];
+  const seen = new Set<string>();
+  for (const { candidateId, skillName } of mappings) {
+    const normalizedName = skillName.trim().toLowerCase();
+    const skillId = skillIdByName.get(normalizedName);
+    if (!skillId) continue;
+    const key = `${candidateId}|${skillId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    csRows.push([candidateId, skillId]);
+  }
+
+  if (csRows.length > 0) {
+    await batchInsert(client, "candidate_skills", ["candidate_id", "skill_id"], csRows);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -89,14 +89,16 @@ export class CandidateModel {
         console.warn("certifications table not found, returning empty array:", certErr.message);
       }
 
-      // Get skills
+      // Get skills via candidate_skills join table
       let skillRows: any[] = [];
       try {
         const skillsResult = await client.query(
-          `SELECT id, COALESCE(skill_name, name) as skill_name, category, proficiency_level, years_experience
-           FROM skills
-           WHERE candidate_id = $1
-           ORDER BY COALESCE(skill_name, name)`,
+          `SELECT s.id, s.name as skill_name, s.normalized_name, s.category,
+                  cs.proficiency_level, cs.years_experience, cs.is_primary, cs.mention_count
+           FROM skills s
+           JOIN candidate_skills cs ON cs.skill_id = s.id
+           WHERE cs.candidate_id = $1
+           ORDER BY s.name`,
           [id]
         );
         console.log("Skills query result for candidate", id, ":", skillsResult.rows.length, "skills found");
@@ -261,8 +263,9 @@ export class CandidateModel {
           candidates.full_name ILIKE $${queryParams.length}
           OR candidates.email ILIKE $${queryParams.length}
           OR EXISTS (
-            SELECT 1 FROM skills s
-            WHERE s.candidate_id = candidates.id AND s.skill_name ILIKE $${queryParams.length}
+            SELECT 1 FROM candidate_skills cs
+            JOIN skills s ON s.id = cs.skill_id
+            WHERE cs.candidate_id = candidates.id AND s.name ILIKE $${queryParams.length}
           )
         )`;
       }
@@ -357,20 +360,22 @@ export class CandidateModel {
         [candidateIds]
       );
       
-      // Batch fetch skills (use skills table with candidate_id)
+      // Batch fetch skills via candidate_skills join table
       let skillRows: any[] = [];
       try {
         const skillsResult = await client.query(
-          `SELECT id, candidate_id, skill_name, category, proficiency_level, years_experience
-           FROM skills
-           WHERE candidate_id = ANY($1)
-           ORDER BY candidate_id, skill_name`,
+          `SELECT cs.candidate_id, s.id, s.name as skill_name, s.normalized_name, s.category,
+                  cs.proficiency_level, cs.years_experience, cs.is_primary, cs.mention_count
+           FROM skills s
+           JOIN candidate_skills cs ON cs.skill_id = s.id
+           WHERE cs.candidate_id = ANY($1)
+           ORDER BY cs.candidate_id, s.name`,
           [candidateIds]
         );
         console.log("Skills query result for list API:", skillsResult.rows.length, "skills found for", candidateIds.length, "candidates");
         skillRows = skillsResult.rows;
-      } catch (skillErr) {
-        console.warn("Failed to fetch skills in candidate list:", skillErr);
+      } catch (skillErr: any) {
+        console.warn("Failed to fetch skills in candidate list:", skillErr.message, skillErr.detail, skillErr.code);
       }
       
       // Map work history, education, and skills back to candidate rows

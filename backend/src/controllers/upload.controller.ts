@@ -228,16 +228,23 @@ async function storeAllParsedData(client: any, candidateId: string, ai: any, fil
     const skillName = typeof sk === "string" ? sk.trim() : (sk.name || sk.skill_name || "").trim();
     if (!skillName) continue;
     const nameTrimmed = trunc(skillName)!;
+    const normalizedName = nameTrimmed.toLowerCase();
 
-    // Find or create the skill row for this candidate
-    const existing = await client.query("SELECT id FROM skills WHERE name = $1 AND candidate_id = $2", [nameTrimmed, candidateId]);
+    // Find or create the global skill row (skills.name is UNIQUE)
+    const existing = await client.query(
+      "SELECT id FROM skills WHERE LOWER(name) = $1 OR normalized_name = $2 LIMIT 1",
+      [normalizedName, normalizedName]
+    );
     let skillId: string;
     if (existing.rows.length > 0) {
       skillId = existing.rows[0].id;
     } else {
       const ins = await client.query(
-        "INSERT INTO skills (id, candidate_id, name, skill_name, category) VALUES ($1,$2,$3,$4,'technical') RETURNING id",
-        [uuidv4(), candidateId, nameTrimmed, nameTrimmed]
+        `INSERT INTO skills (id, name, normalized_name, category)
+         VALUES ($1, $2, $3, 'technical')
+         ON CONFLICT (name) DO UPDATE SET normalized_name = EXCLUDED.normalized_name
+         RETURNING id`,
+        [uuidv4(), nameTrimmed, normalizedName]
       );
       skillId = ins.rows[0].id;
     }
