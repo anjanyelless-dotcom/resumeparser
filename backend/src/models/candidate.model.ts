@@ -89,20 +89,49 @@ export class CandidateModel {
         console.warn("certifications table not found, returning empty array:", certErr.message);
       }
 
-      // Get skills via candidate_skills join table
+      // Get skills via candidate_skills join table, with fallback for legacy schema
       let skillRows: any[] = [];
       try {
         const skillsResult = await client.query(
-          `SELECT s.id, s.name as skill_name, s.normalized_name, s.category,
-                  cs.proficiency_level, cs.years_experience, cs.is_primary, cs.mention_count
+          `SELECT s.*, cs.candidate_id, cs.proficiency_level as cs_proficiency_level,
+                  cs.years_experience as cs_years_experience
            FROM skills s
            JOIN candidate_skills cs ON cs.skill_id = s.id
            WHERE cs.candidate_id = $1
-           ORDER BY s.name`,
+           ORDER BY s.name NULLS LAST`,
           [id]
         );
         console.log("Skills query result for candidate", id, ":", skillsResult.rows.length, "skills found");
-        skillRows = skillsResult.rows;
+
+        skillRows = skillsResult.rows.map((row: any) => ({
+          id: row.id,
+          skill_name: row.name || row.skill_name,
+          normalized_name: row.normalized_name || (row.name || row.skill_name || '').toLowerCase(),
+          category: row.category,
+          proficiency_level: row.cs_proficiency_level ?? row.proficiency_level ?? null,
+          years_experience: row.cs_years_experience ?? row.years_experience ?? null,
+          is_primary: false,
+          mention_count: 1,
+        }));
+
+        // Legacy fallback: skills table has candidate_id directly and no candidate_skills row
+        if (skillRows.length === 0) {
+          const legacyResult = await client.query(
+            `SELECT * FROM skills WHERE candidate_id = $1 ORDER BY name NULLS LAST`,
+            [id]
+          );
+          console.log("Legacy skills query result for candidate", id, ":", legacyResult.rows.length, "skills found");
+          skillRows = legacyResult.rows.map((row: any) => ({
+            id: row.id,
+            skill_name: row.name || row.skill_name,
+            normalized_name: row.normalized_name || (row.name || row.skill_name || '').toLowerCase(),
+            category: row.category,
+            proficiency_level: row.proficiency_level || null,
+            years_experience: row.years_experience || null,
+            is_primary: false,
+            mention_count: 1,
+          }));
+        }
       } catch (skillErr: any) {
         console.warn("skills query failed:", skillErr.message);
       }
@@ -360,20 +389,51 @@ export class CandidateModel {
         [candidateIds]
       );
       
-      // Batch fetch skills via candidate_skills join table
+      // Batch fetch skills via candidate_skills join table, with fallback for legacy schema
       let skillRows: any[] = [];
       try {
         const skillsResult = await client.query(
-          `SELECT cs.candidate_id, s.id, s.name as skill_name, s.normalized_name, s.category,
-                  cs.proficiency_level, cs.years_experience, cs.is_primary, cs.mention_count
+          `SELECT s.*, cs.candidate_id, cs.proficiency_level as cs_proficiency_level,
+                  cs.years_experience as cs_years_experience
            FROM skills s
            JOIN candidate_skills cs ON cs.skill_id = s.id
            WHERE cs.candidate_id = ANY($1)
-           ORDER BY cs.candidate_id, s.name`,
+           ORDER BY cs.candidate_id, s.name NULLS LAST`,
           [candidateIds]
         );  
         console.log("Skills query result for list API:", skillsResult.rows.length, "skills found for", candidateIds.length, "candidates");
-        skillRows = skillsResult.rows;
+
+        skillRows = skillsResult.rows.map((row: any) => ({
+          candidate_id: row.candidate_id,
+          id: row.id,
+          skill_name: row.name || row.skill_name,
+          normalized_name: row.normalized_name || (row.name || row.skill_name || '').toLowerCase(),
+          category: row.category,
+          proficiency_level: row.cs_proficiency_level ?? row.proficiency_level ?? null,
+          years_experience: row.cs_years_experience ?? row.years_experience ?? null,
+          is_primary: false,
+          mention_count: 1,
+        }));
+
+        // Legacy fallback: skills table has candidate_id directly and no candidate_skills row
+        if (skillRows.length === 0 && candidateIds.length > 0) {
+          const legacyResult = await client.query(
+            `SELECT * FROM skills WHERE candidate_id = ANY($1) ORDER BY candidate_id, name NULLS LAST`,
+            [candidateIds]
+          );
+          console.log("Legacy skills query result for list API:", legacyResult.rows.length, "skills found");
+          skillRows = legacyResult.rows.map((row: any) => ({
+            candidate_id: row.candidate_id,
+            id: row.id,
+            skill_name: row.name || row.skill_name,
+            normalized_name: row.normalized_name || (row.name || row.skill_name || '').toLowerCase(),
+            category: row.category,
+            proficiency_level: row.proficiency_level || null,
+            years_experience: row.years_experience || null,
+            is_primary: false,
+            mention_count: 1,
+          }));
+        }
       } catch (skillErr: any) {
         console.warn("Failed to fetch skills in candidate list:", skillErr.message, skillErr.detail, skillErr.code);
       }

@@ -1546,6 +1546,38 @@ async function saveCandidateWithDuplicateHandling(client: any, candidateData: an
   return candidate;
 }
 
+interface SkillsSchemaInfo {
+  hasNormalizedName: boolean;
+  candidateIdNullable: boolean;
+  hasSkillName: boolean;
+}
+
+let skillsSchemaCache: SkillsSchemaInfo | null = null;
+
+async function getSkillsSchemaInfo(client: any): Promise<SkillsSchemaInfo> {
+  if (skillsSchemaCache) return skillsSchemaCache;
+
+  const result = await client.query(
+    `SELECT column_name, is_nullable
+     FROM information_schema.columns
+     WHERE table_name = 'skills' AND table_schema = 'public'`
+  );
+
+  const columns = new Map<string, boolean>();
+  for (const row of result.rows) {
+    columns.set(row.column_name, row.is_nullable === 'YES');
+  }
+
+  skillsSchemaCache = {
+    hasNormalizedName: columns.has('normalized_name'),
+    candidateIdNullable: columns.get('candidate_id') ?? true,
+    hasSkillName: columns.has('skill_name'),
+  };
+
+  logger.info("[getSkillsSchemaInfo] Detected skills schema", skillsSchemaCache);
+  return skillsSchemaCache;
+}
+
 async function saveSkillsBestEffort(client: any, candidateId: string, skills: any[], warnings: string[]): Promise<void> {
   logger.info("[saveSkillsBestEffort] START", { candidateId, skillsCount: skills?.length, skills });
 
@@ -1554,7 +1586,61 @@ async function saveSkillsBestEffort(client: any, candidateId: string, skills: an
     return;
   }
 
+  const schema = await getSkillsSchemaInfo(client);
+
   try {
+    if (!schema.hasNormalizedName || !schema.candidateIdNullable) {
+      // Legacy schema: skills rows contain candidate_id and skill_name;
+      // there is no global normalized_name column and candidate_id is NOT NULL.
+      logger.info("[saveSkillsBestEffort] Using legacy skills schema", { candidateId });
+
+      await client.query("DELETE FROM candidate_skills WHERE candidate_id = $1", [candidateId]);
+      await client.query("DELETE FROM skills WHERE candidate_id = $1", [candidateId]);
+
+      let insertedCount = 0;
+      for (const skill of skills) {
+        let skillName: string;
+        if (typeof skill === "string") {
+          skillName = skill;
+        } else if (skill && typeof skill === "object") {
+          skillName = skill.name || skill.skill_name || skill.title || skill.skill;
+        } else {
+          logger.warning("[saveSkillsBestEffort] Invalid skill format", { candidateId, skill });
+          continue;
+        }
+
+        if (!skillName || typeof skillName !== "string") {
+          logger.warning("[saveSkillsBestEffort] Invalid skill name", { candidateId, skillName });
+          continue;
+        }
+
+        const displayName = skillName.trim();
+        const skillResult = await client.query(
+          `INSERT INTO skills (id, candidate_id, skill_name, name, category, proficiency_level)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id`,
+          [crypto.randomUUID(), candidateId, displayName, displayName, 'technical', 'intermediate']
+        );
+        const skillId = skillResult.rows[0].id;
+
+        // Keep candidate_skills in sync so fetch queries that join through it work too
+        await client.query(
+          `INSERT INTO candidate_skills (candidate_id, skill_id, proficiency_level)
+           VALUES ($1, $2, $3)
+           ON CONFLICT DO NOTHING`,
+          [candidateId, skillId, 'intermediate']
+        );
+
+        insertedCount++;
+      }
+
+      logger.info("[saveSkillsBestEffort] COMPLETE (legacy schema)", { candidateId, insertedCount, totalSkills: skills.length });
+      return;
+    }
+
+    // Global catalog schema
+    logger.info("[saveSkillsBestEffort] Using global skills catalog schema", { candidateId });
+
     // Delete existing candidate-skill associations for this candidate
     logger.info("[saveSkillsBestEffort] Deleting existing candidate_skills", { candidateId });
     const deleteJoinResult = await client.query("DELETE FROM candidate_skills WHERE candidate_id = $1", [candidateId]);
