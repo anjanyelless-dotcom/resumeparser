@@ -38,6 +38,7 @@ const corsOptions = {
       "http://localhost:5173",
     ] : []),
     ...(process.env.ALLOWED_ORIGINS?.split(',') || [
+      "https://resumeparser.dishha.com",
       "https://lakshya-llm-resume-parser.vercel.app",
       "https://anjanyelle-lakshyaresumeparsers11.vercel.app",
       "https://lakshya-resume-parsers.vercel.app",

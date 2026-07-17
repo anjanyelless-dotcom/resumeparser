@@ -11,7 +11,6 @@ import {
   extractExperienceFromText,
   getBestExperience,
 } from "../services/experience.service";
-import { checkDuplicateBeforeInsert } from "../services/duplicate.service";
 import { calculateTotalExperience } from "../utils/experienceCalculator";
 import { logger } from "../middleware/requestLogger";
 
@@ -1498,46 +1497,7 @@ async function saveCandidateWithDuplicateHandling(client: any, candidateData: an
   const userId = candidateData.userId;
   const tenantId = candidateData.tenantId || "default";
 
-  // Check for existing candidate with same email
-  if (candidateData.email) {
-    const existingCandidate = await client.query(
-      "SELECT id, full_name, email FROM candidates WHERE email = $1 AND tenant_id = $2",
-      [candidateData.email, tenantId]
-    );
-
-    if (existingCandidate.rows.length > 0) {
-      warnings.push(`Candidate with email ${candidateData.email} already exists. Updating existing record.`);
-      const existing = existingCandidate.rows[0];
-
-      // Update existing candidate with new data
-      const updateQuery = `
-        UPDATE candidates 
-        SET full_name = COALESCE($1, full_name),
-            phone = COALESCE($2, phone),
-            summary = COALESCE($3, summary),
-            linkedin_url = COALESCE($4, linkedin_url),
-            github_url = COALESCE($5, github_url),
-            location = COALESCE($6, location),
-            updated_at = NOW()
-        WHERE id = $7
-        RETURNING *
-      `;
-
-      const result = await client.query(updateQuery, [
-        candidateData.full_name || candidateData.name || existing.full_name,
-        candidateData.phone || existing.phone,
-        candidateData.summary || existing.summary,
-        candidateData.linkedin_url || existing.linkedin_url,
-        candidateData.github_url || existing.github_url,
-        candidateData.location || existing.location,
-        existing.id
-      ]);
-
-      return result.rows[0];
-    }
-  }
-
-  // Create new candidate
+  // Always create a new candidate; duplicate checks disabled per product requirement
   const candidate = await CandidateModel.create(client, {
     ...candidateData,
     tenant_id: tenantId,
@@ -1578,7 +1538,7 @@ async function getSkillsSchemaInfo(client: any): Promise<SkillsSchemaInfo> {
   return skillsSchemaCache;
 }
 
-async function saveSkillsBestEffort(client: any, candidateId: string, skills: any[], warnings: string[]): Promise<void> {
+export async function saveSkillsBestEffort(client: any, candidateId: string, skills: any[], warnings: string[]): Promise<void> {
   logger.info("[saveSkillsBestEffort] START", { candidateId, skillsCount: skills?.length, skills });
 
   if (!skills || !Array.isArray(skills) || skills.length === 0) {

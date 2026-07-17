@@ -2,13 +2,70 @@ import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import { getClient } from "../database/db";
-import { checkDuplicateBeforeInsert } from "../services/duplicate.service";
+import path from "path";
 import { PerformanceTimer, timeAsync } from "../utils/timing";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 const BULK_MAX_FILES = parseInt(process.env.BULK_UPLOAD_MAX_FILES || "100", 10);
+
+// Schema caches
+interface CandidatesSchemaInfo {
+  hasResumeFilePath: boolean;
+  hasOriginalFilename: boolean;
+  hasFilePath: boolean;
+  hasCreatedByUserId: boolean;
+}
+let candidatesSchemaCache: CandidatesSchemaInfo | null = null;
+
+async function getCandidatesSchemaInfo(client: any): Promise<CandidatesSchemaInfo> {
+  if (candidatesSchemaCache) return candidatesSchemaCache;
+  const result = await client.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_name = 'candidates' AND table_schema = 'public'`
+  );
+  const columns = new Set(result.rows.map((row: any) => row.column_name));
+  candidatesSchemaCache = {
+    hasResumeFilePath: columns.has('resume_file_path'),
+    hasOriginalFilename: columns.has('original_filename'),
+    hasFilePath: columns.has('file_path'),
+    hasCreatedByUserId: columns.has('created_by_user_id'),
+  };
+  return candidatesSchemaCache;
+}
+
+function normalizeFileType(mimetype: string): string {
+  const lower = (mimetype || '').toLowerCase();
+  if (lower.includes('pdf')) return 'pdf';
+  if (lower.includes('word') || lower.includes('officedocument') || lower.endsWith('docx') || lower.endsWith('doc')) return 'docx';
+  if (lower.includes('text') || lower.includes('plain')) return 'txt';
+  if (lower.startsWith('image/')) return 'image';
+  return 'pdf';
+}
+
+interface SkillsSchemaInfo {
+  hasNormalizedName: boolean;
+  candidateIdNullable: boolean;
+  hasSkillName: boolean;
+}
+let skillsSchemaCache: SkillsSchemaInfo | null = null;
+
+async function getSkillsSchemaInfo(client: any): Promise<SkillsSchemaInfo> {
+  if (skillsSchemaCache) return skillsSchemaCache;
+  const result = await client.query(
+    `SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name = 'skills' AND table_schema = 'public'`
+  );
+  const columns = new Map<string, boolean>();
+  for (const row of result.rows) {
+    columns.set(row.column_name, row.is_nullable === 'YES');
+  }
+  skillsSchemaCache = {
+    hasNormalizedName: columns.has('normalized_name'),
+    candidateIdNullable: columns.get('candidate_id') ?? true,
+    hasSkillName: columns.has('skill_name'),
+  };
+  return skillsSchemaCache;
+}
 
 interface BulkFileRequest {
   fieldname: string;
@@ -112,7 +169,7 @@ async function parseBatchWithAi(
   }));
 
   const payload = {
-    files: fileMapping.map((m) => ({ file_path: m.file.path, candidate_id: m.candidateId })),
+    files: fileMapping.map((m) => ({ file_path: path.resolve(m.file.path), candidate_id: m.candidateId })),
     llm_provider: llmProvider,
     force_ocr: forceOcr,
   };
@@ -130,7 +187,7 @@ async function parseBatchWithAi(
     const batchResponse = result.data;
     const resultsByPath = new Map<string, any>();
     for (const r of batchResponse.results || []) {
-      resultsByPath.set(r.file_path || r.candidate_id, r);
+      resultsByPath.set(r.candidate_id, r);
     }
 
     t.step("ai-batch-response");
@@ -138,7 +195,7 @@ async function parseBatchWithAi(
     parentTimer.step(`ai-batch:${files.length}:${durationMs.toFixed(0)}ms`);
 
     return fileMapping.map(({ file, candidateId, parsingJobId }) => {
-      const ai = resultsByPath.get(file.path) || resultsByPath.get(candidateId);
+      const ai = resultsByPath.get(candidateId);
 
       if (!ai || ai.status === "error") {
         return {
@@ -216,15 +273,37 @@ async function saveCandidatesBatch(
   try {
     await client.query("BEGIN");
 
-    // Step 1: Insert all candidate rows in a single batched statement
+    // Step 1: Prepare list of parsed resumes to save (skip only those with parse errors)
+    const nonDuplicateResults: ParsedResume[] = parsedResults.filter((r) => !r.error);
+
+    // Step 2: Insert candidate rows
+    const candidatesSchema = await getCandidatesSchemaInfo(client);
+    const candidateColumns = [
+      "id",
+      "full_name",
+      "email",
+      "phone",
+      "status",
+      "review_status",
+      "tenant_id",
+      "consent_given",
+      "raw_resume_text",
+      ...(candidatesSchema.hasCreatedByUserId ? ["created_by_user_id"] : []),
+      ...(candidatesSchema.hasResumeFilePath ? ["resume_file_path"] : []),
+      ...(candidatesSchema.hasOriginalFilename ? ["original_filename"] : []),
+      ...(candidatesSchema.hasFilePath ? ["file_path"] : []),
+      "file_type",
+      "created_at",
+      "updated_at",
+    ];
+
     const candidateValues: string[] = [];
     const candidateParams: any[] = [];
     let paramIdx = 1;
 
-    for (const r of parsedResults) {
-      if (r.error) continue;
+    for (const r of nonDuplicateResults) {
       const ai = r.parsed;
-      candidateParams.push(
+      const rowParams: any[] = [
         r.candidateId,
         ai.contact?.name || ai.name || null,
         ai.contact?.email || ai.email || null,
@@ -234,32 +313,36 @@ async function saveCandidatesBatch(
         tenantId,
         false,
         r.rawText || null,
-        userId,
-        r.file.path,
-        r.file.originalname,
-        r.file.mimetype
-      );
-      candidateValues.push(
-        `($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6}, $${paramIdx + 7}, $${paramIdx + 8}, $${paramIdx + 9}, $${paramIdx + 10}, $${paramIdx + 11}, $${paramIdx + 12}, NOW(), NOW())`
-      );
-      paramIdx += 13;
+        ...(candidatesSchema.hasCreatedByUserId ? [userId] : []),
+      ];
+      if (candidatesSchema.hasResumeFilePath) rowParams.push(r.file.path);
+      if (candidatesSchema.hasOriginalFilename) rowParams.push(r.file.originalname);
+      if (candidatesSchema.hasFilePath) rowParams.push(r.file.path);
+      rowParams.push(normalizeFileType(r.file.mimetype));
+
+      candidateParams.push(...rowParams);
+      const placeholders = rowParams.map(() => {
+        const p = `$${paramIdx}`;
+        paramIdx++;
+        return p;
+      }).join(", ");
+      candidateValues.push(`(${placeholders}, NOW(), NOW())`);
     }
 
     if (candidateValues.length > 0) {
       await client.query(
-        `INSERT INTO candidates (id, full_name, email, phone, status, review_status, tenant_id, consent_given, raw_resume_text, created_by_user_id, resume_file_path, original_filename, file_type, created_at, updated_at)
+        `INSERT INTO candidates (${candidateColumns.join(", ")})
          VALUES ${candidateValues.join(", ")}`,
         candidateParams
       );
     }
     t.step("insert-candidates");
 
-    // Step 2: Insert parsing_jobs in batch
+    // Step 3: Insert parsing_jobs in batch for non-duplicates
     const jobValues: string[] = [];
     const jobParams: any[] = [];
     let jobIdx = 1;
-    for (const r of parsedResults) {
-      if (r.error) continue;
+    for (const r of nonDuplicateResults) {
       jobParams.push(r.parsingJobId, r.candidateId, r.file.originalname, r.file.path, "completed", r.rawText || null);
       jobValues.push(`($${jobIdx}, $${jobIdx + 1}, $${jobIdx + 2}, $${jobIdx + 3}, $${jobIdx + 4}, NOW(), $${jobIdx + 5}, NOW())`);
       jobIdx += 6;
@@ -274,28 +357,14 @@ async function saveCandidatesBatch(
     }
     t.step("insert-parsing-jobs");
 
-    // Step 3: Duplicate check and child table inserts ( batched where possible )
+    // Step 4: Build child table inserts for non-duplicates
     const workHistoryRows: any[] = [];
     const educationRows: any[] = [];
     const candidateSkillMappings: { candidateId: string; skillName: string }[] = [];
     const certRows: any[] = [];
 
-    for (const r of parsedResults) {
-      if (r.error) continue;
-
+    for (const r of nonDuplicateResults) {
       const ai = r.parsed;
-      const dupCheck = await checkDuplicateBeforeInsert(client, {
-        email: ai.contact?.email || ai.email || null,
-        phone: ai.contact?.phone || ai.phone || null,
-        full_name: ai.contact?.name || ai.name || null,
-        linkedin_url: ai.contact?.linkedin || ai.linkedin_url || null,
-        tenant_id: tenantId,
-      });
-
-      if (dupCheck?.isDuplicate) {
-        r.duplicate = dupCheck;
-        continue;
-      }
 
       // Work history
       const workItems = ai.work_history || ai.work_experience || [];
@@ -351,7 +420,7 @@ async function saveCandidatesBatch(
     await batchInsert(client, "certifications", ["id", "candidate_id", "name"], certRows);
 
     // Update candidate status to success
-    const candidateIds = parsedResults.filter((r) => !r.error && !r.duplicate).map((r) => r.candidateId);
+    const candidateIds = nonDuplicateResults.map((r) => r.candidateId);
     if (candidateIds.length > 0) {
       await client.query(
         `UPDATE candidates SET status = 'success', review_status = 'pending' WHERE id = ANY($1)`,
@@ -362,7 +431,7 @@ async function saveCandidatesBatch(
     await client.query("COMMIT");
     t.step("child-inserts");
     t.end();
-    parentTimer.step(`saved-batch:${parsedResults.length}`);
+    parentTimer.step(`saved-batch:${nonDuplicateResults.length}`);
 
     return parsedResults;
   } catch (error: any) {
@@ -403,6 +472,40 @@ async function saveSkillsBatch(
 ): Promise<void> {
   if (mappings.length === 0) return;
 
+  const schema = await getSkillsSchemaInfo(client);
+
+  // Legacy schema: skills rows contain candidate_id and skill_name; no normalized_name
+  if (!schema.hasNormalizedName || !schema.candidateIdNullable) {
+    const skillRows: any[][] = [];
+    const csRows: any[][] = [];
+    const seen = new Set<string>();
+    for (const { candidateId, skillName } of mappings) {
+      const displayName = skillName.trim();
+      if (!displayName) continue;
+      const key = `${candidateId}|${displayName.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const skillId = uuidv4();
+      skillRows.push([
+        skillId,
+        candidateId,
+        displayName,
+        displayName,
+        'technical',
+        'intermediate',
+      ]);
+      csRows.push([candidateId, skillId]);
+    }
+    if (skillRows.length > 0) {
+      await batchInsert(client, "skills", ["id", "candidate_id", "skill_name", "name", "category", "proficiency_level"], skillRows);
+    }
+    if (csRows.length > 0) {
+      await batchInsert(client, "candidate_skills", ["candidate_id", "skill_id"], csRows);
+    }
+    return;
+  }
+
+  // Global catalog schema
   // 1) Build a unique set of skill names and prepare rows for global skills table
   const uniqueSkills = new Map<string, { displayName: string; normalizedName: string }>();
   for (const { skillName } of mappings) {

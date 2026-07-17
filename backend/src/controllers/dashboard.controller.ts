@@ -307,60 +307,67 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<void
   try {
     const client = await getClient();
     try {
+      // Helper to safely run a count query
+      const safeCount = async (query: string, params?: any[]): Promise<number> => {
+        try {
+          const result = await client.query(query, params || []);
+          return parseInt(result.rows[0].count) || 0;
+        } catch (err: any) {
+          console.warn(`[getAdminSummary] Skipping count query due to error: ${err.message}`);
+          return 0;
+        }
+      };
+
       // 1. Total Candidates
-      const candidatesResult = await client.query(`SELECT COUNT(*) as count FROM candidates`);
-      const totalCandidates = parseInt(candidatesResult.rows[0].count) || 0;
+      const totalCandidates = await safeCount(`SELECT COUNT(*) as count FROM candidates`);
 
       // 2. Active Jobs
-      const activeJobsResult = await client.query(`SELECT COUNT(*) as count FROM job_descriptions WHERE status = 'active'`);
-      const activeJobs = parseInt(activeJobsResult.rows[0].count) || 0;
+      const activeJobs = await safeCount(`SELECT COUNT(*) as count FROM job_descriptions WHERE status = 'active'`);
 
       // 3. Total Recruiters
-      const recruitersResult = await client.query(`SELECT COUNT(*) as count FROM users WHERE role = 'recruiter'`);
-      const totalRecruiters = parseInt(recruitersResult.rows[0].count) || 0;
+      const totalRecruiters = await safeCount(`SELECT COUNT(*) as count FROM users WHERE role = 'recruiter'`);
 
       // 4. Total Clients
-      const clientsResult = await client.query(`SELECT COUNT(*) as count FROM clients`);
-      const totalClients = parseInt(clientsResult.rows[0].count) || 0;
+      const totalClients = await safeCount(`SELECT COUNT(*) as count FROM clients`);
 
       // 5. Today's Submissions
-      const todaySubmissionsResult = await client.query(`
+      const todaysSubmissions = await safeCount(`
         SELECT COUNT(*) as count 
         FROM submissions 
         WHERE DATE(submitted_at) = CURRENT_DATE
       `);
-      const todaysSubmissions = parseInt(todaySubmissionsResult.rows[0].count) || 0;
 
       // 6. Interviews Scheduled
-      const interviewsResult = await client.query(`SELECT COUNT(*) as count FROM interviews WHERE status = 'scheduled'`);
-      const interviewsScheduled = parseInt(interviewsResult.rows[0].count) || 0;
+      const interviewsScheduled = await safeCount(`SELECT COUNT(*) as count FROM interviews WHERE status = 'scheduled'`);
 
       // 7. Parsed Resumes
-      const parsedResumesResult = await client.query(`SELECT COUNT(*) as count FROM candidates WHERE status = 'success'`);
-      const parsedResumes = parseInt(parsedResumesResult.rows[0].count) || 0;
+      const parsedResumes = await safeCount(`SELECT COUNT(*) as count FROM candidates WHERE status = 'success'`);
 
       // 8. AI Match Success Rate
-      // Calculate based on successful parsing ratio since parsing_confidence is not populated
       const aiMatchSuccessRate = totalCandidates > 0 ? Math.round((parsedResumes / totalCandidates) * 100) : 0;
 
       // 9. Recent Activities
-      const activitiesResult = await client.query(`
-        SELECT id, entity_type, action as description, created_at as timestamp, user_id as "user"
-        FROM activity_log
-        ORDER BY created_at DESC
-        LIMIT 5
-      `);
-      
-      const recentActivities = activitiesResult.rows.map(row => ({
-        id: row.id,
-        type: row.entity_type?.includes('candidate') ? 'candidate' : 
-              row.entity_type?.includes('job') ? 'job' : 
-              row.entity_type?.includes('submission') ? 'submission' : 
-              row.entity_type?.includes('interview') ? 'interview' : 'activity',
-        description: row.description || `New ${row.entity_type} action performed`,
-        timestamp: row.timestamp,
-        user: row.user || 'System'
-      }));
+      let recentActivities: any[] = [];
+      try {
+        const activitiesResult = await client.query(`
+          SELECT id, entity_type, action as description, created_at as timestamp, user_id as "user"
+          FROM activity_log
+          ORDER BY created_at DESC
+          LIMIT 5
+        `);
+        recentActivities = activitiesResult.rows.map(row => ({
+          id: row.id,
+          type: row.entity_type?.includes('candidate') ? 'candidate' : 
+                row.entity_type?.includes('job') ? 'job' : 
+                row.entity_type?.includes('submission') ? 'submission' : 
+                row.entity_type?.includes('interview') ? 'interview' : 'activity',
+          description: row.description || `New ${row.entity_type} action performed`,
+          timestamp: row.timestamp,
+          user: row.user || 'System'
+        }));
+      } catch (err: any) {
+        console.warn(`[getAdminSummary] Skipping recent activities due to error: ${err.message}`);
+      }
 
       res.json({
         totalCandidates,
