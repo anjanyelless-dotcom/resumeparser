@@ -282,6 +282,7 @@ class SectionPreviewResponse(BaseModel):
     detected_sections: List[str]  # List of section names with non-empty text
     missing_sections: List[str]  # List of standard sections not detected
     validation_metadata: Dict[str, Any]  # Validation information (spacy_available, validation_ran, corrections, warnings)
+    processing_time_ms: Optional[float] = None
 
 # Routes
 @app.get("/", response_model=WelcomeResponse)
@@ -524,7 +525,7 @@ async def parse_text_direct(request: ParseTextRequest):
 @app.post("/parse-batch", response_model=BatchParseResponse)
 async def parse_batch(request: BatchParseRequest):
     """
-    Parse multiple resume files in batch.
+    Parse multiple resume files in batch with controlled concurrency.
     
     Args:
         request: BatchParseRequest containing list of {file_path, candidate_id}
@@ -539,10 +540,13 @@ async def parse_batch(request: BatchParseRequest):
         )
     
     # Validate batch size
-    if len(request.files) > 100:
+    max_batch = int(os.getenv('PARSE_BATCH_MAX', '100'))
+    batch_concurrency = int(os.getenv('PARSE_BATCH_CONCURRENCY', '4'))
+    
+    if len(request.files) > max_batch:
         raise HTTPException(
             status_code=400,
-            detail="Batch size too large. Maximum 100 files allowed per batch."
+            detail=f"Batch size too large. Maximum {max_batch} files allowed per batch."
         )
     
     if len(request.files) == 0:
@@ -551,57 +555,93 @@ async def parse_batch(request: BatchParseRequest):
             detail="Batch cannot be empty. Please provide at least one file."
         )
     
-    logger.info(f"Starting batch parse of {len(request.files)} files")
+    import time
+    import asyncio
+    
+    batch_start = time.time()
+    logger.info(f"Starting batch parse of {len(request.files)} files (concurrency={batch_concurrency})")
+    
+    async def parse_one(file_info: dict) -> dict:
+        file_path = file_info.get('file_path')
+        candidate_id = file_info.get('candidate_id')
+        step_start = time.time()
+        
+        if not file_path or not candidate_id:
+            return {
+                'status': 'error',
+                'file_path': file_path or 'unknown',
+                'candidate_id': candidate_id or 'unknown',
+                'error': 'Missing file_path or candidate_id',
+                'duration_ms': 0
+            }
+        
+        try:
+            # Offload CPU-bound parse to thread pool
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None,  # default executor
+                master_parser.parse_file,
+                file_path,
+                candidate_id
+            )
+            result['duration_ms'] = (time.time() - step_start) * 1000
+            return result
+        except Exception as e:
+            return {
+                'status': 'error',
+                'file_path': file_path,
+                'candidate_id': candidate_id,
+                'error': str(e),
+                'duration_ms': (time.time() - step_start) * 1000
+            }
+    
+    # Process in chunks to control concurrency
+    all_results = []
+    for i in range(0, len(request.files), batch_concurrency):
+        chunk = request.files[i:i + batch_concurrency]
+        chunk_results = await asyncio.gather(*[parse_one(f) for f in chunk])
+        all_results.extend(chunk_results)
     
     results = []
     errors = []
     successful_parses = 0
     
-    for file_info in request.files:
-        try:
-            file_path = file_info.get('file_path')
-            candidate_id = file_info.get('candidate_id')
-            
-            if not file_path or not candidate_id:
-                errors.append({
-                    'file_path': file_path or 'unknown',
-                    'candidate_id': candidate_id or 'unknown',
-                    'error': 'Missing file_path or candidate_id'
-                })
-                continue
-            
-            # Parse individual file
-            result = master_parser.parse_file(file_path, candidate_id)
-            results.append(ParseResponse(**result))
-            
-            if result['status'] == 'success':
-                successful_parses += 1
-                # Update metrics
-                parse_metrics['total_parses'] += 1
-                parse_metrics['successful_parses'] += 1
-                confidence_score = result.get('confidence', {}).get('overall', 0.0)
-                parse_metrics['total_confidence_score'] += confidence_score
-            else:
-                errors.append({
-                    'file_path': file_path,
-                    'candidate_id': candidate_id,
-                    'error': result.get('error', 'Unknown parsing error')
-                })
-                parse_metrics['failed_parses'] += 1
-                parse_metrics['error_counts']['batch_parse_error'] += 1
-                
-        except Exception as e:
+    for result in all_results:
+        if result.get('status') == 'error':
             errors.append({
-                'file_path': file_info.get('file_path', 'unknown'),
-                'candidate_id': file_info.get('candidate_id', 'unknown'),
-                'error': str(e)
+                'file_path': result.get('file_path', 'unknown'),
+                'candidate_id': result.get('candidate_id', 'unknown'),
+                'error': result.get('error', 'Unknown parsing error')
             })
             parse_metrics['failed_parses'] += 1
             parse_metrics['error_counts']['batch_file_error'] += 1
+            continue
+        
+        results.append(ParseResponse(**result))
+        
+        if result['status'] == 'success':
+            successful_parses += 1
+            parse_metrics['total_parses'] += 1
+            parse_metrics['successful_parses'] += 1
+            confidence_score = result.get('confidence', {}).get('overall', 0.0)
+            parse_metrics['total_confidence_score'] += confidence_score
+        else:
+            errors.append({
+                'file_path': result.get('file_path', 'unknown'),
+                'candidate_id': result.get('candidate_id', 'unknown'),
+                'error': result.get('error', 'Unknown parsing error')
+            })
+            parse_metrics['failed_parses'] += 1
+            parse_metrics['error_counts']['batch_parse_error'] += 1
     
     failed_parses = len(request.files) - successful_parses
+    batch_time_ms = (time.time() - batch_start) * 1000
     
-    logger.info(f"Batch parse completed: {successful_parses}/{len(request.files)} successful")
+    logger.info(
+        f"Batch parse completed in {batch_time_ms:.1f}ms: "
+        f"{successful_parses}/{len(request.files)} successful, "
+        f"avg per file: {batch_time_ms / max(len(request.files), 1):.1f}ms"
+    )
     
     return BatchParseResponse(
         status="completed",
@@ -1448,21 +1488,27 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
     """
     import tempfile
     import shutil
+    import time
     from parsers.text_extractor import TextExtractor
     from parsers.section_splitter import SectionSplitter
     from parsers.section_validator import SectionValidator
     
     temp_file_path = None
+    start_time = time.time()
+    timing = {}
     
     try:
         # Save uploaded file to temporary location
+        step_start = time.time()
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
             shutil.copyfileobj(file.file, temp_file)
             temp_file_path = temp_file.name
+        timing['file_upload_ms'] = (time.time() - step_start) * 1000
         
         logger.info(f"Processing file for section preview: {file.filename} (force_ocr={force_ocr}, is_image={is_image})")
         
         # STEP 1: Text Extraction (use cached extractor if available)
+        step_start = time.time()
         global _cached_text_extractor
         extractor = _cached_text_extractor or TextExtractor()
         file_ext = file.filename.lower().split('.')[-1]
@@ -1503,15 +1549,19 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_ext}")
         
-        logger.info(f"Text extracted: {len(text)} chars using {extraction_method}")
+        timing['text_extraction_ms'] = (time.time() - step_start) * 1000
+        logger.info(f"Text extracted: {len(text)} chars using {extraction_method} in {timing['text_extraction_ms']:.1f}ms")
         
         # STEP 2: Section Splitting (use cached splitter if available)
+        step_start = time.time()
         global _cached_section_splitter
         splitter = _cached_section_splitter or SectionSplitter()
         all_sections = splitter.split_sections(text, font_metadata, baseline_font_size)
-        logger.info(f"Sections detected: {len(all_sections)}")
+        timing['section_splitting_ms'] = (time.time() - step_start) * 1000
+        logger.info(f"Sections detected: {len(all_sections)} in {timing['section_splitting_ms']:.1f}ms")
         
         # STEP 3: Section Validation (use cached validator if available)
+        step_start = time.time()
         validation_metadata = {
             'spacy_available': False,
             'validation_ran': False,
@@ -1519,14 +1569,16 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
             'sections_split': [],
             'sections_resolved': [],
             'warnings': [],
-            'summary': {}
+            'summary': {},
+            'validation_ms': 0
         }
         
         try:
             global _cached_section_validator
             validator = _cached_section_validator or SectionValidator()
             corrected_sections, validation_metadata = validator.validate_and_correct(all_sections)
-            logger.info(f"Sections after validation: {len(corrected_sections)}")
+            timing['section_validation_ms'] = (time.time() - step_start) * 1000
+            logger.info(f"Sections after validation: {len(corrected_sections)} in {timing['section_validation_ms']:.1f}ms")
         except ImportError as e:
             logger.warning(f"spaCy not available: {e}, skipping validation")
             corrected_sections = all_sections
@@ -1540,6 +1592,7 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
             validation_metadata['warnings'].append(f'Validation failed: {str(e)}')
         
         # Build response
+        step_start = time.time()
         standard_sections = ['summary', 'experience', 'education', 'skills', 'certifications', 'projects', 'contact']
         
         sections_dict = {}
@@ -1556,6 +1609,7 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
         
         # Find missing standard sections
         missing_sections = [s for s in standard_sections if s not in detected_sections]
+        timing['response_build_ms'] = (time.time() - step_start) * 1000
         
         response = SectionPreviewResponse(
             filename=file.filename,
@@ -1566,7 +1620,8 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
             sections=sections_dict,
             detected_sections=detected_sections,
             missing_sections=missing_sections,
-            validation_metadata=validation_metadata
+            validation_metadata=validation_metadata,
+            processing_time_ms=(time.time() - start_time) * 1000
         )
         
         logger.info(f"Section preview complete for {file.filename}")

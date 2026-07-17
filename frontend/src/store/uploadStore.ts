@@ -96,200 +96,133 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   },
   setActivePreviewId: (id) => set({ activePreviewId: id }),
   uploadAll: async (model = "own-model") => {
-    console.log(`🚀 [BULK UPLOAD] Starting bulk upload process with model: ${model}`);
-    const queue = get().queue;
-    console.log(`📋 [BULK UPLOAD] Queue size: ${queue.length}`);
+    console.log(`🚀 [BULK UPLOAD] Starting optimized bulk upload with model: ${model}`);
+    const queue = get().queue.filter((item) => item.status === "queued");
     const totalUploaded = queue.length;
-    let successful = 0;
-    let duplicates = 0;
-    let failed = 0;
+    if (totalUploaded === 0) return;
+
+    set((state) => ({
+      queue: state.queue.map((entry) =>
+        queue.some((q) => q.id === entry.id)
+          ? { ...entry, status: "uploading", progress: 10 }
+          : entry
+      ),
+      summary: { ...state.summary, totalUploaded },
+    }));
+
     const failedFiles: FailedFile[] = [];
     const duplicateFiles: DuplicateFile[] = [];
 
-    set((state) => ({
-      summary: {
-        ...state.summary,
-        totalUploaded,
-      },
-    }));
+    try {
+      const formData = new FormData();
+      for (const item of queue) {
+        formData.append("resumes", item.file);
+      }
+      formData.append("model", model);
+      formData.append("force_ocr", "false");
 
-    for (const item of queue) {
-      if (item.status !== "queued") continue;
-      
-      console.log(`📄 [BULK UPLOAD] Processing: ${item.file.name}`);
-      
-      // Set status to previewing
-      set((state) => ({
-        queue: state.queue.map((entry) =>
-          entry.id === item.id
-            ? { ...entry, status: "previewing", progress: 0 }
-            : entry,
-        ),
-      }));
+      const response = await api.post(`/upload/bulk`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 600000, // 10 minutes for large bulk uploads
+        onUploadProgress: (progressEvent) => {
+          const percent = Math.min(
+            30,
+            Math.round((progressEvent.loaded * 30) / (progressEvent.total || progressEvent.loaded))
+          );
+          set((state) => ({
+            queue: state.queue.map((entry) =>
+              queue.some((q) => q.id === entry.id)
+                ? { ...entry, progress: percent }
+                : entry
+            ),
+          }));
+        },
+      });
 
-      try {
-        // Step 1: Extract sections using preview-sections
-        console.log(`🔍 [BULK UPLOAD] Step 1: Calling preview-sections for ${item.file.name}`);
-        const formData = new FormData();
-        formData.append("resume", item.file);
-        formData.append("force_ocr", "false");
+      const data = response.data;
+      interface BulkResult {
+        fileName: string;
+        status: "success" | "duplicate" | "failed";
+        error?: string;
+        duplicate?: {
+          message: string;
+          field: string;
+          existingCandidateId?: string;
+          existingCandidateName?: string | null;
+        };
+      }
+      const resultsByName = new Map<string, BulkResult>(data.results.map((r: BulkResult) => [r.fileName, r]));
 
-        const previewResponse = await api.post(
-          `/upload/preview-sections`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-
-        console.log(`✅ [BULK UPLOAD] Step 1 complete: preview-sections for ${item.file.name}`);
-        get().updateProgress(item.id, 25);
-        set((state) => ({
-          queue: state.queue.map((entry) =>
-            entry.id === item.id
-              ? { ...entry, status: "parsing", progress: 25 }
-              : entry,
-          ),
-        }));
-
-        // Step 2: Parse sections using parse-sections
-        console.log(`🤖 [BULK UPLOAD] Step 2: Calling parse-sections for ${item.file.name}`);
-        const rawSections = previewResponse.data.sections || {};
-        const parseResponse = await api.post(
-          `/upload/parse-sections`,
-          {
-            model,
-            experience_text: rawSections.experience?.text || "",
-            education_text: rawSections.education?.text || "",
-            skills_text: rawSections.skills?.text || "",
-            summary_text: rawSections.summary?.text || "",
-            certifications_text: rawSections.certifications?.text || "",
-            projects_text: rawSections.projects?.text || "",
-            contact_text: rawSections.contact?.text || "",
-            raw_text: previewResponse.data.raw_text || "",
-          }
-        );
-
-        console.log(`✅ [BULK UPLOAD] Step 2 complete: parse-sections for ${item.file.name}`);
-        get().updateProgress(item.id, 50);
-        set((state) => ({
-          queue: state.queue.map((entry) =>
-            entry.id === item.id
-              ? { ...entry, status: "saving", progress: 50 }
-              : entry,
-          ),
-        }));
-
-        // Step 3: Validate candidate data
-        console.log(`✓ [BULK UPLOAD] Step 3: Validating candidate data for ${item.file.name}`);
-        const candidateName = parseResponse.data.contact?.name || "";
-        const candidateEmail = parseResponse.data.contact?.email || "";
-        const candidatePhone = parseResponse.data.contact?.phone || "";
-
-        // Basic validation
-        if (!candidateName && !candidateEmail && !candidatePhone) {
-          throw new Error("No candidate information extracted (name, email, or phone required)");
+      for (const item of queue) {
+        const result = resultsByName.get(item.file.name);
+        if (!result) {
+          get().setStatus(item.id, "failed");
+          get().setError(item.id, "No response from server");
+          failedFiles.push({ fileName: item.file.name, error: "No response" });
+          continue;
         }
 
-        console.log(`✓ [BULK UPLOAD] Step 3 complete: Validation passed for ${item.file.name}`);
-
-        // Step 4 & 5: Save to database (duplicate check happens in backend)
-        console.log(`💾 [BULK UPLOAD] Step 4: Saving candidate ${item.file.name} to database`);
-        try {
-          await api.post(`/candidates`, {
-            ...parseResponse.data,
-            email: candidateEmail,
-            full_name: candidateName,
-            phone: candidatePhone,
-            linkedin_url: parseResponse.data.contact?.linkedin || "",
-            github_url: parseResponse.data.contact?.github || "",
-            summary: parseResponse.data.summary || "",
-            raw_resume_text: previewResponse.data.raw_text || "",
-            resume_file_path: item.file.name,
-            original_filename: item.file.name,
-            file_type: item.file.type,
-          });
-
-          console.log(`✅ [BULK UPLOAD] Step 4 complete: Candidate saved successfully ${item.file.name}`);
+        if (result.status === "success") {
           get().updateProgress(item.id, 100);
           get().setStatus(item.id, "success");
-          successful++;
-          toast.success(`${item.file.name} saved successfully`);
-        } catch (saveError: any) {
-          // Check if it's a duplicate error
-          if (saveError.response?.status === 409 && saveError.response?.data?.code === "DUPLICATE_CANDIDATE") {
-            const duplicateData = saveError.response.data;
-            console.log(`⚠️ [BULK UPLOAD] Duplicate detected for ${item.file.name}: ${duplicateData.message}`);
-            
-            // Mark as duplicate
-            get().setStatus(item.id, "duplicate");
-            get().setDuplicateError(item.id, {
-              message: duplicateData.message,
-              field: duplicateData.field,
-              existingCandidateId: duplicateData.existingCandidateId,
-              existingCandidateName: duplicateData.existingCandidateName,
-            });
-            
-            duplicates++;
-            duplicateFiles.push({
-              fileName: item.file.name,
-              message: duplicateData.message,
-              field: duplicateData.field,
-              existingCandidateId: duplicateData.existingCandidateId,
-              existingCandidateName: duplicateData.existingCandidateName,
-            });
-            
-            toast.error(`${item.file.name}: Duplicate candidate`);
-          } else {
-            // General save error
-            const message = saveError.response?.data?.message || saveError.message || "Failed to save candidate";
-            console.log(`❌ [BULK UPLOAD] Save failed for ${item.file.name}: ${message}`);
-            get().setError(item.id, message);
-            get().setStatus(item.id, "failed");
-            failed++;
-            failedFiles.push({
-              fileName: item.file.name,
-              error: message,
-            });
-            toast.error(`${item.file.name} failed: ${message}`);
-          }
+        } else if (result.status === "duplicate") {
+          get().setStatus(item.id, "duplicate");
+          const dup = result.duplicate || { message: "Duplicate", field: "unknown" };
+          get().setDuplicateError(item.id, {
+            message: dup.message,
+            field: dup.field,
+            existingCandidateId: dup.existingCandidateId || "",
+            existingCandidateName: dup.existingCandidateName || "",
+          });
+          duplicateFiles.push({
+            fileName: item.file.name,
+            message: dup.message,
+            field: dup.field,
+            existingCandidateId: dup.existingCandidateId || "",
+            existingCandidateName: dup.existingCandidateName || "",
+          });
+        } else {
+          get().setError(item.id, result.error || "Processing failed");
+          get().setStatus(item.id, "failed");
+          failedFiles.push({
+            fileName: item.file.name,
+            error: result.error || "Processing failed",
+          });
         }
-      } catch (error: any) {
-        // Error in preview or parse step
-        const message = error.response?.data?.message || error.message || "Processing failed";
-        console.log(`❌ [BULK UPLOAD] Processing failed for ${item.file.name}: ${message}`);
+      }
+
+      set(() => ({
+        summary: {
+          totalUploaded,
+          successful: data.summary?.successful || 0,
+          duplicates: data.summary?.duplicates || 0,
+          failed: data.summary?.failed || 0,
+          failedFiles,
+          duplicateFiles,
+        },
+        uploadComplete: true,
+      }));
+
+      if (data.summary?.duplicates === 0 && data.summary?.failed === 0) {
+        toast.success(`All ${data.summary.successful} resumes processed successfully!`);
+      } else if (data.summary?.duplicates > 0 && data.summary?.failed === 0) {
+        toast.error(`${data.summary.successful} saved, ${data.summary.duplicates} duplicate(s).`);
+      } else {
+        toast.error(`${data.summary.successful} saved, ${data.summary.duplicates} duplicate(s), ${data.summary.failed} failed.`);
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || "Bulk upload failed";
+      console.error(`❌ [BULK UPLOAD] ${message}`);
+      for (const item of queue) {
         get().setError(item.id, message);
         get().setStatus(item.id, "failed");
-        failed++;
-        failedFiles.push({
-          fileName: item.file.name,
-          error: message,
-        });
-        toast.error(`${item.file.name} failed: ${message}`);
+        failedFiles.push({ fileName: item.file.name, error: message });
       }
-    }
-
-    console.log(`🏁 [BULK UPLOAD] Bulk upload complete: ${successful} saved, ${duplicates} duplicates, ${failed} failed`);
-    set((_state) => ({
-      summary: {
-        totalUploaded,
-        successful,
-        duplicates,
-        failed,
-        failedFiles,
-        duplicateFiles,
-      },
-      uploadComplete: true,
-    }));
-
-    if (duplicates === 0 && failed === 0) {
-      toast.success(`All ${successful} resumes processed successfully!`);
-    } else if (duplicates > 0 && failed === 0) {
-      toast.error(`${successful} saved, ${duplicates} duplicate(s). Check the summary for details.`);
-    } else {
-      toast.error(`${successful} saved, ${duplicates} duplicate(s), ${failed} failed. Check the summary for details.`);
+      set(() => ({
+        summary: { totalUploaded, successful: 0, duplicates: 0, failed: totalUploaded, failedFiles, duplicateFiles },
+        uploadComplete: true,
+      }));
+      toast.error(`Bulk upload failed: ${message}`);
     }
   },
   updateProgress: (id, progress) =>
