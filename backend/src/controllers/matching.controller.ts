@@ -149,7 +149,7 @@ export const matchCandidatesToJob = async (
             phone: candidate.phone,
             location: candidate.location,
             summary: candidate.summary,
-            years_of_experience: candidate.years_experience,
+            years_of_experience: candidate.years_of_experience,
             skills: candidateSkills,
             work_history: Array.isArray(candidate.work_history) && candidate.work_history[0] !== null ? candidate.work_history : [],
             education: Array.isArray(candidate.education) ? candidate.education : [],
@@ -651,7 +651,7 @@ export const parseJDAndMatch = async (
           c.phone,
           c.location,
           c.summary,
-          c.years_experience,
+          c.years_of_experience as years_experience,
           c.projects,
           -- Skills array
           (
@@ -734,7 +734,7 @@ export const parseJDAndMatch = async (
         phone: row.phone,
         location: row.location,
         summary: row.summary,
-        years_of_experience: row.years_experience,
+        years_of_experience: row.years_of_experience,
         skills: (row.skills || []).filter(Boolean) as string[],
         work_history: (row.work_history && row.work_history[0] !== null
           ? row.work_history
