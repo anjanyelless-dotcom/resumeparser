@@ -25,7 +25,7 @@ module.exports = {
       max_restarts: 10,
       restart_delay: 4000,
       kill_timeout: 5000,
-      wait_ready: true,
+      wait_ready: false,
       listen_timeout: 10000,
       shutdown_with_message: true
     }
