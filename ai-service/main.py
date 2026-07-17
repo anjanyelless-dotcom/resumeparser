@@ -122,6 +122,8 @@ class ParseTextRequest(BaseModel):
 
 class BatchParseRequest(BaseModel):
     files: List[Dict[str, str]]  # List of {file_path, candidate_id}
+    llm_provider: Optional[str] = None
+    force_ocr: Optional[bool] = False
 
 class BenchmarkRequest(BaseModel):
     text: str
@@ -559,7 +561,9 @@ async def parse_batch(request: BatchParseRequest):
     import asyncio
     
     batch_start = time.time()
-    logger.info(f"Starting batch parse of {len(request.files)} files (concurrency={batch_concurrency})")
+    llm_provider = request.llm_provider
+    force_ocr = request.force_ocr or False
+    logger.info(f"Starting batch parse of {len(request.files)} files (concurrency={batch_concurrency}, force_ocr={force_ocr}, llm={llm_provider})")
     
     async def parse_one(file_info: dict) -> dict:
         file_path = file_info.get('file_path')
@@ -582,7 +586,9 @@ async def parse_batch(request: BatchParseRequest):
                 None,  # default executor
                 master_parser.parse_file,
                 file_path,
-                candidate_id
+                candidate_id,
+                llm_provider,
+                force_ocr
             )
             result['duration_ms'] = (time.time() - step_start) * 1000
             return result

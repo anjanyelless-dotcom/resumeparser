@@ -1,18 +1,13 @@
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
-import FormData from "form-data";
-import fs from "fs";
-import path from "path";
 import { getClient } from "../database/db";
 import { checkDuplicateBeforeInsert } from "../services/duplicate.service";
 import { PerformanceTimer, timeAsync } from "../utils/timing";
-import { getFileHash, getCachedText, setCachedText } from "../utils/text-cache";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
 // ─────────────────────────────────────────────────────────────────────────────
-const BULK_CONCURRENCY = parseInt(process.env.BULK_UPLOAD_CONCURRENCY || "4", 10);
 const BULK_MAX_FILES = parseInt(process.env.BULK_UPLOAD_MAX_FILES || "100", 10);
 
 interface BulkFileRequest {
@@ -35,7 +30,7 @@ interface ParsedResume {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bulk upload handler — processes files in parallel with controlled concurrency
+// Bulk upload handler — single batch AI call + batched DB save
 // ─────────────────────────────────────────────────────────────────────────────
 export const bulkUploadResumes = async (
   req: Request,
@@ -62,28 +57,15 @@ export const bulkUploadResumes = async (
   const model = req.body.model || "own-model";
   const forceOcr = req.body.force_ocr === "true" || req.body.force_ocr === true;
 
-  console.log(`📦 Bulk upload started: ${files.length} files, concurrency=${BULK_CONCURRENCY}, model=${model}`);
+  console.log(`📦 Bulk upload started: ${files.length} files, model=${model}`);
   timer.step("validation");
 
-  // Phase 1: Extract text from all files in parallel (I/O bound, safe to parallelise)
-  const extractionResults = await processInChunks(
-    files,
-    BULK_CONCURRENCY,
-    async (file) => extractTextForFile(file, forceOcr, timer)
-  );
+  // Single batch call to AI service: extracts text and parses all resumes with controlled concurrency
+  const parseResults = await parseBatchWithAi(files, model, forceOcr, timer);
 
-  timer.step("text-extraction");
+  timer.step("ai-parse-batch");
 
-  // Phase 2: Parse sections in parallel (CPU/AI bound, limit concurrency)
-  const parseResults = await processInChunks(
-    extractionResults.filter((r): r is ExtractedFile => !r.error),
-    BULK_CONCURRENCY,
-    async (extracted) => parseSectionsForFile(extracted, model, forceOcr, timer)
-  );
-
-  timer.step("parse-sections");
-
-  // Phase 3: Save candidates in parallel with batched inserts
+  // Save all results in a single batched DB transaction
   const savedResults = await saveCandidatesBatch(
     parseResults.filter((r): r is ParsedResume => !r.error),
     userId,
@@ -111,140 +93,112 @@ export const bulkUploadResumes = async (
   });
 };
 
-interface ExtractedFile {
-  file: BulkFileRequest;
-  rawText: string;
-  sections: Record<string, any>;
-  error?: string;
-}
-
-async function extractTextForFile(
-  file: BulkFileRequest,
-  forceOcr: boolean,
-  parentTimer: PerformanceTimer
-): Promise<ExtractedFile> {
-  const t = new PerformanceTimer(`extract:${file.originalname}`);
-  try {
-    const buffer = fs.readFileSync(file.path);
-    const fileHash = getFileHash(buffer);
-
-    // Check cache to avoid re-extracting identical files
-    const cached = getCachedText(fileHash, forceOcr);
-    if (cached) {
-      console.log(`💾 Cache hit for ${file.originalname}`);
-      t.step("cache-lookup");
-      t.end();
-      return { file, rawText: cached.text, sections: cached.sections };
-    }
-
-    t.step("cache-lookup");
-
-    const AI_URL = process.env.AI_SERVICE_URL;
-    const formData = new FormData();
-    formData.append("file", fs.createReadStream(path.resolve(file.path)), {
-      filename: file.originalname,
-      contentType: file.mimetype,
-    });
-    formData.append("force_ocr", String(forceOcr));
-
-    const { result, durationMs } = await timeAsync(
-      `preview-sections:${file.originalname}`,
-      () =>
-        axios.post(`${AI_URL}/preview-sections`, formData, {
-          headers: formData.getHeaders(),
-          timeout: 120000,
-        })
-    );
-
-    const preview = result.data;
-    const rawText = preview.raw_text || "";
-    const sections: Record<string, any> = preview.sections || {};
-
-    // Cache extraction result keyed by file content hash
-    setCachedText(fileHash, forceOcr, rawText, sections);
-
-    t.step("ai-preview");
-    t.end();
-    parentTimer.step(`extracted:${file.originalname}:${durationMs.toFixed(0)}ms`);
-
-    return { file, rawText, sections };
-  } catch (error: any) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Extraction failed for ${file.originalname}:`, msg);
-    return { file, rawText: "", sections: {}, error: msg };
-  }
-}
-
-async function parseSectionsForFile(
-  extracted: ExtractedFile,
+async function parseBatchWithAi(
+  files: BulkFileRequest[],
   model: string,
   forceOcr: boolean,
   parentTimer: PerformanceTimer
-): Promise<ParsedResume> {
-  const t = new PerformanceTimer(`parse:${extracted.file.originalname}`);
-  const candidateId = uuidv4();
-  const parsingJobId = uuidv4();
+): Promise<ParsedResume[]> {
+  const t = new PerformanceTimer("ai-parse-batch");
+  const AI_URL = process.env.AI_SERVICE_URL;
+
+  // Map frontend model values to AI service llm_provider. "own-model" uses built-in DeBERTa.
+  const llmProvider = model && model !== "own-model" ? model : null;
+
+  const fileMapping = files.map((file) => ({
+    file,
+    candidateId: uuidv4(),
+    parsingJobId: uuidv4(),
+  }));
+
+  const payload = {
+    files: fileMapping.map((m) => ({ file_path: m.file.path, candidate_id: m.candidateId })),
+    llm_provider: llmProvider,
+    force_ocr: forceOcr,
+  };
 
   try {
-    const AI_URL = process.env.AI_SERVICE_URL;
-    const payload = buildParsePayload(extracted.sections, extracted.rawText, model);
-
     const { result, durationMs } = await timeAsync(
-      `parse-sections:${extracted.file.originalname}`,
+      "parse-batch",
       () =>
-        axios.post(`${AI_URL}/parse-sections`, payload, {
+        axios.post(`${AI_URL}/parse-batch`, payload, {
           headers: { "Content-Type": "application/json" },
-          timeout: 300000,
+          timeout: 600000, // 10 minutes for large batches
         })
     );
 
-    const parsed = result.data;
-    parsed.raw_text = extracted.rawText;
-    parsed.raw_resume_text = extracted.rawText;
+    const batchResponse = result.data;
+    const resultsByPath = new Map<string, any>();
+    for (const r of batchResponse.results || []) {
+      resultsByPath.set(r.file_path || r.candidate_id, r);
+    }
 
-    t.step("ai-parse");
+    t.step("ai-batch-response");
     t.end();
-    parentTimer.step(`parsed:${extracted.file.originalname}:${durationMs.toFixed(0)}ms`);
+    parentTimer.step(`ai-batch:${files.length}:${durationMs.toFixed(0)}ms`);
 
-    return {
-      file: extracted.file,
-      candidateId,
-      parsingJobId,
-      parsed,
-      rawText: extracted.rawText,
-      sections: extracted.sections,
-    };
+    return fileMapping.map(({ file, candidateId, parsingJobId }) => {
+      const ai = resultsByPath.get(file.path) || resultsByPath.get(candidateId);
+
+      if (!ai || ai.status === "error") {
+        return {
+          file,
+          candidateId,
+          parsingJobId,
+          parsed: {},
+          rawText: "",
+          sections: {},
+          error: ai?.error || "AI batch parse failed",
+        };
+      }
+
+      const parsed = {
+        contact: {
+          name: ai.name || null,
+          email: ai.email || null,
+          phone: ai.phone || null,
+          linkedin: ai.linkedin || null,
+          github: ai.github || null,
+        },
+        name: ai.name || null,
+        email: ai.email || null,
+        phone: ai.phone || null,
+        linkedin: ai.linkedin || null,
+        github: ai.github || null,
+        skills: ai.skills || [],
+        work_history: ai.work_history || ai.work_experience || [],
+        work_experience: ai.work_experience || ai.work_history || [],
+        education: ai.education || [],
+        certifications: ai.licenses || [], // ParseResponse uses licenses for certifications
+        projects: ai.projects || [],
+        summary: ai.summary || null,
+        years_of_experience: ai.years_of_experience || null,
+        confidence: ai.confidence || {},
+        processing_metrics: ai.processing_metrics || {},
+      };
+
+      return {
+        file,
+        candidateId,
+        parsingJobId,
+        parsed,
+        rawText: ai.raw_text || ai.raw_resume_text || "",
+        sections: {},
+      };
+    });
   } catch (error: any) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Parse failed for ${extracted.file.originalname}:`, msg);
-    return {
-      file: extracted.file,
+    console.error("❌ Batch AI parse failed:", msg);
+    return fileMapping.map(({ file, candidateId, parsingJobId }) => ({
+      file,
       candidateId,
       parsingJobId,
       parsed: {},
-      rawText: extracted.rawText,
-      sections: extracted.sections,
+      rawText: "",
+      sections: {},
       error: msg,
-    };
+    }));
   }
-}
-
-function buildParsePayload(
-  sections: Record<string, any>,
-  rawText: string,
-  model: string
-): Record<string, any> {
-  return {
-    model,
-    experience_text: sections.experience?.text || "",
-    education_text: sections.education?.text || "",
-    skills_text: sections.skills?.text || "",
-    summary_text: sections.summary?.text || "",
-    certifications_text: sections.certifications?.text || "",
-    projects_text: sections.projects?.text || "",
-    contact_text: sections.contact?.text || "",
-    raw_text: rawText,
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
