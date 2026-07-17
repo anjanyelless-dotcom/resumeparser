@@ -371,7 +371,7 @@ export class CandidateModel {
            WHERE cs.candidate_id = ANY($1)
            ORDER BY cs.candidate_id, s.name`,
           [candidateIds]
-        );
+        );  
         console.log("Skills query result for list API:", skillsResult.rows.length, "skills found for", candidateIds.length, "candidates");
         skillRows = skillsResult.rows;
       } catch (skillErr: any) {
