@@ -80,6 +80,36 @@ _cached_text_extractor: Optional[Any] = None
 _cached_section_splitter: Optional[Any] = None
 _cached_section_validator: Optional[Any] = None
 _cached_deberta_parser: Optional[Any] = None
+_cached_rule_parser: Optional[Any] = None
+_cached_experience_extractor: Optional[Any] = None
+_cached_education_extractor: Optional[Any] = None
+
+
+def get_cached_rule_parser():
+    """Return cached RuleBasedParser, creating it once on first call."""
+    global _cached_rule_parser
+    if _cached_rule_parser is None:
+        from parsers.rule_parser import RuleBasedParser
+        _cached_rule_parser = RuleBasedParser()
+    return _cached_rule_parser
+
+
+def get_cached_experience_extractor():
+    """Return cached ExperienceExtractor, creating it once on first call."""
+    global _cached_experience_extractor
+    if _cached_experience_extractor is None:
+        from parsers.experience_extractor import ExperienceExtractor
+        _cached_experience_extractor = ExperienceExtractor()
+    return _cached_experience_extractor
+
+
+def get_cached_education_extractor():
+    """Return cached EducationExtractor, creating it once on first call."""
+    global _cached_education_extractor
+    if _cached_education_extractor is None:
+        from parsers.education_extractor import EducationExtractor
+        _cached_education_extractor = EducationExtractor()
+    return _cached_education_extractor
 
 # Import matching engine
 try:
@@ -975,8 +1005,7 @@ async def parse_sections(request: ParseSectionsRequest):
         # 0. Parse contact details from explicit contact section
         if request.contact_text and request.contact_text.strip():
             try:
-                from parsers.rule_parser import RuleBasedParser
-                rule_parser = RuleBasedParser()
+                rule_parser = get_cached_rule_parser()
                 contact['email'] = rule_parser.extract_email(request.contact_text)
                 contact['phone'] = rule_parser.extract_phone(request.contact_text)
                 contact['linkedin'] = rule_parser.extract_linkedin(request.contact_text)
@@ -1019,8 +1048,7 @@ async def parse_sections(request: ParseSectionsRequest):
         # which may not be part of any extracted section.
         if request.raw_text:
             try:
-                from parsers.rule_parser import RuleBasedParser
-                _rp = RuleBasedParser()
+                _rp = get_cached_rule_parser()
                 # Only search first 500 chars (the header) for email/phone
                 _header_text = request.raw_text[:800]
                 if not contact.get('email'):
@@ -1039,8 +1067,7 @@ async def parse_sections(request: ParseSectionsRequest):
 
         if combined_all_text:
             try:
-                from parsers.rule_parser import RuleBasedParser
-                rule_parser = RuleBasedParser()
+                rule_parser = get_cached_rule_parser()
                 if not contact.get('email'):
                     contact['email'] = rule_parser.extract_email(combined_all_text)
                 if not contact.get('phone'):
@@ -1061,8 +1088,7 @@ async def parse_sections(request: ParseSectionsRequest):
         elif raw_text_for_name:
             # Edge case: no section texts but raw_text is available
             try:
-                from parsers.rule_parser import RuleBasedParser
-                rule_parser = RuleBasedParser()
+                rule_parser = get_cached_rule_parser()
                 if not contact.get('name'):
                     contact['name'] = _clean_name(rule_parser.extract_name(raw_text_for_name))
                 if not contact.get('email'):
@@ -1075,8 +1101,7 @@ async def parse_sections(request: ParseSectionsRequest):
         # 1. Parse skills
         if request.skills_text and request.skills_text.strip():
             try:
-                from parsers.rule_parser import RuleBasedParser
-                rule_parser = RuleBasedParser()
+                rule_parser = get_cached_rule_parser()
                 skills = rule_parser.extract_skills(request.skills_text)
             except Exception as e:
                 logger.warning(f"Failed to extract skills: {e}")
@@ -1209,8 +1234,7 @@ async def parse_sections(request: ParseSectionsRequest):
 
                 # Post-process skills: extract extra skills from job titles/descriptions and raw text
                 try:
-                    from parsers.rule_parser import RuleBasedParser
-                    rule_parser = RuleBasedParser()
+                    rule_parser = get_cached_rule_parser()
                     extra_skills = []
                     for exp in work_experience:
                         title = exp.get('job_title') or exp.get('title')
@@ -1377,7 +1401,7 @@ async def parse_sections(request: ParseSectionsRequest):
                 
                 # Process each chunk sequentially
                 all_experiences = []
-                exp_extractor = ExperienceExtractor()
+                exp_extractor = get_cached_experience_extractor()
                 
                 for idx, chunk in enumerate(chunks):
                     logger.info(f"Processing chunk {idx+1}/{len(chunks)}: {len(chunk)} chars, ~{len(chunk.split())} words")
@@ -1397,7 +1421,7 @@ async def parse_sections(request: ParseSectionsRequest):
                 if len(work_experience) == 0:
                     logger.warning("Chunked extraction returned 0 experiences - attempting full-text parse as fallback")
                     try:
-                        exp_extractor = ExperienceExtractor()
+                        exp_extractor = get_cached_experience_extractor()
                         full_result = exp_extractor.extract_work_experience(exp_text)
                         work_experience = full_result.get('work_experience', []) if isinstance(full_result, dict) else []
                         logger.info(f"Full-text fallback extracted {len(work_experience)} experiences")
@@ -1405,7 +1429,7 @@ async def parse_sections(request: ParseSectionsRequest):
                         logger.error(f"Full-text fallback also failed: {e}")
             else:
                 # Normal processing for shorter text
-                exp_extractor = ExperienceExtractor()
+                exp_extractor = get_cached_experience_extractor()
                 exp_result = exp_extractor.extract_work_experience(exp_text)
                 work_experience = exp_result.get('work_experience', []) if isinstance(exp_result, dict) else []
                 logger.info(f"Extracted {len(work_experience)} work experience entries")
@@ -1413,7 +1437,7 @@ async def parse_sections(request: ParseSectionsRequest):
         # Parse education section if provided
         if request.education_text and request.education_text.strip():
             logger.info(f"Parsing education section: {len(request.education_text)} chars")
-            edu_extractor = EducationExtractor()
+            edu_extractor = get_cached_education_extractor()
             edu_result = edu_extractor.extract_education(request.education_text)
             # EducationExtractor returns a list directly, not a dict
             education = edu_result if isinstance(edu_result, list) else []
@@ -1421,8 +1445,7 @@ async def parse_sections(request: ParseSectionsRequest):
         
         # Post-process skills: extract extra skills from job titles/descriptions and raw text
         try:
-            from parsers.rule_parser import RuleBasedParser
-            rule_parser = RuleBasedParser()
+            rule_parser = get_cached_rule_parser()
             extra_skills = []
             for exp in work_experience:
                 title = exp.get('job_title') or exp.get('title')

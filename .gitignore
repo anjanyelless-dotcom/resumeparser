@@ -1,3 +1,5 @@
 ai-service/models/
 ai-service/models.tar.gz
 ai-service/models.tar.gz
+.vercel
+.env*
