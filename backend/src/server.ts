@@ -38,6 +38,11 @@ async function startServer(): Promise<void> {
       console.log(`💼 Jobs endpoints: http://${host}:${PORT}/api/jobs`);
       console.log(`🔌 Socket.io server initialized`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+
+      // Notify PM2 that the server is ready (matches wait_ready: true in ecosystem.config.js)
+      if (process.send) {
+        process.send('ready');
+      }
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);
