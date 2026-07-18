@@ -341,7 +341,7 @@ export const getMySubmissions = async (req: Request, res: Response): Promise<voi
           c.email as candidate_email
         FROM submissions s
         LEFT JOIN job_descriptions j ON s.job_id = j.id
-        LEFT JOIN clients cl ON j.client_id = cl.id
+        LEFT JOIN clients cl ON j.client_id::uuid = cl.id
         LEFT JOIN candidates c ON s.candidate_id = c.id
         WHERE s.submitted_by = $1
         ORDER BY s.submitted_at DESC
@@ -857,7 +857,7 @@ export const getSubmissionsForMyClients = async (req: Request, res: Response): P
           cand.phone as candidate_phone
         FROM submissions s
         JOIN job_descriptions j ON s.job_id = j.id
-        LEFT JOIN clients cl ON j.client_id = cl.id
+        LEFT JOIN clients cl ON j.client_id::uuid = cl.id
         JOIN candidates cand ON s.candidate_id = cand.id
         ${whereClause}
         ORDER BY s.submitted_at DESC

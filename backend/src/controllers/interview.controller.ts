@@ -119,7 +119,7 @@ export const createInterview = async (req: Request, res: Response): Promise<void
          FROM submissions s
          LEFT JOIN job_descriptions j ON s.job_id = j.id
          LEFT JOIN candidates c ON s.candidate_id = c.id
-         LEFT JOIN clients cl ON j.client_id = cl.id
+         LEFT JOIN clients cl ON j.client_id::uuid = cl.id
          WHERE s.id = $1 AND s.tenant_id = $3`,
         [submission_id, userId, tenantId]
       );
@@ -273,7 +273,7 @@ export const updateInterview = async (req: Request, res: Response): Promise<void
          FROM interviews i
          JOIN submissions s ON i.submission_id = s.id
          JOIN job_descriptions j ON s.job_id = j.id
-         LEFT JOIN clients cl ON j.client_id = cl.id
+         LEFT JOIN clients cl ON j.client_id::uuid = cl.id
          WHERE i.id = $1 AND i.tenant_id = $3`,
         [id, userId, tenantId]
       );
@@ -615,7 +615,7 @@ export const addInterviewFeedback = async (req: Request, res: Response): Promise
          FROM interviews i
          JOIN submissions s ON i.submission_id = s.id
          JOIN job_descriptions j ON s.job_id = j.id
-         LEFT JOIN clients cl ON j.client_id = cl.id
+         LEFT JOIN clients cl ON j.client_id::uuid = cl.id
          WHERE i.id = $1 AND i.tenant_id = $3`,
         [id, userId, tenantId]
       );

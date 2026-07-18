@@ -106,10 +106,14 @@ export const createJobValidation = [
     .withMessage(
       "Employment type must be one of: full-time, part-time, contract, internship, temporary",
     ),
-  body("experience_years")
+  body("min_experience_years")
     .optional()
     .isInt({ min: 0, max: 50 })
-    .withMessage("Experience must be between 0 and 50 years"),
+    .withMessage("Minimum experience must be between 0 and 50 years"),
+  body("max_experience_years")
+    .optional()
+    .isInt({ min: 0, max: 50 })
+    .withMessage("Maximum experience must be between 0 and 50 years"),
   body("education_level")
     .optional()
     .isIn(["high-school", "bachelor", "master", "phd", "any"])
@@ -197,10 +201,14 @@ export const clarifyJobValidation = [
     .optional()
     .isIn(["manual", "pincode", "geolocation"])
     .withMessage("Location source must be one of: manual, pincode, geolocation"),
-  body("experience_years")
+  body("min_experience_years")
     .optional()
     .isInt({ min: 0, max: 50 })
-    .withMessage("Experience must be between 0 and 50 years"),
+    .withMessage("Minimum experience must be between 0 and 50 years"),
+  body("max_experience_years")
+    .optional()
+    .isInt({ min: 0, max: 50 })
+    .withMessage("Maximum experience must be between 0 and 50 years"),
   body("education_level")
     .optional()
     .isIn(["any", "high_school", "associate", "bachelor", "master", "phd"])
@@ -288,10 +296,14 @@ export const updateJobValidation = [
     .withMessage(
       "Employment type must be one of: full-time, part-time, contract, internship, temporary",
     ),
-  body("experience_years")
+  body("min_experience_years")
     .optional()
     .isInt({ min: 0, max: 50 })
-    .withMessage("Experience must be between 0 and 50 years"),
+    .withMessage("Minimum experience must be between 0 and 50 years"),
+  body("max_experience_years")
+    .optional()
+    .isInt({ min: 0, max: 50 })
+    .withMessage("Maximum experience must be between 0 and 50 years"),
   body("salary_min")
     .optional()
     .isInt({ min: 0 })
@@ -443,13 +455,13 @@ export const getAllJobs = async (
         }
 
         if (filters.min_experience !== undefined) {
-          whereConditions.push(`j.experience_years >= $${paramIndex}`);
+          whereConditions.push(`(j.min_experience_years IS NULL OR j.min_experience_years >= $${paramIndex})`);
           queryParams.push(filters.min_experience);
           paramIndex++;
         }
 
         if (filters.max_experience !== undefined) {
-          whereConditions.push(`j.experience_years <= $${paramIndex}`);
+          whereConditions.push(`(j.max_experience_years IS NULL OR j.max_experience_years <= $${paramIndex})`);
           queryParams.push(filters.max_experience);
           paramIndex++;
         }
@@ -476,7 +488,7 @@ export const getAllJobs = async (
         const dataQuery = `
           SELECT 
             j.id, j.title, j.description, j.department, j.location, 
-            j.employment_type, j.experience_years,
+            j.employment_type, j.min_experience_years, j.max_experience_years,
             j.salary_min, j.salary_max, j.status,
             j.created_at, j.updated_at,
             EXTRACT(DAYS FROM (NOW() - j.created_at)) as days_open
@@ -631,7 +643,8 @@ export const clarifyJob = async (
       'description',
       'required_skills',
       'location',
-      'experience_years',
+      'min_experience_years',
+      'max_experience_years',
       'education_level',
       'salary_min',
       'salary_max'
@@ -1120,7 +1133,8 @@ export const getMyAssignments = async (
           j.department,
           j.description,
           j.required_skills,
-          j.experience_years,
+          j.min_experience_years,
+          j.max_experience_years,
           j.status,
           j.location,
           j.employment_type,
@@ -1135,7 +1149,7 @@ export const getMyAssignments = async (
           ja.assigned_at as assigned_at
         FROM job_descriptions j
         LEFT JOIN job_recruiter_assignments ja ON j.id = ja.job_id AND ja.recruiter_id = $1
-        LEFT JOIN clients cl ON j.client_id = cl.id
+        LEFT JOIN clients cl ON j.client_id::uuid = cl.id
         WHERE ja.recruiter_id IS NOT NULL
         ORDER BY ja.priority DESC, j.created_at DESC
         LIMIT $2 OFFSET $3
@@ -1209,7 +1223,8 @@ export const getJobDetails = async (
           j.description,
           j.required_skills,
           j.preferred_skills,
-          j.experience_years,
+          j.min_experience_years,
+          j.max_experience_years,
           j.education_level,
           j.education_requirement,
           j.seniority_level,
@@ -1235,12 +1250,14 @@ export const getJobDetails = async (
           END as estimated_budget,
           -- Experience range as string
           CASE 
-            WHEN j.experience_years IS NOT NULL 
-            THEN j.experience_years || '+ years'
+            WHEN j.min_experience_years IS NOT NULL AND j.max_experience_years IS NOT NULL 
+            THEN j.min_experience_years || '-' || j.max_experience_years || ' years'
+            WHEN j.min_experience_years IS NOT NULL 
+            THEN j.min_experience_years || '+ years'
             ELSE 'Not specified'
           END as experience_range
         FROM job_descriptions j
-        LEFT JOIN clients cl ON j.client_id = cl.id
+        LEFT JOIN clients cl ON j.client_id::uuid = cl.id
         WHERE j.id = $1 AND j.status != 'archived'
       `;
 

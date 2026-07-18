@@ -34,9 +34,14 @@ const normalizeJobData = (req: Request, res: Response, next: NextFunction) => {
     }
   }
 
-  // 2. Map skills object array to string array for validation
+  // 2. Map skills object arrays to string arrays for validation
   if (Array.isArray(req.body.required_skills)) {
     req.body.required_skills = req.body.required_skills.map((s: any) =>
+      typeof s === "string" ? s : s.skill_name || ""
+    ).filter((s: string) => s.trim().length > 0);
+  }
+  if (Array.isArray(req.body.preferred_skills)) {
+    req.body.preferred_skills = req.body.preferred_skills.map((s: any) =>
       typeof s === "string" ? s : s.skill_name || ""
     ).filter((s: string) => s.trim().length > 0);
   }
@@ -55,17 +60,27 @@ const normalizeJobData = (req: Request, res: Response, next: NextFunction) => {
     req.body.education_level = eduMap[key] || "any";
   }
 
-  // 4. Map min_experience_years to experience_years for database
-  if (req.body.min_experience_years !== undefined) {
-    req.body.experience_years = req.body.min_experience_years;
-    delete req.body.min_experience_years;
+  // 4. Experience fields: prefer explicit min/max; keep legacy experience_years as fallback
+  if (req.body.experience_years !== undefined) {
+    // If frontend sends legacy experience_years and no min/max, map it to min_experience_years
+    if (req.body.min_experience_years === undefined) {
+      req.body.min_experience_years = req.body.experience_years;
+    }
+    if (req.body.max_experience_years === undefined) {
+      req.body.max_experience_years = req.body.experience_years;
+    }
+    // Remove legacy field so model/controller use min/max primarily
+    delete req.body.experience_years;
   }
 
-  // 5. Remove fields that don't exist in database schema
+  // 5. Remove fields that don't exist in database schema (kept permissive to avoid stripping known fields)
   const allowedFields = [
-    'title', 'description', 'required_skills', 'department', 'location',
-    'employment_type', 'experience_years', 'salary_min', 'salary_max',
-    'status', 'client_id'
+    'title', 'description', 'required_skills', 'preferred_skills', 'department', 'location',
+    'employment_type', 'work_mode', 'min_experience_years', 'max_experience_years',
+    'education_level', 'education_requirement', 'salary_min', 'salary_max', 'salary_range',
+    'currency', 'salary_period', 'number_of_openings', 'notice_period', 'status', 'client_id',
+    'manual_client_name', 'country', 'state', 'city', 'pincode', 'latitude', 'longitude',
+    'location_source'
   ];
   Object.keys(req.body).forEach(key => {
     if (!allowedFields.includes(key)) {

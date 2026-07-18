@@ -21,14 +21,14 @@ export const matchCandidatesToJob = async (
     try {
       // 1. Get job from database by jobId
       const jobQuery = `
-        SELECT j.id, j.title, j.description, j.location, j.experience_years, j.salary_range, j.created_at, j.updated_at,
+        SELECT j.id, j.title, j.description, j.location, j.min_experience_years, j.max_experience_years, j.salary_range, j.created_at, j.updated_at,
                array_agg(DISTINCT js.skill_name) as required_skills,
                array_agg(DISTINCT ps.skill_name) as preferred_skills
         FROM job_descriptions j
         LEFT JOIN job_skills js ON j.id = js.job_id AND js.skill_type = 'required'
         LEFT JOIN job_skills ps ON j.id = ps.job_id AND ps.skill_type = 'preferred'
         WHERE j.id = $1
-        GROUP BY j.id, j.title, j.description, j.location, j.experience_years, j.salary_range, j.created_at, j.updated_at
+        GROUP BY j.id, j.title, j.description, j.location, j.min_experience_years, j.max_experience_years, j.salary_range, j.created_at, j.updated_at
       `;
 
       const jobResult = await client.query(jobQuery, [jobId]);
