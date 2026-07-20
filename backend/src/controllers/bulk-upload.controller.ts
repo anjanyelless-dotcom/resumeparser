@@ -43,6 +43,23 @@ function normalizeFileType(mimetype: string): string {
   return 'pdf';
 }
 
+function normalizeDate(value: any): string | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  const s = String(value).trim();
+  if (!s) return null;
+  // Year only: "2023" -> "2023-01-01"
+  if (/^\d{4}$/.test(s)) return `${s}-01-01`;
+  // "2023-05" -> "2023-05-01"
+  if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`;
+  // ISO date
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // Try parsing
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
+
 interface SkillsSchemaInfo {
   hasNormalizedName: boolean;
   candidateIdNullable: boolean;
@@ -374,8 +391,8 @@ async function saveCandidatesBatch(
           r.candidateId,
           w.job_title || w.title || null,
           w.company_name || w.company || null,
-          w.start_date || null,
-          w.end_date || null,
+          normalizeDate(w.start_date),
+          normalizeDate(w.end_date),
           w.is_current || false,
           w.description || null,
           w.location || null,
@@ -391,8 +408,8 @@ async function saveCandidatesBatch(
           e.degree || e.degree_name || null,
           e.institution || e.institution_name || e.school || null,
           e.field_of_study || e.major || null,
-          e.start_date || e.start_year || null,
-          e.end_date || e.end_year || e.graduation_date || null,
+          normalizeDate(e.start_date || e.start_year),
+          normalizeDate(e.end_date || e.end_year || e.graduation_date),
           e.grade || e.gpa || null,
         ]);
       }
