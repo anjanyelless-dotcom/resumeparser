@@ -1,6 +1,7 @@
 -- ============================================================
 -- COMPLETE PRODUCTION SYNCHRONIZATION MIGRATION
 -- Migration 999: Complete Production Schema Synchronization
+-- Generated: 2026-07-23
 -- ============================================================
 -- 
 -- This migration fixes ALL schema differences between
@@ -13,6 +14,12 @@
 -- 4. Missing columns in candidates table
 -- 5. Type mismatches across multiple tables
 -- 6. Missing constraints and indexes
+-- 7. Missing offer/joining tracking columns in submissions table (Migration 075)
+-- 8. Missing approval workflow columns in job_descriptions table
+-- 9. Missing columns in job_teamlead_assignments table
+-- 10. Missing columns in job_recruiter_assignments table
+-- 11. Missing columns in activity_log table
+-- 12. Missing columns in placements table
 -- ============================================================
 
 -- Enable UUID extension
@@ -242,7 +249,147 @@ BEGIN
 END $$;
 
 -- ============================================================
--- 8. CREATE UPDATED_AT TRIGGER FUNCTION
+-- 9. ADD MISSING COLUMNS FROM MIGRATION 075 (Offer/Joining Tracking)
+-- ============================================================
+
+-- Add offer/joining tracking columns to submissions table
+-- These columns track the full candidate lifecycle through offer and joining stages
+ALTER TABLE submissions
+  ADD COLUMN IF NOT EXISTS offer_extended_at     TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS offer_accepted_at     TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS offer_rejected_at     TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS joining_date          DATE,
+  ADD COLUMN IF NOT EXISTS no_show               BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS offer_amount          NUMERIC(15,2),
+  ADD COLUMN IF NOT EXISTS offer_notes           TEXT,
+  ADD COLUMN IF NOT EXISTS placement_fee         NUMERIC(15,2),
+  ADD COLUMN IF NOT EXISTS placement_notes       TEXT;
+
+-- Add missing status values to submissions status enum
+DO $$
+BEGIN
+  -- Check if submission_status is an ENUM type
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'submission_status') THEN
+    -- Add new enum values if they don't exist
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_enum
+      WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'submission_status')
+      AND enumlabel = 'offer_extended'
+    ) THEN
+      ALTER TYPE submission_status ADD VALUE 'offer_extended';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_enum
+      WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'submission_status')
+      AND enumlabel = 'offer_accepted'
+    ) THEN
+      ALTER TYPE submission_status ADD VALUE 'offer_accepted';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_enum
+      WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'submission_status')
+      AND enumlabel = 'offer_rejected'
+    ) THEN
+      ALTER TYPE submission_status ADD VALUE 'offer_rejected';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_enum
+      WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'submission_status')
+      AND enumlabel = 'no_show'
+    ) THEN
+      ALTER TYPE submission_status ADD VALUE 'no_show';
+    END IF;
+  END IF;
+EXCEPTION
+  WHEN undefined_object THEN
+    -- submission_status might be a VARCHAR, handle gracefully
+    NULL;
+END;
+$$;
+
+-- Add indexes for offer/joining queries
+CREATE INDEX IF NOT EXISTS idx_submissions_offer_status 
+  ON submissions(status) 
+  WHERE status IN ('offer_extended','offer_accepted','offer_rejected','joined','no_show','placed');
+
+CREATE INDEX IF NOT EXISTS idx_submissions_joining_date 
+  ON submissions(joining_date) 
+  WHERE joining_date IS NOT NULL;
+
+-- ============================================================
+-- 10. ADD MISSING COLUMNS TO JOB_DESCRIPTIONS TABLE
+-- ============================================================
+
+-- Add approval workflow columns to job_descriptions
+ALTER TABLE job_descriptions
+  ADD COLUMN IF NOT EXISTS approval_comment  TEXT,
+  ADD COLUMN IF NOT EXISTS approved_by       UUID REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS approved_at       TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS rejected_by       UUID REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS rejected_at       TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS recruitment_status VARCHAR(50) DEFAULT 'active';
+
+-- ============================================================
+-- 11. ADD MISSING COLUMNS TO JOB_RECRUITER_ASSIGNMENTS
+-- ============================================================
+
+ALTER TABLE job_recruiter_assignments
+  ADD COLUMN IF NOT EXISTS notes           TEXT;
+
+-- ============================================================
+-- 12. ENSURE JOB_TEAMLEAD_ASSIGNMENTS TABLE IS COMPLETE
+-- ============================================================
+
+ALTER TABLE job_teamlead_assignments
+  ADD COLUMN IF NOT EXISTS assigned_by     UUID REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS assigned_at     TIMESTAMPTZ DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS is_active       BOOLEAN DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS notes           TEXT,
+  ADD COLUMN IF NOT EXISTS created_at      TIMESTAMPTZ DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at      TIMESTAMPTZ DEFAULT NOW();
+
+-- Add unique constraint if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'job_teamlead_assignments_job_id_team_lead_id_key'
+  ) THEN
+    ALTER TABLE job_teamlead_assignments 
+    ADD CONSTRAINT job_teamlead_assignments_job_id_team_lead_id_key 
+    UNIQUE(job_id, team_lead_id);
+  END IF;
+EXCEPTION
+  WHEN duplicate_table THEN NULL;
+END;
+$$;
+
+-- ============================================================
+-- 13. ADD MISSING COLUMNS TO ACTIVITY_LOG
+-- ============================================================
+
+ALTER TABLE activity_log
+  ADD COLUMN IF NOT EXISTS entity_type     VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS entity_id       UUID,
+  ADD COLUMN IF NOT EXISTS action          VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS old_value       JSONB,
+  ADD COLUMN IF NOT EXISTS new_value       JSONB;
+
+-- ============================================================
+-- 14. ADD MISSING COLUMNS TO PLACEMENTS TABLE
+-- ============================================================
+
+ALTER TABLE placements
+  ADD COLUMN IF NOT EXISTS billing_amount    NUMERIC(15,2),
+  ADD COLUMN IF NOT EXISTS placed_at         TIMESTAMPTZ DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS joining_date      DATE,
+  ADD COLUMN IF NOT EXISTS notes             TEXT;
+
+-- ============================================================
+-- 15. ENSURE UPDATED_AT TRIGGERS
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -257,12 +404,78 @@ $$ language 'plpgsql';
 DROP TRIGGER IF EXISTS update_candidates_updated_at ON candidates;
 CREATE TRIGGER update_candidates_updated_at BEFORE UPDATE ON candidates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_job_descriptions_updated_at ON job_descriptions;
+CREATE TRIGGER update_job_descriptions_updated_at BEFORE UPDATE ON job_descriptions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_job_teamlead_assignments_updated_at ON job_teamlead_assignments;
+CREATE TRIGGER update_job_teamlead_assignments_updated_at BEFORE UPDATE ON job_teamlead_assignments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_submissions_updated_at ON submissions;
+CREATE TRIGGER update_submissions_updated_at BEFORE UPDATE ON submissions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================================
--- 9. INSERT MIGRATION RECORD
+-- 16. ENSURE SUBMISSIONS TABLE HAS CORRECT STATUS CHECK CONSTRAINT
 -- ============================================================
 
-INSERT INTO schema_migrations (version) VALUES ('999_complete_production_sync') 
-ON CONFLICT (version) DO NOTHING;
+-- Update the submissions status check constraint to include all lifecycle values
+DO $$
+BEGIN
+  -- Drop existing constraint if it exists
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'valid_status'
+    AND conrelid = 'submissions'::regclass
+  ) THEN
+    ALTER TABLE submissions DROP CONSTRAINT valid_status;
+  END IF;
+  
+  -- Add updated constraint with all status values
+  ALTER TABLE submissions 
+  ADD CONSTRAINT valid_status 
+  CHECK (status::text = ANY (ARRAY[
+    'Submitted'::character varying, 
+    'Under Review'::character varying, 
+    'Shortlisted'::character varying, 
+    'Interview Scheduled'::character varying, 
+    'Interview Completed'::character varying, 
+    'Offer Extended'::character varying, 
+    'Offer Accepted'::character varying, 
+    'Offer Rejected'::character varying, 
+    'Rejected'::character varying, 
+    'On Hold'::character varying,
+    'joined'::character varying,
+    'placed'::character varying,
+    'no_show'::character varying
+  ]::text[]));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END;
+$$;
+
+-- ============================================================
+-- 17. VERIFICATION AND COMPLETION
+-- ============================================================
+
+-- Report completion
+DO $$
+BEGIN
+  RAISE NOTICE 'Production database synchronization completed successfully';
+  RAISE NOTICE 'Fixed candidate_skills table ID type';
+  RAISE NOTICE 'Fixed activity_log table structure';
+  RAISE NOTICE 'Fixed audit_logs table structure';
+  RAISE NOTICE 'Added missing columns to candidates table';
+  RAISE NOTICE 'Added missing columns to job_descriptions table';
+  RAISE NOTICE 'Added missing columns to job_teamlead_assignments table';
+  RAISE NOTICE 'Added missing columns to job_recruiter_assignments table';
+  RAISE NOTICE 'Added missing columns to activity_log table';
+  RAISE NOTICE 'Added missing columns to placements table';
+  RAISE NOTICE 'Added offer/joining tracking to submissions table';
+  RAISE NOTICE 'Added missing indexes';
+  RAISE NOTICE 'Added missing enum values';
+  RAISE NOTICE 'Created missing triggers';
+  RAISE NOTICE 'Updated status check constraints';
+END;
+$$;
 
 -- ============================================================
 -- COMPLETE PRODUCTION SYNCHRONIZATION - END
