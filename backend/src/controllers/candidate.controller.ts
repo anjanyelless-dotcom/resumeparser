@@ -11,8 +11,8 @@ import {
   extractExperienceFromText,
   getBestExperience,
 } from "../services/experience.service";
+import { checkDuplicateBeforeInsert } from "../services/duplicate.service";
 import { calculateTotalExperience } from "../utils/experienceCalculator";
-import { logger } from "../middleware/requestLogger";
 
 interface CreateCandidateRequest {
   full_name?: string;
@@ -307,6 +307,7 @@ export const getAllCandidates = async (
     const certification = (req.query.certification as string) || undefined;
     const salaryMin = req.query.salary_min ? parseFloat(req.query.salary_min as string) : undefined;
     const salaryMax = req.query.salary_max ? parseFloat(req.query.salary_max as string) : undefined;
+    const jobId = (req.query.job_id as string) || undefined;
     const myCandidates = req.query.myCandidates === 'true' ? (req as any).user?.id : undefined;
 
     // Validate pagination
@@ -330,6 +331,7 @@ export const getAllCandidates = async (
         certification,
         salaryMin,
         salaryMax,
+        jobId,
         myCandidates,
       );
 
@@ -1497,7 +1499,46 @@ async function saveCandidateWithDuplicateHandling(client: any, candidateData: an
   const userId = candidateData.userId;
   const tenantId = candidateData.tenantId || "default";
 
-  // Always create a new candidate; duplicate checks disabled per product requirement
+  // Check for existing candidate with same email
+  if (candidateData.email) {
+    const existingCandidate = await client.query(
+      "SELECT id, full_name, email FROM candidates WHERE email = $1 AND tenant_id = $2",
+      [candidateData.email, tenantId]
+    );
+
+    if (existingCandidate.rows.length > 0) {
+      warnings.push(`Candidate with email ${candidateData.email} already exists. Updating existing record.`);
+      const existing = existingCandidate.rows[0];
+
+      // Update existing candidate with new data
+      const updateQuery = `
+        UPDATE candidates 
+        SET full_name = COALESCE($1, full_name),
+            phone = COALESCE($2, phone),
+            summary = COALESCE($3, summary),
+            linkedin_url = COALESCE($4, linkedin_url),
+            github_url = COALESCE($5, github_url),
+            location = COALESCE($6, location),
+            updated_at = NOW()
+        WHERE id = $7
+        RETURNING *
+      `;
+
+      const result = await client.query(updateQuery, [
+        candidateData.full_name || candidateData.name || existing.full_name,
+        candidateData.phone || existing.phone,
+        candidateData.summary || existing.summary,
+        candidateData.linkedin_url || existing.linkedin_url,
+        candidateData.github_url || existing.github_url,
+        candidateData.location || existing.location,
+        existing.id
+      ]);
+
+      return result.rows[0];
+    }
+  }
+
+  // Create new candidate
   const candidate = await CandidateModel.create(client, {
     ...candidateData,
     tenant_id: tenantId,
@@ -1506,105 +1547,23 @@ async function saveCandidateWithDuplicateHandling(client: any, candidateData: an
   return candidate;
 }
 
-interface SkillsSchemaInfo {
-  hasNormalizedName: boolean;
-  candidateIdNullable: boolean;
-  hasSkillName: boolean;
-}
-
-let skillsSchemaCache: SkillsSchemaInfo | null = null;
-
-async function getSkillsSchemaInfo(client: any): Promise<SkillsSchemaInfo> {
-  if (skillsSchemaCache) return skillsSchemaCache;
-
-  const result = await client.query(
-    `SELECT column_name, is_nullable
-     FROM information_schema.columns
-     WHERE table_name = 'skills' AND table_schema = 'public'`
-  );
-
-  const columns = new Map<string, boolean>();
-  for (const row of result.rows) {
-    columns.set(row.column_name, row.is_nullable === 'YES');
-  }
-
-  skillsSchemaCache = {
-    hasNormalizedName: columns.has('normalized_name'),
-    candidateIdNullable: columns.get('candidate_id') ?? true,
-    hasSkillName: columns.has('skill_name'),
-  };
-
-  logger.info("[getSkillsSchemaInfo] Detected skills schema", skillsSchemaCache);
-  return skillsSchemaCache;
-}
-
-export async function saveSkillsBestEffort(client: any, candidateId: string, skills: any[], warnings: string[]): Promise<void> {
-  logger.info("[saveSkillsBestEffort] START", { candidateId, skillsCount: skills?.length, skills });
-
-  if (!skills || !Array.isArray(skills) || skills.length === 0) {
-    logger.info("[saveSkillsBestEffort] No skills to save");
-    return;
-  }
-
-  const schema = await getSkillsSchemaInfo(client);
+async function saveSkillsBestEffort(client: any, candidateId: string, skills: any[], warnings: string[]): Promise<void> {
+  if (!skills || !Array.isArray(skills) || skills.length === 0) return;
 
   try {
-    if (!schema.hasNormalizedName || !schema.candidateIdNullable) {
-      // Legacy schema: skills rows contain candidate_id and skill_name;
-      // there is no global normalized_name column and candidate_id is NOT NULL.
-      logger.info("[saveSkillsBestEffort] Using legacy skills schema", { candidateId });
+    console.log("Saving skills (best effort)...");
 
+    // Delete existing skill associations for this candidate
+    try {
       await client.query("DELETE FROM candidate_skills WHERE candidate_id = $1", [candidateId]);
-      await client.query("DELETE FROM skills WHERE candidate_id = $1", [candidateId]);
-
-      let insertedCount = 0;
-      for (const skill of skills) {
-        let skillName: string;
-        if (typeof skill === "string") {
-          skillName = skill;
-        } else if (skill && typeof skill === "object") {
-          skillName = skill.name || skill.skill_name || skill.title || skill.skill;
-        } else {
-          logger.warning("[saveSkillsBestEffort] Invalid skill format", { candidateId, skill });
-          continue;
-        }
-
-        if (!skillName || typeof skillName !== "string") {
-          logger.warning("[saveSkillsBestEffort] Invalid skill name", { candidateId, skillName });
-          continue;
-        }
-
-        const displayName = skillName.trim();
-        const skillResult = await client.query(
-          `INSERT INTO skills (id, candidate_id, skill_name, name, category, proficiency_level)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           RETURNING id`,
-          [crypto.randomUUID(), candidateId, displayName, displayName, 'technical', 'intermediate']
-        );
-        const skillId = skillResult.rows[0].id;
-
-        // Keep candidate_skills in sync so fetch queries that join through it work too
-        await client.query(
-          `INSERT INTO candidate_skills (candidate_id, skill_id, proficiency_level)
-           VALUES ($1, $2, $3)
-           ON CONFLICT DO NOTHING`,
-          [candidateId, skillId, 'intermediate']
-        );
-
-        insertedCount++;
-      }
-
-      logger.info("[saveSkillsBestEffort] COMPLETE (legacy schema)", { candidateId, insertedCount, totalSkills: skills.length });
-      return;
+    } catch (cleanupErr: any) {
+      // candidate_skills table may not exist; ignore
     }
-
-    // Global catalog schema
-    logger.info("[saveSkillsBestEffort] Using global skills catalog schema", { candidateId });
-
-    // Delete existing candidate-skill associations for this candidate
-    logger.info("[saveSkillsBestEffort] Deleting existing candidate_skills", { candidateId });
-    const deleteJoinResult = await client.query("DELETE FROM candidate_skills WHERE candidate_id = $1", [candidateId]);
-    logger.info("[saveSkillsBestEffort] Deleted candidate_skills rows", { candidateId, rowCount: deleteJoinResult.rowCount });
+    try {
+      await client.query("DELETE FROM skills WHERE candidate_id = $1", [candidateId]);
+    } catch (cleanupErr: any) {
+      console.warn("Could not delete existing skills:", cleanupErr.message);
+    }
 
     let insertedCount = 0;
     for (const skill of skills) {
@@ -1615,72 +1574,55 @@ export async function saveSkillsBestEffort(client: any, candidateId: string, ski
       } else if (skill && typeof skill === "object") {
         skillName = skill.name || skill.skill_name || skill.title || skill.skill;
       } else {
-        logger.warning("[saveSkillsBestEffort] Invalid skill format", { candidateId, skill });
+        console.warn(`Invalid skill format:`, skill);
         continue;
       }
 
       if (!skillName || typeof skillName !== "string") {
-        logger.warning("[saveSkillsBestEffort] Invalid skill name", { candidateId, skillName });
+        console.warn(`Invalid skill name:`, skillName);
         continue;
       }
 
-      logger.info("[saveSkillsBestEffort] Processing skill", { candidateId, skillName });
-
-      const displayName = skillName.trim();
-      const normalizedName = displayName.toLowerCase();
-
       try {
-        // 1) Get or create the global skill record. The skills table has a
-        //    UNIQUE constraint on `name`, so we use ON CONFLICT to avoid duplicates.
-        const skillResult = await client.query(
-          `INSERT INTO skills (id, name, normalized_name, category)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT (name) DO UPDATE SET normalized_name = EXCLUDED.normalized_name
-           RETURNING id, name, normalized_name`,
-          [crypto.randomUUID(), displayName, normalizedName, 'technical']
-        );
-        const skillId = skillResult.rows[0].id;
-        logger.info("[saveSkillsBestEffort] Got/created skill record", { candidateId, skillName, skillId, skillRow: skillResult.rows[0] });
+        // Production schema has UNIQUE on `name` (global catalog) AND `candidate_id` NOT NULL.
+        // To satisfy both constraints, generate a unique `name` per candidate while keeping the
+        // display value in `skill_name`.
+        const displayName = skillName.trim();
+        const normalizedName = displayName.toLowerCase();
+        const uniqueName = `${normalizedName}_${candidateId.replace(/-/g, '').substring(0, 8)}_${Date.now().toString(36)}`;
 
-        // 2) Link the skill to the candidate in the join table
-        const joinResult = await client.query(
-          `INSERT INTO candidate_skills (candidate_id, skill_id)
-           VALUES ($1, $2)
-           ON CONFLICT (candidate_id, skill_id) DO NOTHING
-           RETURNING *`,
-          [candidateId, skillId]
+        const skillId = crypto.randomUUID();
+        await client.query(
+          `INSERT INTO skills (id, candidate_id, name, skill_name, category)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [skillId, candidateId, uniqueName, displayName, 'technical']
         );
-        logger.info("[saveSkillsBestEffort] candidate_skills insert result", { candidateId, skillId, skillName, rowCount: joinResult.rowCount, row: joinResult.rows?.[0] });
+
+        // Also maintain candidate_skills join table for matching/search compatibility
+        try {
+          await client.query(
+            "INSERT INTO candidate_skills (candidate_id, skill_id) VALUES ($1, $2)",
+            [candidateId, skillId]
+          );
+        } catch (joinErr: any) {
+          // candidate_skills table may not exist or have constraints; ignore
+          console.warn("candidate_skills insert skipped:", joinErr.message);
+        }
 
         insertedCount++;
       } catch (skillErr: any) {
-        logger.error("[saveSkillsBestEffort] Failed to save skill", {
-          candidateId,
-          skillName,
-          displayName,
-          normalizedName,
-          error: skillErr,
-          message: skillErr.message,
-          code: skillErr.code,
-          detail: skillErr.detail,
-          stack: skillErr.stack
-        });
-        throw skillErr;
+        console.error(`Full skill error for "${skillName}":`, skillErr);
+        console.error(`Error code:`, skillErr.code);
+        console.error(`Error detail:`, skillErr.detail);
+        console.warn(`Failed to save skill "${skillName}":`, skillErr.message);
+        warnings.push(`Failed to save skill: ${skillName}`);
       }
     }
 
-    logger.info("[saveSkillsBestEffort] COMPLETE", { candidateId, insertedCount, totalSkills: skills.length });
+    console.log(`Skills saved: ${insertedCount}/${skills.length}`);
   } catch (error: any) {
-    logger.error("[saveSkillsBestEffort] Skills save operation failed", {
-      candidateId,
-      skills,
-      error,
-      message: error.message,
-      code: error.code,
-      detail: error.detail,
-      stack: error.stack
-    });
-    throw error;
+    console.error("Skills save failed:", error.message);
+    warnings.push("Skills save operation failed");
   }
 }
 

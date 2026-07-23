@@ -13,7 +13,6 @@ import {
   BarChart3,
   Sparkles,
   Shield,
-  LayoutDashboard,
   Target,
   Award,
   UserCog,
@@ -25,7 +24,18 @@ import {
   Bell,
   Activity,
   Plus,
-  UserPlus
+  UserPlus,
+  Search,
+  Eye,
+  GitMerge,
+  Layers,
+  MapPin,
+  Zap,
+  HardDrive,
+  CheckSquare,
+  Star,
+  LayoutDashboard,
+  Send,
 } from 'lucide-react';
 
 export type DashboardModule = {
@@ -40,384 +50,497 @@ export type DashboardModule = {
     isPositive: boolean;
   };
   color: 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'indigo' | 'pink' | 'cyan';
+  permissionModule?: string;
+  permissionAction?: string;
 };
 
-// Key Metrics Section
-export const keyMetrics: DashboardModule[] = [
+// ─────────────────────────────────────────────────────────────
+// 1. BUSINESS DEVELOPMENT (BDM)
+// ─────────────────────────────────────────────────────────────
+export const businessDevelopment: DashboardModule[] = [
   {
-    id: 'total-candidates',
-    title: 'Total Candidates',
-    description: 'All registered candidates',
-    icon: Users,
-    path: '/candidates',
-    count: 1250,
-    trend: { value: 12, isPositive: true },
-    color: 'blue'
+    id: 'client-pipeline',
+    title: 'Client Pipeline',
+    description: 'Manage sales pipeline',
+    icon: FolderKanban,
+    path: '/bdm/pipeline',
+    color: 'blue',
   },
   {
-    id: 'active-jobs',
-    title: 'Active Jobs',
-    description: 'Open job positions',
-    icon: Briefcase,
-    path: '/jobs',
-    count: 45,
-    trend: { value: 8, isPositive: true },
-    color: 'green'
-  },
-  {
-    id: 'total-recruiters',
-    title: 'Total Recruiters',
-    description: 'Active recruiters',
-    icon: UserCheck,
-    path: '/users',
-    count: 28,
-    trend: { value: 5, isPositive: true },
-    color: 'purple'
-  },
-  {
-    id: 'total-clients',
-    title: 'Total Clients',
-    description: 'Partner organizations',
+    id: 'clients',
+    title: 'Clients',
+    description: 'Manage all clients',
     icon: Building2,
     path: '/clients',
-    count: 15,
-    trend: { value: 3, isPositive: true },
-    color: 'orange'
+    color: 'green',
   },
   {
-    id: 'today-submissions',
-    title: "Today's Submissions",
-    description: 'Resumes submitted today',
-    icon: FileText,
-    path: '/submissions',
-    count: 23,
-    trend: { value: 15, isPositive: true },
-    color: 'cyan'
-  },
-  {
-    id: 'interviews-scheduled',
-    title: 'Interviews Scheduled',
-    description: 'Upcoming interviews',
-    icon: Calendar,
-    path: '/interviews',
-    count: 8,
-    trend: { value: 2, isPositive: false },
-    color: 'red'
-  },
-  {
-    id: 'parsed-resumes',
-    title: 'Parsed Resumes',
-    description: 'Successfully processed',
-    icon: Brain,
-    path: '/analytics',
-    count: 1180,
-    trend: { value: 18, isPositive: true },
-    color: 'indigo'
-  },
-  {
-    id: 'ai-match-success',
-    title: 'AI Match Success Rate',
-    description: 'Matching accuracy',
-    icon: TrendingUp,
-    path: '/analytics',
-    count: '87%',
-    trend: { value: 5, isPositive: true },
-    color: 'green'
-  }
-];
-
-// Recruitment Operations Section
-export const recruitmentOperations: DashboardModule[] = [
-  {
-    id: 'candidates',
-    title: 'Candidates',
-    description: 'Manage all candidate profiles',
-    icon: Users,
-    path: '/candidates',
-    color: 'blue'
-  },
-  {
-    id: 'jobs',
-    title: 'Jobs',
-    description: 'Manage job openings',
+    id: 'bdm-requirements',
+    title: 'BDM Requirements',
+    description: 'My requirements',
     icon: Briefcase,
-    path: '/jobs',
-    color: 'green'
+    path: '/bdm/requirements',
+    color: 'orange',
   },
   {
-    id: 'recruiter-requirements',
-    title: 'Recruiter Requirements',
-    description: 'View recruiter job requirements',
-    icon: FileText,
-    path: '/recruiter-requirements',
-    color: 'purple'
-  },
-  {
-    id: 'recruiter-candidates',
-    title: 'Recruiter Candidates',
-    description: 'Candidates assigned to recruiters',
-    icon: UserCheck,
-    path: '/recruiter-candidates',
-    color: 'orange'
-  },
-  {
-    id: 'recruiter-submissions',
-    title: 'Recruiter Submissions',
-    description: 'Track recruiter submissions',
-    icon: FileCheck,
-    path: '/recruiter-submissions',
-    color: 'cyan'
-  },
-  {
-    id: 'search-candidates',
-    title: 'Search Candidates',
-    description: 'Advanced candidate search',
-    icon: FileSearch,
-    path: '/search-candidates',
-    color: 'indigo'
-  },
-  {
-    id: 'jd-matching',
-    title: 'JD Matching',
-    description: 'Job description matching',
-    icon: Target,
-    path: '/matching',
-    color: 'pink'
-  }
-];
-
-// Resume Intelligence Section
-export const resumeIntelligence: DashboardModule[] = [
-  {
-    id: 'upload-resume',
-    title: 'Upload Resume',
-    description: 'Parse and analyze resumes',
-    icon: Upload,
-    path: '/upload',
-    color: 'blue'
-  },
-  {
-    id: 'resume-parsing',
-    title: 'Resume Parsing',
-    description: 'AI-powered resume extraction',
-    icon: Brain,
-    path: '/parsing',
-    color: 'green'
-  },
-  {
-    id: 'resume-labeling',
-    title: 'Resume Labeling',
-    description: 'Categorize and tag resumes',
-    icon: Tag,
-    path: '/labeling',
-    color: 'purple'
-  },
-  {
-    id: 'parser-analytics',
-    title: 'Parser Analytics',
-    description: 'Parsing performance metrics',
-    icon: BarChart3,
-    path: '/analytics',
-    color: 'orange'
-  },
-  {
-    id: 'ai-analytics',
-    title: 'AI Analytics',
-    description: 'AI model performance',
-    icon: Sparkles,
-    path: '/ai-analytics',
-    color: 'indigo'
-  }
-];
-
-// Team Management Section
-export const teamManagement: DashboardModule[] = [
-  {
-    id: 'users-management',
-    title: 'Users Management',
-    description: 'Manage system users',
-    icon: UserCog,
-    path: '/users',
-    color: 'blue'
-  },
-  {
-    id: 'roles-permissions',
-    title: 'Roles & Permissions',
-    description: 'Configure access controls',
-    icon: Shield,
-    path: '/roles',
-    color: 'green'
-  },
-  {
-    id: 'team-lead-dashboard',
-    title: 'Team Lead Dashboard',
-    description: 'Team performance overview',
-    icon: LayoutDashboard,
-    path: '/team-lead-dashboard',
-    color: 'purple'
-  },
-  {
-    id: 'team-requirements',
-    title: 'Team Requirements',
-    description: 'Team job requirements',
-    icon: Target,
-    path: '/team-requirements',
-    color: 'orange'
-  },
-  {
-    id: 'team-kpis',
-    title: 'Team KPIs',
-    description: 'Key performance indicators',
-    icon: Award,
-    path: '/team-kpis',
-    color: 'cyan'
-  },
-  {
-    id: 'submission-review-queue',
-    title: 'Submission Review Queue',
-    description: 'Review pending submissions',
-    icon: ClipboardList,
-    path: '/submission-review',
-    color: 'red'
-  }
-];
-
-// Client & BDM Operations Section
-export const clientBdmOperations: DashboardModule[] = [
-  {
-    id: 'client-manager-dashboard',
-    title: 'Client Manager Dashboard',
-    description: 'Client management overview',
-    icon: LayoutDashboard,
-    path: '/client-manager-dashboard',
-    color: 'blue'
-  },
-  {
-    id: 'client-manager-requirements',
-    title: 'Client Manager Requirements',
-    description: 'Client job requirements',
-    icon: FileText,
-    path: '/client-requirements',
-    color: 'green'
+    id: 'requirement-approval-bdm',
+    title: 'Requirement Approval',
+    description: 'Approve / reject requirements',
+    icon: CheckSquare,
+    path: '/requirement-approval',
+    color: 'red',
   },
   {
     id: 'client-submission-tracking',
     title: 'Client Submission Tracking',
     description: 'Track client submissions',
     icon: FileCheck,
-    path: '/client-submissions',
-    color: 'purple'
+    path: '/bdm/submissions',
+    color: 'cyan',
   },
-  {
-    id: 'interview-coordination',
-    title: 'Interview Coordination',
-    description: 'Schedule and manage interviews',
-    icon: Calendar,
-    path: '/interviews',
-    color: 'orange'
-  },
-  {
-    id: 'bdm-dashboard',
-    title: 'BDM Dashboard',
-    description: 'Business development overview',
-    icon: LayoutDashboard,
-    path: '/bdm-dashboard',
-    color: 'indigo'
-  },
-  {
-    id: 'client-pipeline',
-    title: 'Client Pipeline',
-    description: 'Sales pipeline management',
-    icon: FolderKanban,
-    path: '/client-pipeline',
-    color: 'pink'
-  },
-  {
-    id: 'bdm-requirements',
-    title: 'BDM Requirements',
-    description: 'Business development requirements',
-    icon: Briefcase,
-    path: '/bdm-requirements',
-    color: 'cyan'
-  }
 ];
 
-// System Administration Section
-export const systemAdministration: DashboardModule[] = [
+// ─────────────────────────────────────────────────────────────
+// 2. RECRUITMENT PLANNING (MANAGER)
+// ─────────────────────────────────────────────────────────────
+export const recruitmentPlanning: DashboardModule[] = [
   {
-    id: 'reports',
-    title: 'Reports',
-    description: 'Generate system reports',
-    icon: FileBarChart,
-    path: '/reports',
-    color: 'blue'
+    id: 'jobs',
+    title: 'Jobs',
+    description: 'Manage job openings',
+    icon: Briefcase,
+    path: '/jobs',
+    color: 'blue',
+  },
+  {
+    id: 'team-lead-assignment',
+    title: 'Team Lead Assignment',
+    description: 'Assign team leads to jobs',
+    icon: UserCog,
+    path: '/jobs/team-lead-assignment',
+    color: 'green',
+  },
+  {
+    id: 'recruiter-assignment',
+    title: 'Recruiter Assignment',
+    description: 'Assign recruiters to jobs',
+    icon: UserCheck,
+    path: '/jobs/recruiter-assignment',
+    color: 'purple',
+  },
+  {
+    id: 'my-assignments',
+    title: 'My Assignments',
+    description: 'View my assignments',
+    icon: ClipboardList,
+    path: '/jobs/my-assignments',
+    color: 'orange',
+  },
+  {
+    id: 'requirement-approval-manager',
+    title: 'Requirement Approval',
+    description: 'Review & approve requirements',
+    icon: CheckSquare,
+    path: '/requirement-approval',
+    color: 'red',
+
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// 3. TEAM LEAD MANAGEMENT
+// ─────────────────────────────────────────────────────────────
+export const teamLeadManagement: DashboardModule[] = [
+  {
+    id: 'assigned-jobs',
+    title: 'Assigned Jobs',
+    description: 'View assigned jobs',
+    icon: Briefcase,
+    path: '/team-lead/assigned-jobs',
+    color: 'blue',
+  },
+  {
+    id: 'team-lead-recruiter-assignment',
+    title: 'Recruiter Assignment',
+    description: 'Assign recruiters',
+    icon: UserCheck,
+    path: '/team-lead/recruiter-assignment',
+    color: 'green',
+  },
+  {
+    id: 'shortlist-review',
+    title: 'Shortlist Review',
+    description: 'Review recruiter shortlists',
+    icon: Star,
+    path: '/team-lead/shortlist-review',
+    color: 'orange',
+  },
+  {
+    id: 'submission-review',
+    title: 'Submission Review',
+    description: 'Review before client',
+    icon: FileCheck,
+    path: '/team-lead/submission-review',
+    color: 'red',
+  },
+  {
+    id: 'team-dashboard',
+    title: 'Team Dashboard',
+    description: 'Team leads overview',
+    icon: LayoutDashboard,
+    path: '/team-lead/team-dashboard',
+    color: 'indigo',
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// 4. CANDIDATE SOURCING (RECRUITER)
+// ─────────────────────────────────────────────────────────────
+export const candidateSourcing: DashboardModule[] = [
+  {
+    id: 'boolean-search',
+    title: 'Boolean Search',
+    description: 'Advanced candidate search',
+    icon: Search,
+    path: '/candidates/boolean-search',
+    color: 'blue',
+  },
+  {
+    id: 'xray-search',
+    title: 'X-Ray Search',
+    description: 'Web & social search',
+    icon: FileSearch,
+    path: '/candidates/xray-search',
+    color: 'green',
+  },
+  {
+    id: 'upload-resume',
+    title: 'Upload Resume',
+    description: 'Upload candidate resumes',
+    icon: Upload,
+    path: '/upload',
+    color: 'purple',
+  },
+  {
+    id: 'resume-parsing',
+    title: 'Resume Parsing',
+    description: 'Parse & extract data',
+    icon: Brain,
+    path: '/parsing',
+    color: 'orange',
+  },
+  {
+    id: 'candidates',
+    title: 'Candidates',
+    description: 'Manage candidates',
+    icon: Users,
+    path: '/candidates',
+    color: 'indigo',
+  },
+  {
+    id: 'duplicate-candidates',
+    title: 'Duplicate Candidates',
+    description: 'Find duplicate profiles',
+    icon: GitMerge,
+    path: '/candidates/duplicates',
+    color: 'red',
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// 5. AI RECRUITMENT
+// ─────────────────────────────────────────────────────────────
+export const aiRecruitment: DashboardModule[] = [
+  {
+    id: 'jd-matching',
+    title: 'JD Matching',
+    description: 'Match JD with resumes',
+    icon: Target,
+    path: '/jd-matching',
+    color: 'blue',
+  },
+  {
+    id: 'ai-matching',
+    title: 'AI Matching',
+    description: 'AI powered matching',
+    icon: Sparkles,
+    path: '/matching',
+    color: 'purple',
+  },
+  {
+    id: 'resume-labeling',
+    title: 'Resume Labeling',
+    description: 'Categorise resumes',
+    icon: Tag,
+    path: '/settings/labeling',
+    color: 'green',
+  },
+  {
+    id: 'model-test',
+    title: 'Model Test',
+    description: 'Test AI models',
+    icon: Zap,
+    path: '/model-test',
+    color: 'orange',
+  },
+  {
+    id: 'section-preview',
+    title: 'Section Preview',
+    description: 'Preview extracted sections',
+    icon: Eye,
+    path: '/section-preview',
+    color: 'cyan',
+  },
+  {
+    id: 'model-accuracy',
+    title: 'Model Accuracy',
+    description: 'AI model performance',
+    icon: Award,
+    path: '/accuracy',
+    color: 'indigo',
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// 6. HIRING PROCESS (END TO END)
+// ─────────────────────────────────────────────────────────────
+export const hiringProcess: DashboardModule[] = [
+  {
+    id: 'shortlisted-candidates',
+    title: 'Shortlisted Candidates',
+    description: 'View shortlisted list',
+    icon: Star,
+    path: '/recruiter/shortlisted-candidates',
+    color: 'blue',
+  },
+  {
+    id: 'submissions',
+    title: 'Submissions',
+    description: 'Manage submissions',
+    icon: Send,
+    path: '/recruiter/submissions',
+    color: 'green',
+  },
+  {
+    id: 'client-review',
+    title: 'Client Review',
+    description: 'Client feedback on candidates',
+    icon: FileCheck,
+    path: '/client-manager/submissions',
+    color: 'purple',
+  },
+  {
+    id: 'interviews',
+    title: 'Interviews',
+    description: 'Schedule & manage interviews',
+    icon: Calendar,
+    path: '/interviews',
+    color: 'orange',
+  },
+  {
+    id: 'offer',
+    title: 'Offer Management',
+    description: 'Create & track offers',
+    icon: FileText,
+    path: '/offers',
+    color: 'indigo',
+  },
+  {
+    id: 'joining',
+    title: 'Joining',
+    description: 'Track candidate joining',
+    icon: UserCheck,
+    path: '/joining',
+    color: 'cyan',
+  },
+  {
+    id: 'placement',
+    title: 'Placement',
+    description: 'Manage placements',
+    icon: Award,
+    path: '/placements',
+    color: 'red',
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// 7. TEAM MANAGEMENT
+// ─────────────────────────────────────────────────────────────
+export const teamManagement: DashboardModule[] = [];
+
+// ─────────────────────────────────────────────────────────────
+// 8. ANALYTICS & REPORTS
+// ─────────────────────────────────────────────────────────────
+export const analyticsReports: DashboardModule[] = [
+  {
+    id: 'recruitment-analytics',
+    title: 'Recruitment Analytics',
+    description: 'Recruitment reports',
+    icon: BarChart3,
+    path: '/analytics',
+    color: 'blue',
+  },
+  {
+    id: 'analytics-parser',
+    title: 'Parser Analytics',
+    description: 'Parser performance',
+    icon: Brain,
+    path: '/analytics?tab=parser',
+    color: 'green',
+  },
+  {
+    id: 'analytics-ai',
+    title: 'AI Analytics',
+    description: 'AI insights',
+    icon: Sparkles,
+    path: '/analytics-reports/ai-analytics',
+    color: 'purple',
   },
   {
     id: 'company-analytics',
     title: 'Company Analytics',
     description: 'Company intelligence',
     icon: Building2,
-    path: '/company-analytics',
-    color: 'green'
+    path: '/company-intel',
+    color: 'orange',
   },
   {
-    id: 'activity-logs',
-    title: 'Activity Logs',
-    description: 'System activity tracking',
-    icon: Activity,
-    path: '/activity-logs',
-    color: 'purple'
+    id: 'reports',
+    title: 'Reports',
+    description: 'Generate reports',
+    icon: FileBarChart,
+    path: '/reports',
+    color: 'indigo',
   },
   {
-    id: 'notifications',
-    title: 'Notifications',
-    description: 'Manage system notifications',
-    icon: Bell,
-    path: '/notifications',
-    color: 'orange'
+    id: 'audit-logs',
+    title: 'Audit Logs',
+    description: 'System audit logs',
+    icon: FileSearch,
+    path: '/audit-logs',
+    color: 'red',
   },
-  {
-    id: 'settings',
-    title: 'Settings',
-    description: 'System configuration',
-    icon: Settings,
-    path: '/settings',
-    color: 'indigo'
-  }
 ];
 
-// Quick Actions
-export const quickActions = [
+// ─────────────────────────────────────────────────────────────
+// 9. ADMINISTRATION
+// ─────────────────────────────────────────────────────────────
+export const administration: DashboardModule[] = [];
+
+// ─────────────────────────────────────────────────────────────
+// 10. QUICK ACTIONS
+// ─────────────────────────────────────────────────────────────
+export const quickActions: DashboardModule[] = [
   {
-    id: 'create-job',
-    title: 'Create Job',
-    description: 'Add new job posting',
+    id: 'quick-create-client',
+    title: 'Create Client',
+    description: 'Create new client',
     icon: Plus,
-    path: '/jobs/create',
-    color: 'green' as const
+    path: '/clients/new',
+    color: 'blue',
   },
   {
-    id: 'upload-resume',
+    id: 'quick-create-requirement',
+    title: 'Create Requirement',
+    description: 'Add new requirement',
+    icon: FileText,
+    path: '/bdm/requirements/new',
+    color: 'green',
+  },
+  {
+    id: 'quick-create-job',
+    title: 'Generate Job',
+    description: 'Create new job',
+    icon: Briefcase,
+    path: '/jobs?create=true',
+    color: 'purple',
+  },
+  {
+    id: 'quick-assign-team-lead',
+    title: 'Assign Team Lead',
+    description: 'Assign TL to job',
+    icon: UserCog,
+    path: '/users',
+    color: 'orange',
+  },
+  {
+    id: 'quick-assign-recruiter',
+    title: 'Assign Recruiter',
+    description: 'Search candidates',
+    icon: UserCheck,
+    path: '/jobs',
+    color: 'indigo',
+  },
+  {
+    id: 'quick-upload-resume',
     title: 'Upload Resume',
-    description: 'Parse candidate resume',
+    description: 'Upload candidates',
     icon: Upload,
     path: '/upload',
-    color: 'blue' as const
+    color: 'cyan',
   },
   {
-    id: 'add-candidate',
-    title: 'Add Candidate',
-    description: 'Register new candidate',
+    id: 'quick-boolean-search',
+    title: 'Boolean Search',
+    description: 'Search candidates',
+    icon: Search,
+    path: '/candidates/boolean-search',
+    color: 'blue',
+  },
+  {
+    id: 'quick-xray-search',
+    title: 'X-Ray Search',
+    description: 'Search candidates',
+    icon: FileSearch,
+    path: '/candidates/xray-search',
+    color: 'green',
+  },
+  {
+    id: 'quick-create-submission',
+    title: 'Create Submission',
+    description: 'Submit candidates',
+    icon: Send,
+    path: '/recruiter/submissions',
+    color: 'purple',
+  },
+  {
+    id: 'quick-schedule-interview',
+    title: 'Schedule Interview',
+    description: 'Schedule interview',
+    icon: Calendar,
+    path: '/interviews',
+    color: 'orange',
+  },
+  {
+    id: 'quick-create-offer',
+    title: 'Create Offer',
+    description: 'Your candidate',
+    icon: Award,
+    path: '/recruiter/submissions',
+    color: 'red',
+  },
+  {
+    id: 'quick-mark-joining',
+    title: 'Mark Joining',
+    description: 'Your candidate',
     icon: UserPlus,
-    path: '/candidates/create',
-    color: 'purple' as const
+    path: '/recruiter/submissions',
+    color: 'indigo',
   },
   {
-    id: 'create-user',
+    id: 'quick-create-user',
     title: 'Create User',
     description: 'Add system user',
     icon: UserCog,
     path: '/users/create',
-    color: 'orange' as const
-  }
+    color: 'cyan',
+  },
 ];
+
+// ─────────────────────────────────────────────────────────────
+// Legacy exports (kept for backward compatibility)
+// ─────────────────────────────────────────────────────────────
+export const recruitmentOperations = candidateSourcing;
+export const resumeIntelligence = aiRecruitment;
+export const clientBdmOperations = businessDevelopment;
+export const systemAdministration = administration;

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { getClient } from "../database/db";
+import { buildScopeFilter } from "../utils/rbac.utils";
 
 // Get requirements for team lead (assigned to their recruiters or unassigned)
 export const getTeamLeadRequirements = async (
@@ -13,6 +14,7 @@ export const getTeamLeadRequirements = async (
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const search = req.query.search as string;
+    const statusFilter = req.query.status as string;
     const offset = (page - 1) * limit;
 
     if (!userId) {
@@ -23,13 +25,14 @@ export const getTeamLeadRequirements = async (
       return;
     }
 
-    // Only team leads and admins can access this endpoint
-    if (userRole !== 'team_lead' && userRole !== 'admin') {
-      res.status(403).json({
-        error: "Forbidden",
-        message: "Only team leads and admins can access team requirements",
-      });
-      return;
+    // Get requirements scope (could use 'requirements:view_team' etc)
+    const scope = buildScopeFilter((req as any).user, 'team_requirements', 'u'); // or whatever module 'requirements' belongs to.
+    
+    let statusCondition = "j.status != 'archived'";
+    if (statusFilter === 'active') {
+      statusCondition = "j.status IN ('active', 'open', 'published')";
+    } else if (statusFilter === 'inactive') {
+      statusCondition = "j.status IN ('closed', 'archived', 'on_hold', 'inactive')";
     }
 
     const client = await getClient();
@@ -48,20 +51,29 @@ export const getTeamLeadRequirements = async (
           j.created_at,
           j.updated_at,
           j.client_id,
+          j.number_of_openings,
           c.company_name,
           COUNT(DISTINCT jra.recruiter_id) as assigned_recruiter_count,
           COUNT(DISTINCT CASE WHEN u.team_lead_id = $1 THEN jra.recruiter_id END) as my_team_recruiter_count,
-          STRING_AGG(DISTINCT u.email, ', ') as assigned_recruiters_emails
+          (
+            SELECT jsonb_agg(json_build_object(
+              'id', ur.id,
+              'name', SPLIT_PART(ur.email, '@', 1),
+              'jobs_count', (SELECT COUNT(*) FROM job_recruiter_assignments jra_sub WHERE jra_sub.recruiter_id = ur.id)
+            ))
+            FROM job_recruiter_assignments jra2 
+            JOIN users ur ON jra2.recruiter_id = ur.id
+            WHERE jra2.job_id = j.id
+          ) as assigned_recruiters
         FROM job_descriptions j
         LEFT JOIN job_recruiter_assignments jra ON j.id = jra.job_id
         LEFT JOIN users u ON jra.recruiter_id = u.id
         LEFT JOIN clients c ON j.client_id = c.id
-        WHERE j.tenant_id = $2
-          AND j.status != 'archived'
+        WHERE ${statusCondition}
       `;
 
-      const params: any[] = [userId, tenantId];
-      let paramCount = 2;
+      const params: any[] = [userId];
+      let paramCount = 1;
 
       // Add search filter
       if (search) {
@@ -70,17 +82,21 @@ export const getTeamLeadRequirements = async (
         params.push(`%${search}%`);
       }
 
-      // Team lead filtering logic
-      if (userRole === 'team_lead') {
+      // Add dynamic team lead filtering logic
+      if (scope.sql) {
+        let injectedSql = scope.sql.replace('u.', 'u2.');
+        if (scope.params.length > 0) {
+          paramCount++;
+          injectedSql = injectedSql.replace('$PARAM', `$${paramCount}`);
+          params.push(...scope.params);
+        }
         query += `
           AND (
-            -- Show jobs assigned to team lead's recruiters
             EXISTS (
               SELECT 1 FROM job_recruiter_assignments jra2
               JOIN users u2 ON jra2.recruiter_id = u2.id
-              WHERE jra2.job_id = j.id AND u2.team_lead_id = $1
+              WHERE jra2.job_id = j.id ${injectedSql}
             )
-            -- OR show unassigned jobs (team leads can claim them)
             OR NOT EXISTS (
               SELECT 1 FROM job_recruiter_assignments jra3
               WHERE jra3.job_id = j.id
@@ -88,12 +104,11 @@ export const getTeamLeadRequirements = async (
           )
         `;
       }
-      // Admins see all jobs (no additional filtering needed)
 
       query += `
         GROUP BY j.id, j.title, j.description, j.department, j.location, j.status, 
                  j.employment_type, j.min_experience_years, j.max_experience_years,
-                 j.created_at, j.updated_at, j.client_id, c.company_name
+                 j.created_at, j.updated_at, j.client_id, j.number_of_openings, c.company_name
         ORDER BY j.created_at DESC
         LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
       `;
@@ -108,12 +123,11 @@ export const getTeamLeadRequirements = async (
         FROM job_descriptions j
         LEFT JOIN job_recruiter_assignments jra ON j.id = jra.job_id
         LEFT JOIN users u ON jra.recruiter_id = u.id
-        WHERE j.tenant_id = $1
-          AND j.status != 'archived'
+        WHERE ${statusCondition}
       `;
 
-      const countParams: any[] = [tenantId];
-      let countParamCount = 1;
+      const countParams: any[] = [];
+      let countParamCount = 0;
 
       if (search) {
         countParamCount++;
@@ -121,13 +135,19 @@ export const getTeamLeadRequirements = async (
         countParams.push(`%${search}%`);
       }
 
-      if (userRole === 'team_lead') {
+      if (scope.sql) {
+        let countInjectedSql = scope.sql.replace('u.', 'u2.');
+        if (scope.params.length > 0) {
+          countParamCount++;
+          countInjectedSql = countInjectedSql.replace('$PARAM', `$${countParamCount}`);
+          countParams.push(...scope.params);
+        }
         countQuery += `
           AND (
             EXISTS (
               SELECT 1 FROM job_recruiter_assignments jra2
               JOIN users u2 ON jra2.recruiter_id = u2.id
-              WHERE jra2.job_id = j.id AND u2.team_lead_id = $2
+              WHERE jra2.job_id = j.id ${countInjectedSql}
             )
             OR NOT EXISTS (
               SELECT 1 FROM job_recruiter_assignments jra3
@@ -135,7 +155,6 @@ export const getTeamLeadRequirements = async (
             )
           )
         `;
-        countParams.push(userId);
       }
 
       const countResult = await client.query(countQuery, countParams);
@@ -189,15 +208,6 @@ export const getTeamKPIs = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Only team leads and admins can access this endpoint
-    if (userRole !== 'team_lead' && userRole !== 'admin') {
-      res.status(403).json({
-        error: "Forbidden",
-        message: "Only team leads and admins can access team KPIs",
-      });
-      return;
-    }
-
     const client = await getClient();
     try {
       // Build date filter
@@ -221,18 +231,23 @@ export const getTeamKPIs = async (req: Request, res: Response): Promise<void> =>
         dateFilter += conditions.join(" AND ");
       }
 
-      // Team lead filtering
+      // Dynamic team lead filtering based on permissions
       let teamFilter = "";
-      if (userRole === 'team_lead') {
-        teamFilter = ` AND u.team_lead_id = $${paramCount + 1}`;
-        params.push(userId);
-        paramCount++;
+      const scope = buildScopeFilter((req as any).user, 'team_kpis', 'u');
+      if (scope.sql) {
+        let injectedSql = scope.sql;
+        if (scope.params.length > 0) {
+          paramCount++;
+          injectedSql = injectedSql.replace('$PARAM', `$${paramCount}`);
+          params.push(...scope.params);
+        }
+        teamFilter = injectedSql;
       }
 
       // Single comprehensive query for all KPIs
       const query = `
         WITH team_recruiters AS (
-          SELECT id, email, first_name, last_name
+          SELECT id, email, SPLIT_PART(email, '@', 1) as first_name, '' as last_name
           FROM users u
           WHERE u.tenant_id = $1
             AND u.role = 'recruiter'
@@ -247,8 +262,8 @@ export const getTeamKPIs = async (req: Request, res: Response): Promise<void> =>
             COUNT(DISTINCT s.id) as submissions_count,
             COUNT(DISTINCT CASE WHEN s.status NOT IN ('rejected', 'offer_declined') THEN s.id END) as active_submissions_count
           FROM team_recruiters tr
-          LEFT JOIN submissions s ON tr.id = s.submitted_by AND s.tenant_id = tr.id
-          WHERE s.tenant_id = tr.id OR s.tenant_id IS NULL
+          LEFT JOIN submissions s ON tr.id = s.submitted_by
+          WHERE 1=1
             ${dateFilter}
           GROUP BY tr.id, tr.email, tr.first_name, tr.last_name
         ),
@@ -258,9 +273,9 @@ export const getTeamKPIs = async (req: Request, res: Response): Promise<void> =>
             COUNT(DISTINCT sr.id) as total_reviews,
             COUNT(DISTINCT CASE WHEN sr.decision = 'approved' THEN sr.id END) as approved_reviews
           FROM team_recruiters tr
-          LEFT JOIN submissions s ON tr.id = s.submitted_by AND s.tenant_id = tr.id
+          LEFT JOIN submissions s ON tr.id = s.submitted_by
           LEFT JOIN submission_reviews sr ON s.id = sr.submission_id
-          WHERE (s.tenant_id = tr.id OR s.tenant_id IS NULL)
+          WHERE 1=1
             ${dateFilter}
           GROUP BY tr.id
         ),
@@ -269,9 +284,9 @@ export const getTeamKPIs = async (req: Request, res: Response): Promise<void> =>
             tr.id as recruiter_id,
             COUNT(DISTINCT i.id) as interviews_count
           FROM team_recruiters tr
-          LEFT JOIN submissions s ON tr.id = s.submitted_by AND s.tenant_id = tr.id
+          LEFT JOIN submissions s ON tr.id = s.submitted_by
           LEFT JOIN interviews i ON s.id = i.submission_id
-          WHERE (s.tenant_id = tr.id OR s.tenant_id IS NULL)
+          WHERE 1=1
             AND i.status != 'cancelled'
             ${dateFilter}
           GROUP BY tr.id
@@ -294,7 +309,7 @@ export const getTeamKPIs = async (req: Request, res: Response): Promise<void> =>
         SELECT 
           tr.id,
           tr.email,
-          tr.name,
+          TRIM(tr.first_name || ' ' || tr.last_name) as name,
           COALESCE(ss.submissions_count, 0) as submissions_count,
           COALESCE(ss.active_submissions_count, 0) as active_submissions_count,
           COALESCE(rst.total_reviews, 0) as total_reviews,

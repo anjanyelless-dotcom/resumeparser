@@ -76,7 +76,7 @@ router.use(authenticateToken);
  *       500:
  *         description: Internal server error
  */
-router.post("/", requirePermission("interviews", "schedule"), createInterview);
+router.post("/", requirePermission("interviews", "create"), createInterview);
 
 /**
  * @swagger
@@ -139,7 +139,7 @@ router.post("/", requirePermission("interviews", "schedule"), createInterview);
  *       500:
  *         description: Internal server error
  */
-router.patch("/:id", requirePermission("interviews", "schedule"), updateInterview);
+router.patch("/:id", requirePermission("interviews", "create"), updateInterview);
 
 /**
  * @swagger

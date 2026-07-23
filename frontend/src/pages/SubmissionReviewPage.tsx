@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useSubmissionReviewStore } from "../store/useSubmissionReviewStore";
 import ReviewSubmissionModal from "../components/team/ReviewSubmissionModal";
-// import CandidateProfile from "../components/candidates/CandidateProfile"; // TODO: Component doesn't exist
+import CandidateProfile from "../components/candidates/CandidateProfile";
 import { RefreshCw, ChevronDown, ChevronUp, User, Calendar } from "lucide-react";
 
 export default function SubmissionReviewPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<"shortlisted" | "submitted">("submitted");
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
 
@@ -14,15 +15,16 @@ export default function SubmissionReviewPage() {
 
   const itemsPerPage = 20;
 
-  // Fetch submissions when page changes
+  // Fetch submissions when page or tab changes
   useEffect(() => {
     loadSubmissions();
-  }, [currentPage]);
+  }, [currentPage, activeTab]);
 
   const loadSubmissions = async () => {
     await fetchPendingSubmissions({
       page: currentPage,
       limit: itemsPerPage,
+      status: activeTab,
     });
   };
 
@@ -67,7 +69,7 @@ export default function SubmissionReviewPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Review Queue</h1>
             <p className="text-gray-600 mt-1">
-              {pagination?.total_items || 0} submissions pending review
+              {pagination?.total_items || 0} submissions in {activeTab === "submitted" ? "Pending Review" : "Shortlisted"}
             </p>
           </div>
           <button
@@ -78,6 +80,32 @@ export default function SubmissionReviewPage() {
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => { setActiveTab("submitted"); setCurrentPage(1); }}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "submitted"
+                  ? "border-indigo-500 text-indigo-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Pending Reviews
+            </button>
+            <button
+              onClick={() => { setActiveTab("shortlisted"); setCurrentPage(1); }}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "shortlisted"
+                  ? "border-indigo-500 text-indigo-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Shortlisted Candidates
+            </button>
+          </nav>
         </div>
 
         {/* Results Count */}
@@ -121,6 +149,9 @@ export default function SubmissionReviewPage() {
                       Job
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      AI Match
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Submitted By
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -160,10 +191,10 @@ export default function SubmissionReviewPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">
-                              {submission.recruiter_info.name}
+                              {submission.recruiter_info?.name || 'Unknown Recruiter'}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {submission.recruiter_info.email}
+                              {submission.recruiter_info?.email || 'No email'}
                             </div>
                           </div>
                         </td>
@@ -200,11 +231,7 @@ export default function SubmissionReviewPage() {
                             <div className="mb-2 text-sm font-medium text-gray-700">
                               Candidate Details
                             </div>
-                            {/* TODO: CandidateProfile component doesn't exist - placeholder */}
-                            <div className="p-4 bg-gray-100 rounded text-gray-500 text-sm">
-                              Candidate profile view not available
-                            </div>
-                            {/* <CandidateProfile candidateId={submission.candidate_id} /> */}
+                            <CandidateProfile candidateId={submission.candidate_id} />
                           </td>
                         </tr>
                       )}

@@ -27,7 +27,7 @@ export default function PermissionsPage() {
 
   useEffect(() => {
     if (selectedRole) {
-      fetchRolePermissions();
+      fetchRolePermissions(selectedRole);
     }
   }, [selectedRole, fetchRolePermissions]);
 
@@ -46,7 +46,16 @@ export default function PermissionsPage() {
 
   const handleSave = async () => {
     try {
-      await updateRolePermissions(selectedRole, selectedPermissions);
+      // Map string permission names to minimal RolePermission objects for the legacy page
+      const permObjs = selectedPermissions.map((name) => ({
+        module_id: name,
+        module_name: name,
+        action: 'view',
+        allowed: true,
+        scope_id: null,
+        sidebar_visible: false,
+      }));
+      await updateRolePermissions(selectedRole, permObjs);
       toast.success("Permissions updated successfully");
     } catch (_error) {
       toast.error("Failed to update permissions");

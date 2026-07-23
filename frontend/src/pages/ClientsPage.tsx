@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClientStore } from "../store/useClientStore";
+import PermissionGuard from "../components/common/PermissionGuard";
 import toast from "react-hot-toast";
-import { Building2, Search, RefreshCw, Plus, Archive } from "lucide-react";
+import { Building2, Search, RefreshCw, Plus, Archive, ExternalLink, PlusCircle } from "lucide-react";
 
 export default function ClientsPage() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,6 +63,7 @@ export default function ClientsPage() {
       industry: industry || undefined,
       city: city || undefined,
       is_archived: showArchived ? true : undefined,
+      status: 'active',
     });
   };
 
@@ -82,24 +84,25 @@ export default function ClientsPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Active Clients</h1>
             <p className="text-gray-600 mt-1">
-              {pagination?.total_items || 0} total clients
+              {pagination?.total_items || 0} converted clients
             </p>
           </div>
-          <button
-            onClick={() => navigate("/admin/clients/new")}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Client
-          </button>
+          <PermissionGuard module="clients" action="create">
+            <button
+              onClick={() => navigate("/clients/new")}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Client Directly
+            </button>
+          </PermissionGuard>
         </div>
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6 border border-gray-200">
           <div className="flex flex-wrap gap-4">
-            {/* Search */}
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -113,7 +116,6 @@ export default function ClientsPage() {
               </div>
             </div>
 
-            {/* Industry Filter */}
             <div className="flex-1 min-w-[150px]">
               <input
                 type="text"
@@ -124,7 +126,6 @@ export default function ClientsPage() {
               />
             </div>
 
-            {/* City Filter */}
             <div className="flex-1 min-w-[150px]">
               <input
                 type="text"
@@ -135,7 +136,6 @@ export default function ClientsPage() {
               />
             </div>
 
-            {/* Show Archived Toggle */}
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -146,7 +146,6 @@ export default function ClientsPage() {
               <span className="text-sm text-gray-700">Show Archived</span>
             </label>
 
-            {/* Refresh Button */}
             <button
               onClick={loadClients}
               disabled={isLoading}
@@ -156,14 +155,6 @@ export default function ClientsPage() {
               Refresh
             </button>
           </div>
-        </div>
-
-        {/* Results Count */}
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-sm text-gray-600">
-            Showing {clients.length} of {pagination?.total_items || 0} clients
-            {pagination && ` (Page ${pagination.current_page} of ${pagination.total_pages})`}
-          </p>
         </div>
 
         {/* Loading State */}
@@ -178,70 +169,110 @@ export default function ClientsPage() {
         {!isLoading && clients.length === 0 && (
           <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
             <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No clients found</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No active clients found</h3>
             <p className="text-gray-600 mb-4">
               {searchTerm || industry || city
                 ? "Try adjusting your search filters"
-                : "Get started by adding your first client"}
+                : "Convert pipeline prospects or add clients to get started"}
             </p>
-            {!searchTerm && !industry && !city && (
-              <button
-                onClick={() => navigate("/admin/clients/new")}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                Add Your First Client
-              </button>
-            )}
           </div>
         )}
 
-        {/* Clients Grid */}
+        {/* Clients Table */}
         {!isLoading && clients.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {clients.map((client) => (
-              <div
-                key={client.id}
-                onClick={() => navigate(`/admin/clients/${client.id}`)}
-                className="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">{client.company_name}</h3>
-                      {client.industry && (
-                        <p className="text-sm text-gray-600">{client.industry}</p>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleArchive(client.id, client.company_name);
-                    }}
-                    disabled={client.is_archived}
-                    className="p-1 text-gray-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={client.is_archived ? "Already archived" : "Archive client"}
-                  >
-                    <Archive className="w-4 h-4" />
-                  </button>
-                </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client ID</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Industry</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Primary Contact</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Requirements</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Placements</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {clients.map((client) => (
+                    <tr key={client.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {client.id.split('-')[0]}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {client.company_name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {client.industry || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {client.primary_contact_name || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {client.primary_contact_email || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {client.primary_contact_phone || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-indigo-600">
+                        {client.total_requirements || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-green-600">
+                        {client.total_placements || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(client.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          client.is_archived ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          {client.is_archived ? 'Archived' : 'Active'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => navigate(`/clients/${client.id}`)}
+                            className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                            title="View Client Details"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                          
+                          <button
+                            onClick={() => navigate(`/bdm/requirements/new?client_id=${client.id}`)}
+                            className="text-green-600 hover:text-green-900 flex items-center gap-1"
+                            title="Create Requirement"
+                          >
+                            <PlusCircle className="w-4 h-4" />
+                          </button>
 
-                {(client.city || client.country) && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    {[client.city, client.country].filter(Boolean).join(", ")}
-                  </p>
-                )}
-
-                {client.is_archived && (
-                  <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
-                    Archived
-                  </span>
-                )}
-              </div>
-            ))}
+                          <PermissionGuard module="clients" action="delete" mode="hide">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleArchive(client.id, client.company_name);
+                              }}
+                              disabled={client.is_archived}
+                              className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                              title={client.is_archived ? "Already archived" : "Archive client"}
+                            >
+                              <Archive className="w-4 h-4" />
+                            </button>
+                          </PermissionGuard>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -255,7 +286,7 @@ export default function ClientsPage() {
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={!pagination.has_prev_page}
-                className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
                 Previous
               </button>
@@ -263,15 +294,10 @@ export default function ClientsPage() {
               {/* Page Numbers */}
               {Array.from({ length: Math.min(5, pagination.total_pages) }).map((_, idx) => {
                 let pageNum;
-                if (pagination.total_pages <= 5) {
-                  pageNum = idx + 1;
-                } else if (pagination.current_page <= 3) {
-                  pageNum = idx + 1;
-                } else if (pagination.current_page >= pagination.total_pages - 2) {
-                  pageNum = pagination.total_pages - 4 + idx;
-                } else {
-                  pageNum = pagination.current_page - 2 + idx;
-                }
+                if (pagination.total_pages <= 5) pageNum = idx + 1;
+                else if (pagination.current_page <= 3) pageNum = idx + 1;
+                else if (pagination.current_page >= pagination.total_pages - 2) pageNum = pagination.total_pages - 4 + idx;
+                else pageNum = pagination.current_page - 2 + idx;
 
                 return (
                   <button
@@ -291,7 +317,7 @@ export default function ClientsPage() {
               <button
                 onClick={() => setCurrentPage((prev) => Math.min(pagination.total_pages, prev + 1))}
                 disabled={!pagination.has_next_page}
-                className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
                 Next
               </button>

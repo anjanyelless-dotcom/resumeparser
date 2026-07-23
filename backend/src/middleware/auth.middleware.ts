@@ -10,47 +10,59 @@ export interface AuthenticatedRequest extends Request {
     role: string;        // Legacy role for backward compatibility
     roleId?: string;     // New role UUID
     roleName?: string;   // New role name
+    scope?: string;      // Current permission scope
+    permissions?: string[]; // Array of module:action strings
   };
 }
 
 type AuthRequest = AuthenticatedRequest;
 
-export const authenticateToken = (
+export const authenticateToken = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction,
-): void => {
+): Promise<void> => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
-  console.log('[authenticateToken] Token present:', !!token);
+  // console.log('[authenticateToken] Token present:', !!token);
 
   if (!token) {
     res.status(401).json({ error: "Access token required" });
     return;
   }
 
-  jwt.verify(
-    token,
-    process.env.JWT_SECRET || "fallback-secret",
-    (err, decoded) => {
-      if (err) {
-        console.log('[authenticateToken] Token verification failed:', err.message);
-        res.status(401).json({ error: "Invalid or expired token" });
-        return;
-      }
+  try {
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret");
 
-      console.log('[authenticateToken] Token decoded:', decoded);
-      req.user = {
-        id: (decoded as any).id,
-        email: (decoded as any).email,
-        role: (decoded as any).role,
-        roleId: (decoded as any).roleId,
-        roleName: (decoded as any).roleName,
-      };
-      next();
-    },
-  );
+    // console.log('[authenticateToken] Token decoded:', decoded);
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+      roleId: decoded.roleId,
+      roleName: decoded.roleName,
+      permissions: [],
+    };
+
+    // Load permissions for this user's role
+    const permissionsQuery = await query(
+      `SELECT m.name as module_name, rp.action as action_name 
+       FROM role_permissions rp
+       JOIN modules m ON rp.module_id = m.id
+       JOIN roles r ON rp.role_id = r.id
+       WHERE (r.name = $1 OR r.id::text = $2)
+       AND rp.allowed = true`,
+      [req.user.role, req.user.roleId || null]
+    );
+
+    req.user.permissions = permissionsQuery.rows.map(row => `${row.module_name}:${row.action_name}`);
+
+    next();
+  } catch (err: any) {
+    console.log('[authenticateToken] Auth failed:', err.message);
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
 };
 
 export const requireRole = (roles: string[]) => {
@@ -77,107 +89,43 @@ export const requireRole = (roles: string[]) => {
 
 export const requirePermission = (moduleName: string, actionName: string) => {
   return async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    console.log(`[requirePermission] Check for ${moduleName}:${actionName}`);
-    console.log('[requirePermission] User:', req.user);
-    
+    // console.log(`[requirePermission] Check for ${moduleName}:${actionName}`);
+
     if (!req.user) {
       console.log('[requirePermission] No user found');
       res.status(401).json({ error: "Authentication required" });
       return;
     }
 
-    // TEMPORARY: Allow all authenticated users to access all routes
-    console.log("[Permission Check] Allowing access for authenticated user:", req.user.email);
-    return next();
-
-    // Original permission check logic below (commented out for now)
-    /*
-    console.log("[Permission Check] User:", {
-      id: req.user.id,
-      email: req.user.email,
-      role: req.user.role,
-      roleId: req.user.roleId
-    });
-    console.log("[Permission Check] Required:", { module: moduleName, action: actionName });
-
-    // If user doesn't have roleId, fall back to legacy role check
-    if (!req.user.roleId) {
-      // For backward compatibility, allow admin users to access everything
-      if (req.user.role === 'admin') {
-        console.log("[Permission Check] Admin user - allowing access");
-        return next();
-      }
-
-      // Allow client_manager to access communications, clients, dashboard, submissions, interviews, upload, matching, labeling, analytics, and settings
-      if (req.user.role === 'client_manager') {
-        if (['communications', 'clients', 'dashboard', 'submissions', 'interviews', 'upload', 'matching', 'labeling', 'analytics', 'settings'].includes(moduleName)) {
-          console.log(`[Permission Check] Client manager accessing ${moduleName} - allowing access`);
-          return next();
-        }
-      }
-
-      // Allow recruiter to access jobs, candidates, dashboard, requirements, interviews, upload, matching, labeling, analytics, and settings
-      if (req.user.role === 'recruiter') {
-        if (['jobs', 'candidates', 'dashboard', 'requirements', 'interviews', 'upload', 'matching', 'labeling', 'analytics', 'settings'].includes(moduleName)) {
-          console.log(`[Permission Check] Recruiter accessing ${moduleName} - allowing access`);
-          return next();
-        }
-      }
-
-      // Allow team_lead to access jobs, candidates, dashboard, requirements, interviews, upload, matching, labeling, analytics, and settings
-      if (req.user.role === 'team_lead') {
-        if (['jobs', 'candidates', 'dashboard', 'requirements', 'interviews', 'upload', 'matching', 'labeling', 'analytics', 'settings'].includes(moduleName)) {
-          console.log(`[Permission Check] Team lead accessing ${moduleName} - allowing access`);
-          return next();
-        }
-      }
-
-      // Allow bdm to access jobs, candidates, dashboard, requirements, clients, reports, and settings
-      if (req.user.role === 'bdm') {
-        if (['jobs', 'candidates', 'dashboard', 'requirements', 'clients', 'reports', 'settings'].includes(moduleName)) {
-          console.log(`[Permission Check] BDM accessing ${moduleName} - allowing access`);
-          return next();
-        }
-      }
-
-      // For other users without roleId, deny access to permission-protected routes
-      console.log("[Permission Check] No roleId - denying access");
-      res.status(403).json({ error: "Insufficient permissions - role not assigned" });
-      return;
-    }
-
     try {
-      // Check if the user's role has the required permission
-      const permissionCheck = await query(
-        `SELECT 1 
-         FROM role_permissions rp
-         JOIN permissions p ON rp.permission_id = p.id
-         WHERE rp.role = $1 
-         AND p.module = $2 
-         AND p.name = $3`,
-        [req.user.role, moduleName, `${moduleName}.${actionName}`]
-      );
+      const perms = req.user.permissions || [];
 
-      console.log("[Permission Check] Result:", {
-        hasPermission: permissionCheck.rows.length > 0,
-        rows: permissionCheck.rows.length
-      });
+      // Check if they have the exact permission, or 'view' which often encompasses 'view_own' depending on module logic
+      const hasExactPermission = perms.includes(`${moduleName}:${actionName}`);
 
-      if (permissionCheck.rows.length === 0) {
-        console.log("[Permission Check] Permission denied");
-        res.status(403).json({ 
+      // For some endpoints, possessing 'view_own' or 'view_team' grants access to the route (controller handles filtering)
+      const hasAnyView = perms.includes(`${moduleName}:view`) ||
+        perms.includes(`${moduleName}:view_own`) ||
+        perms.includes(`${moduleName}:view_team`) ||
+        perms.includes(`${moduleName}:view_assigned`) ||
+        perms.includes(`${moduleName}:view_own_clients`);
+
+      const isViewAction = actionName === 'view' || actionName === 'view_own' || actionName === 'view_team' || actionName === 'view_bdm' || actionName === 'view_assigned' || actionName === 'view_own_clients';
+
+      if (!hasExactPermission && !(isViewAction && hasAnyView)) {
+        console.log(`[Permission Check] Permission denied for ${moduleName}:${actionName}. User has: ${perms.join(', ')}`);
+        res.status(403).json({
           error: "Insufficient permissions",
-          details: `Missing permission: ${moduleName}.${actionName}`
+          details: `Missing permission: ${moduleName}:${actionName}`
         });
         return;
       }
 
-      console.log("[Permission Check] Permission granted");
+      // If they passed, we let the controller handle the strict Data Scope filtering
       next();
     } catch (error) {
       console.error("Permission check error:", error);
       res.status(500).json({ error: "Internal server error during permission check" });
     }
-    */
   };
 };

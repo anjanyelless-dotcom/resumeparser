@@ -74,16 +74,6 @@ export const uploadResume = multer({
   },
 }).single("resume"); // Field name for the file
 
-// Bulk upload middleware: up to 100 files with field name "resumes"
-export const uploadBulkResumes = multer({
-  storage,
-  fileFilter,
-  limits: {
-    fileSize: maxFileSize,
-    files: 100,
-  },
-}).array("resumes", 100);
-
 // Error handling middleware for multer
 export const handleUploadError = (
   err: any,

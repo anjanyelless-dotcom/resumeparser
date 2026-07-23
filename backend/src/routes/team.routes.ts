@@ -91,7 +91,7 @@ router.use(authenticateToken);
  *       500:
  *         description: Internal server error
  */
-router.get("/requirements", getTeamLeadRequirements);
+router.get("/requirements", requirePermission("team_requirements", "view"), getTeamLeadRequirements);
 
 /**
  * @swagger
@@ -206,6 +206,6 @@ router.get("/requirements", getTeamLeadRequirements);
  *       500:
  *         description: Internal server error
  */
-router.get("/kpis", requirePermission("team", "view_kpis"), getTeamKPIs);
+router.get("/kpis", requirePermission("team_kpis", "view"), getTeamKPIs);
 
 export default router;

@@ -1050,10 +1050,38 @@ class RuleBasedParser:
         try:
             with open(taxonomy_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                domains = data.get('domains', {})
+                # Support both {'domains': {...}} and flat {Category: [...]} formats
+                if isinstance(data, dict) and isinstance(data.get('domains'), dict):
+                    domains = data['domains']
+                elif isinstance(data, dict):
+                    domains = data
+                else:
+                    domains = {}
                 
-                # Define IT sub-categories (all technical domains that should map to "IT")
+                # IT category names in the normalized taxonomy (should map to "IT")
                 it_subcategories = {
+                    'Technology',
+                    'Software Development',
+                    'Mobile Development',
+                    'Frontend',
+                    'Backend',
+                    'Full Stack',
+                    'DevOps',
+                    'Cloud Computing',
+                    'Cyber Security',
+                    'Networking',
+                    'Database Administration',
+                    'Data Engineering',
+                    'Data Science',
+                    'Machine Learning',
+                    'Artificial Intelligence',
+                    'Business Intelligence',
+                    'QA',
+                    'Automation Testing',
+                    'Embedded Systems',
+                    'Game Development',
+                    'Blockchain',
+                    'IoT',
                     'Programming Languages and Language Internals',
                     'Frontend Web Development',
                     'Backend Web Development',
@@ -1075,8 +1103,14 @@ class RuleBasedParser:
                     'Resume Parser HR Tech ATS and Document AI',
                 }
                 
-                # Define non-IT domains (should map to themselves)
-                non_it_domains = {'Healthcare', 'Finance', 'HR', 'Education', 'Sales', 'Legal', 'Engineering'}
+                # Non-IT domains (map to themselves)
+                non_it_domains = {
+                    'Healthcare', 'Finance', 'HR', 'Education', 'Sales', 'Legal', 'Engineering',
+                    'Accounting', 'Banking', 'Insurance', 'Taxation', 'Audit', 'Marketing',
+                    'Customer Support', 'Manufacturing', 'Construction', 'Telecommunications',
+                    'Logistics', 'Transportation', 'Real Estate', 'Government', 'Energy',
+                    'Oil & Gas', 'Renewable Energy', 'Biotechnology', 'Agriculture',
+                }
                 
                 # Flatten all skills from all domains into a single list
                 all_skills = []

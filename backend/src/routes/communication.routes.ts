@@ -228,6 +228,6 @@ router.get("/", requirePermission("communications", "view"), getCommunications);
  *       500:
  *         description: Internal server error
  */
-router.get("/follow-ups-due", requirePermission("communications", "log"), getFollowUpsDue);
+router.get("/follow-ups-due", requirePermission("dashboard", "view"), getFollowUpsDue);
 
 export default router;

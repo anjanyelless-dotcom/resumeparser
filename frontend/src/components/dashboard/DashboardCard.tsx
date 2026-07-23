@@ -71,28 +71,28 @@ export const DashboardCard: React.FC<DashboardCardProps> = ({
     <div
       onClick={onClick}
       className={`
-        bg-white rounded-lg shadow p-6 cursor-pointer
-        hover:shadow-lg transition-all duration-200
+        bg-white rounded-lg shadow-sm p-4 cursor-pointer
+        hover:shadow-md transition-all duration-200
         border border-gray-100 hover:border-gray-200
-        min-h-[140px] flex flex-col justify-between
+        min-h-[110px] flex flex-col justify-between
         ${colors.hover}
       `}
     >
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between h-full">
         <div className="flex items-center flex-1">
-          <div className={`flex-shrink-0 p-3 ${colors.bg} rounded-lg`}>
-            <Icon className={`h-6 w-6 ${colors.text}`} />
+          <div className={`flex-shrink-0 p-2.5 ${colors.bg} rounded-lg`}>
+            <Icon className={`h-5 w-5 ${colors.text}`} />
           </div>
-          <div className="ml-4 flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-900 break-words">{title}</h3>
-            <p className="text-xs text-gray-500 mt-1 break-words line-clamp-2">{description}</p>
+          <div className="ml-3 flex-1 min-w-0 pr-2">
+            <h3 className="text-sm font-semibold text-gray-900 break-words leading-tight">{title}</h3>
+            <p className="text-xs text-gray-500 mt-1 break-words line-clamp-2 leading-snug">{description}</p>
           </div>
         </div>
         {count !== undefined && (
-          <div className="text-right ml-4 flex-shrink-0">
-            <p className="text-2xl font-bold text-gray-900 break-words">{count}</p>
+          <div className="text-right ml-2 flex-shrink-0 flex flex-col justify-center h-full">
+            <p className="text-xl font-bold text-gray-900 leading-none">{count}</p>
             {trend && (
-              <div className={`flex items-center mt-1 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={`flex items-center justify-end mt-1.5 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
                 <span className="text-xs font-medium">
                   {trend.isPositive ? '+' : ''}{trend.value}%
                 </span>

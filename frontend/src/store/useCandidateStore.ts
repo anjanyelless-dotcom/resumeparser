@@ -73,7 +73,7 @@ interface CandidateState {
 }
 
 interface CandidateActions {
-  fetchCandidates: (page?: number, limit?: number, search?: string, company?: string, jobTitle?: string, certification?: string, salaryMin?: number | null, salaryMax?: number | null, myCandidates?: boolean) => Promise<void>;
+  fetchCandidates: (page?: number, limit?: number, search?: string, company?: string, jobTitle?: string, certification?: string, salaryMin?: number | null, salaryMax?: number | null, myCandidates?: boolean, jobId?: string) => Promise<void>;
   fetchCandidate: (id: string) => Promise<void>;
   uploadResume: (file: File, llmProvider?: string, candidateId?: string) => Promise<Candidate>;
   deleteCandidate: (id: string) => Promise<void>;
@@ -95,7 +95,7 @@ export const useCandidateStore = create<CandidateState & CandidateActions>(
     pagination: null,
 
     // Actions
-    fetchCandidates: async (page = 1, limit = 20, search = "", company = "", jobTitle = "", certification = "", salaryMin = null, salaryMax = null, myCandidates = false) => {
+    fetchCandidates: async (page = 1, limit = 20, search = "", company = "", jobTitle = "", certification = "", salaryMin = null, salaryMax = null, myCandidates = false, jobId?: string) => {
       set({ isLoading: true, error: null });
       try {
         const params = new URLSearchParams();
@@ -106,24 +106,13 @@ export const useCandidateStore = create<CandidateState & CandidateActions>(
         if (search) {
           params.append("search", search);
         }
-        if (company) {
-          params.append("company", company);
-        }
-        if (jobTitle) {
-          params.append("job_title", jobTitle);
-        }
-        if (certification) {
-          params.append("certification", certification);
-        }
-        if (salaryMin !== null) {
-          params.append("salary_min", salaryMin.toString());
-        }
-        if (salaryMax !== null) {
-          params.append("salary_max", salaryMax.toString());
-        }
-        if (myCandidates) {
-          params.append("myCandidates", "true");
-        }
+        if (company) params.append("company", company);
+        if (jobTitle) params.append("job_title", jobTitle);
+        if (certification) params.append("certification", certification);
+        if (salaryMin !== null) params.append("salary_min", salaryMin.toString());
+        if (salaryMax !== null) params.append("salary_max", salaryMax.toString());
+        if (myCandidates) params.append("myCandidates", "true");
+        if (jobId) params.append("jobId", jobId);
 
         const response = await api.get(`/candidates?${params.toString()}`);
         console.log("📊 API Response:", response.data);

@@ -21,14 +21,14 @@ export const matchCandidatesToJob = async (
     try {
       // 1. Get job from database by jobId
       const jobQuery = `
-        SELECT j.id, j.title, j.description, j.location, j.min_experience_years, j.max_experience_years, j.salary_range, j.created_at, j.updated_at,
+        SELECT j.id, j.title, j.description, j.location, j.experience_years, j.salary_range, j.created_at, j.updated_at,
                array_agg(DISTINCT js.skill_name) as required_skills,
                array_agg(DISTINCT ps.skill_name) as preferred_skills
         FROM job_descriptions j
         LEFT JOIN job_skills js ON j.id = js.job_id AND js.skill_type = 'required'
         LEFT JOIN job_skills ps ON j.id = ps.job_id AND ps.skill_type = 'preferred'
         WHERE j.id = $1
-        GROUP BY j.id, j.title, j.description, j.location, j.min_experience_years, j.max_experience_years, j.salary_range, j.created_at, j.updated_at
+        GROUP BY j.id, j.title, j.description, j.location, j.experience_years, j.salary_range, j.created_at, j.updated_at
       `;
 
       const jobResult = await client.query(jobQuery, [jobId]);
@@ -149,7 +149,7 @@ export const matchCandidatesToJob = async (
             phone: candidate.phone,
             location: candidate.location,
             summary: candidate.summary,
-            years_of_experience: candidate.years_of_experience,
+            years_of_experience: candidate.years_experience,
             skills: candidateSkills,
             work_history: Array.isArray(candidate.work_history) && candidate.work_history[0] !== null ? candidate.work_history : [],
             education: Array.isArray(candidate.education) ? candidate.education : [],
@@ -335,6 +335,8 @@ export const getAllMatchResults = async (
           matching_skills: row.matched_skills || [],
           missing_skills: row.missing_skills || [],
           extra_skills: [],
+          recruiter_decision: row.recruiter_decision || 'Pending',
+          recruiter_notes: row.recruiter_notes || '',
         };
       });
 
@@ -371,7 +373,7 @@ export const getMatchResultsForJob = async (
 
     try {
       // Get cached match scores from match_scores table
-      const query = `
+      let query = `
         SELECT ms.*, 
                c.full_name as candidate_name,
                c.email as candidate_email,
@@ -384,10 +386,20 @@ export const getMatchResultsForJob = async (
         JOIN candidates c ON ms.candidate_id = c.id
         JOIN job_descriptions j ON ms.job_id = j.id
         WHERE ms.job_id = $1
-        ORDER BY ms.overall_score DESC
       `;
+      
+      const queryParams: any[] = [jobId];
+      const user = (req as any).user;
+      
+      // If user is a recruiter, only show their own candidates
+      if (user && user.role === 'recruiter') {
+        query += ` AND c.created_by_user_id = $2`;
+        queryParams.push(user.id);
+      }
+      
+      query += ` ORDER BY ms.overall_score DESC`;
 
-      const result = await client.query(query, [jobId]);
+      const result = await client.query(query, queryParams);
 
       if (result.rows.length === 0) {
         res.json({
@@ -417,6 +429,8 @@ export const getMatchResultsForJob = async (
           matching_skills: row.matched_skills || [],
           missing_skills: row.missing_skills || [],
           extra_skills: [],
+          recruiter_decision: row.recruiter_decision || 'Pending',
+          recruiter_notes: row.recruiter_notes || '',
         };
       });
 
@@ -651,7 +665,7 @@ export const parseJDAndMatch = async (
           c.phone,
           c.location,
           c.summary,
-          c.years_of_experience as years_experience,
+          c.years_experience,
           c.projects,
           -- Skills array
           (
@@ -734,7 +748,7 @@ export const parseJDAndMatch = async (
         phone: row.phone,
         location: row.location,
         summary: row.summary,
-        years_of_experience: row.years_of_experience,
+        years_of_experience: row.years_experience,
         skills: (row.skills || []).filter(Boolean) as string[],
         work_history: (row.work_history && row.work_history[0] !== null
           ? row.work_history
@@ -777,6 +791,169 @@ export const parseJDAndMatch = async (
     res.status(500).json({
       error: "INTERNAL_ERROR",
       message: "Failed to process Job Description matching.",
+    });
+  }
+};
+
+export const updateRecruiterDecision = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { jobId } = req.params;
+    const { candidates } = req.body as { candidates: { candidate_id: string; decision: string; notes?: string }[] };
+    // Get user id from request (assuming it's set by authenticateToken)
+    const userId = (req as any).user?.id;
+
+    if (!candidates || !Array.isArray(candidates) || candidates.length === 0) {
+      res.status(400).json({
+        error: "INVALID_REQUEST",
+        message: "Please provide a valid list of candidates and decisions",
+      });
+      return;
+    }
+
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+
+      const updateQuery = `
+        UPDATE match_scores
+        SET recruiter_decision = $1, recruiter_notes = $2
+        WHERE job_id = $3 AND candidate_id = $4
+        RETURNING id
+      `;
+
+      for (const c of candidates) {
+        if (!['Pending', 'Shortlisted', 'Rejected'].includes(c.decision)) {
+           throw new Error(`Invalid decision status: ${c.decision}`);
+        }
+        await client.query(updateQuery, [c.decision, c.notes || null, jobId, c.candidate_id]);
+        
+        // Audit log
+        if (userId) {
+           await client.query(`
+             INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
+             VALUES ($1, $2, 'candidate', $3, $4)
+           `, [
+             userId, 
+             c.decision === 'Shortlisted' ? 'candidate_shortlisted' : c.decision === 'Rejected' ? 'candidate_rejected' : 'candidate_decision_updated',
+             c.candidate_id,
+             JSON.stringify({ job_id: jobId, decision: c.decision, notes: c.notes })
+           ]);
+        }
+      }
+
+      await client.query('COMMIT');
+
+      res.json({
+        success: true,
+        message: `Successfully updated ${candidates.length} candidates`
+      });
+    } catch (dbError) {
+      await client.query('ROLLBACK');
+      throw dbError;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error("Error in updateRecruiterDecision:", error);
+    res.status(500).json({
+      error: "INTERNAL_ERROR",
+      message: "Failed to update recruiter decision",
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
+};
+
+export const submitToHiringProcess = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { jobId } = req.params;
+    const { candidateIds } = req.body as { candidateIds: string[] };
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+       res.status(401).json({ error: "UNAUTHORIZED", message: "User not authenticated" });
+       return;
+    }
+
+    if (!candidateIds || !Array.isArray(candidateIds) || candidateIds.length === 0) {
+      res.status(400).json({
+        error: "INVALID_REQUEST",
+        message: "Please provide a valid list of candidate IDs",
+      });
+      return;
+    }
+
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+
+      // Validate job exists
+      const jobRes = await client.query('SELECT id FROM job_descriptions WHERE id = $1', [jobId]);
+      if (jobRes.rowCount === 0) {
+         throw new Error('Job not found');
+      }
+
+      for (const candidateId of candidateIds) {
+        // Validate candidate is shortlisted
+        const matchRes = await client.query('SELECT recruiter_decision FROM match_scores WHERE job_id = $1 AND candidate_id = $2', [jobId, candidateId]);
+        if (matchRes.rowCount === 0 || matchRes.rows[0].recruiter_decision !== 'Shortlisted') {
+            throw new Error(`Candidate ${candidateId} is not shortlisted for this job`);
+        }
+
+        // Check idempotency: not already submitted
+        const subRes = await client.query('SELECT id FROM submissions WHERE job_id = $1 AND candidate_id = $2', [jobId, candidateId]);
+        if (subRes.rowCount && subRes.rowCount > 0) {
+            // Already submitted, skip to prevent duplicates
+            continue;
+        }
+
+        // Insert into submissions (status 'Submitted')
+        await client.query(`
+          INSERT INTO submissions (job_id, candidate_id, submitted_by, status)
+          VALUES ($1, $2, $3, 'Submitted')
+        `, [jobId, candidateId, userId]);
+
+        // Update match_scores to 'Moved To Hiring Process'
+        await client.query(`
+          UPDATE match_scores
+          SET recruiter_decision = 'Moved To Hiring Process'
+          WHERE job_id = $1 AND candidate_id = $2
+        `, [jobId, candidateId]);
+
+        // Audit logging
+        await client.query(`
+             INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
+             VALUES ($1, 'candidate_submitted_to_hiring', 'candidate', $2, $3)
+        `, [
+             userId, 
+             candidateId,
+             JSON.stringify({ job_id: jobId })
+        ]);
+      }
+
+      await client.query('COMMIT');
+
+      res.json({
+        success: true,
+        message: `Successfully submitted candidates to hiring process`
+      });
+    } catch (dbError) {
+      await client.query('ROLLBACK');
+      throw dbError;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error("Error in submitToHiringProcess:", error);
+    res.status(500).json({
+      error: "INTERNAL_ERROR",
+      message: "Failed to submit candidates to hiring process",
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 };

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { MoreVertical, User, Eye, Edit, Download, Trash2, ArrowUpDown, Building, Briefcase } from 'lucide-react';
 import { calculateTotalExperience } from '../../utils/experienceCalculator';
 import { useCandidateStore } from '../../store/useCandidateStore';
 import toast from 'react-hot-toast';
+import PermissionGuard from '../common/PermissionGuard';
 
 type FlexibleCandidate = {
   id: string;
@@ -50,6 +51,7 @@ interface CandidateTableProps {
 
 export default function CandidateTable({ candidates }: CandidateTableProps) {
   const navigate = useNavigate();
+  const { jobId } = useParams<{ jobId: string }>();
   const { deleteCandidate } = useCandidateStore();
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -299,26 +301,30 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
                       </button>
                       {actionMenuOpen === candidate.id && (
                         <div className="absolute right-0 top-8 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 min-w-[180px]">
-                          <button
-                            onClick={() => {
-                              navigate(`/candidates/${candidate.id}`);
-                              setActionMenuOpen(null);
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Candidate
-                          </button>
-                          <button
-                            onClick={() => {
-                              navigate(`/candidates/${candidate.id}?edit=true`);
-                              setActionMenuOpen(null);
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                          >
-                            <Edit className="w-4 h-4" />
-                            Edit Candidate
-                          </button>
+                            <button
+                              onClick={() => {
+                                const route = jobId ? `/recruiter/workspace/${jobId}/candidates/${candidate.id}` : `/candidates/${candidate.id}`;
+                                navigate(route);
+                                setActionMenuOpen(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </button>
+                          <PermissionGuard module="candidates" action="edit" mode="hide">
+                            <button
+                              onClick={() => {
+                                const route = jobId ? `/recruiter/workspace/${jobId}/candidates/${candidate.id}?edit=true` : `/candidates/${candidate.id}?edit=true`;
+                                navigate(route);
+                                setActionMenuOpen(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                            >
+                              <Edit className="w-4 h-4" />
+                              Edit Candidate
+                            </button>
+                          </PermissionGuard>
                           <button
                             onClick={() => {
                               const resumePath = (candidate as any).resume_file_path;
@@ -335,21 +341,23 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
                             Download Resume
                           </button>
                           <div className="border-t border-gray-200 my-1" />
-                          <button
-                            onClick={async () => {
-                              setActionMenuOpen(null);
-                              try {
-                                await deleteCandidate(candidate.id);
-                                toast.success('Candidate deleted successfully');
-                              } catch (error) {
-                                toast.error('Failed to delete candidate');
-                              }
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete Candidate
-                          </button>
+                          <PermissionGuard module="candidates" action="delete" mode="hide">
+                            <button
+                              onClick={async () => {
+                                setActionMenuOpen(null);
+                                try {
+                                  await deleteCandidate(candidate.id);
+                                  toast.success('Candidate deleted successfully');
+                                } catch (error) {
+                                  toast.error('Failed to delete candidate');
+                                }
+                              }}
+                              className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
+                          </PermissionGuard>
                         </div>
                       )}
                     </div>

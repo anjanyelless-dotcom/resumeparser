@@ -518,6 +518,8 @@ CREATE TABLE IF NOT EXISTS match_scores (
     match_summary        TEXT,
     match_label          VARCHAR(50),
     jd_hash              VARCHAR(64),
+    recruiter_decision   VARCHAR(50) DEFAULT 'Pending' CHECK (recruiter_decision IN ('Pending', 'Shortlisted', 'Rejected', 'Moved To Hiring Process')),
+    recruiter_notes      TEXT,
     created_at           TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at           TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE (candidate_id, job_id)
@@ -526,6 +528,7 @@ CREATE TABLE IF NOT EXISTS match_scores (
 CREATE INDEX IF NOT EXISTS idx_match_scores_candidate_id  ON match_scores (candidate_id);
 CREATE INDEX IF NOT EXISTS idx_match_scores_job_id        ON match_scores (job_id);
 CREATE INDEX IF NOT EXISTS idx_match_scores_overall_score ON match_scores (overall_score DESC);
+CREATE INDEX IF NOT EXISTS idx_match_scores_recruiter_decision ON match_scores (recruiter_decision);
 
 -- ============================================================
 -- 22. labeled_data  (human review / training data labels)

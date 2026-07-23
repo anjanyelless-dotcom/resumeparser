@@ -46,7 +46,7 @@ interface SubmissionState {
 interface SubmissionActions {
   createSubmission: (jobId: string, candidateId: string) => Promise<Submission>;
   fetchSubmissions: (page?: number, limit?: number, jobId?: string, candidateId?: string, status?: string) => Promise<void>;
-  fetchMySubmissions: (page?: number, limit?: number) => Promise<void>;
+  fetchMySubmissions: (page?: number, limit?: number, jobId?: string) => Promise<void>;
   fetchSubmissionsForMyClients: (status?: string) => Promise<Submission[]>;
   updateSubmissionStatus: (submissionId: string, status: string, rejectionReason?: string) => Promise<void>;
   updateClientOutcome: (submissionId: string, outcome: 'shortlisted' | 'rejected', notes?: string) => Promise<void>;
@@ -70,7 +70,7 @@ export const useSubmissionStore = create<SubmissionState & SubmissionActions>(
     createSubmission: async (jobId: string, candidateId: string) => {
       set({ isSubmitting: true, error: null });
       try {
-        const response = await api.post('/api/submissions', {
+        const response = await api.post('/submissions', {
           job_id: jobId,
           candidate_id: candidateId
         });
@@ -124,12 +124,15 @@ export const useSubmissionStore = create<SubmissionState & SubmissionActions>(
       }
     },
 
-    fetchMySubmissions: async (page = 1, limit = 20) => {
+    fetchMySubmissions: async (page = 1, limit = 20, jobId?: string) => {
       set({ isLoading: true, error: null });
       try {
         const params = new URLSearchParams();
         params.append("page", page.toString());
         params.append("limit", limit.toString());
+        if (jobId) {
+          params.append("jobId", jobId);
+        }
 
         const response = await api.get(`/submissions/my?${params.toString()}`);
         
@@ -171,7 +174,7 @@ export const useSubmissionStore = create<SubmissionState & SubmissionActions>(
         if (status) {
           params.status = status;
         }
-        const response = await api.get('/api/submissions/for-my-clients', { params });
+        const response = await api.get('/submissions/for-my-clients', { params });
         set({ isLoading: false });
         return response.data.submissions;
       } catch (error: any) {

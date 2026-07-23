@@ -10,13 +10,19 @@ import {
   forceCloseJob,
   getMyAssignments,
   getJobDetails,
+  getPipelineSummary,
   assignRecruiterToJob,
+  updateJobStatus,
   clarifyJob,
   createJobValidation,
   updateJobValidation,
   clarifyJobValidation,
   reassignJobValidation,
   forceCloseJobValidation,
+  assignTeamLeadToJob,
+  removeTeamLeadFromJob,
+  removeRecruiterFromJob,
+  reassignRecruiterToJob,
 } from "../controllers/job.controller";
 import { authenticateToken, requirePermission } from "../middleware/auth.middleware";
 
@@ -34,14 +40,9 @@ const normalizeJobData = (req: Request, res: Response, next: NextFunction) => {
     }
   }
 
-  // 2. Map skills object arrays to string arrays for validation
+  // 2. Map skills object array to string array for validation
   if (Array.isArray(req.body.required_skills)) {
     req.body.required_skills = req.body.required_skills.map((s: any) =>
-      typeof s === "string" ? s : s.skill_name || ""
-    ).filter((s: string) => s.trim().length > 0);
-  }
-  if (Array.isArray(req.body.preferred_skills)) {
-    req.body.preferred_skills = req.body.preferred_skills.map((s: any) =>
       typeof s === "string" ? s : s.skill_name || ""
     ).filter((s: string) => s.trim().length > 0);
   }
@@ -60,27 +61,23 @@ const normalizeJobData = (req: Request, res: Response, next: NextFunction) => {
     req.body.education_level = eduMap[key] || "any";
   }
 
-  // 4. Experience fields: prefer explicit min/max; keep legacy experience_years as fallback
-  if (req.body.experience_years !== undefined) {
-    // If frontend sends legacy experience_years and no min/max, map it to min_experience_years
-    if (req.body.min_experience_years === undefined) {
-      req.body.min_experience_years = req.body.experience_years;
-    }
-    if (req.body.max_experience_years === undefined) {
-      req.body.max_experience_years = req.body.experience_years;
-    }
-    // Remove legacy field so model/controller use min/max primarily
-    delete req.body.experience_years;
+  // Keep min_experience_years for validation
+  if (req.body.min_experience_years !== undefined) {
+    req.body.experience_years = req.body.min_experience_years;
   }
 
-  // 5. Remove fields that don't exist in database schema (kept permissive to avoid stripping known fields)
+  // Map status from frontend to approval_status
+  if (req.body.status !== undefined) {
+    req.body.approval_status = req.body.status;
+    delete req.body.status;
+  }
+
+  // 5. Remove fields that don't exist in database schema
   const allowedFields = [
-    'title', 'description', 'required_skills', 'preferred_skills', 'department', 'location',
-    'employment_type', 'work_mode', 'min_experience_years', 'max_experience_years',
-    'education_level', 'education_requirement', 'salary_min', 'salary_max', 'salary_range',
-    'currency', 'salary_period', 'number_of_openings', 'notice_period', 'status', 'client_id',
-    'manual_client_name', 'country', 'state', 'city', 'pincode', 'latitude', 'longitude',
-    'location_source'
+    'title', 'description', 'required_skills', 'department', 'location',
+    'employment_type', 'experience_years', 'min_experience_years', 'max_experience_years', 'salary_min', 'salary_max',
+    'status', 'client_id', 'approval_status', 'recruitment_status',
+    'education_level', 'number_of_openings',
   ];
   Object.keys(req.body).forEach(key => {
     if (!allowedFields.includes(key)) {
@@ -379,7 +376,7 @@ router.get("/options", getJobOptions);
  *       500:
  *         description: Internal server error
  */
-router.get("/my-assignments", requirePermission("requirements", "view_assigned"), async (req, res) => {
+router.get("/my-assignments", requirePermission("requirements", "view"), async (req, res) => {
   try {
     console.log('[Route /my-assignments] Request received');
     await getMyAssignments(req as any, res);
@@ -816,6 +813,31 @@ router.get("/:id/details", getJobDetails);
 
 /**
  * @swagger
+ * /api/jobs/{id}/pipeline-summary:
+ *   get:
+ *     summary: Get pipeline summary for a job
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Job ID
+ *     responses:
+ *       200:
+ *         description: Pipeline summary retrieved successfully
+ *       404:
+ *         description: Job not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/:id/pipeline-summary", getPipelineSummary);
+
+/**
+ * @swagger
  * /recruiter/requirements:
  *   get:
  *     summary: Get recruiter's assigned job requirements (alias for /api/jobs/my-assignments)
@@ -894,7 +916,7 @@ router.get("/:id/details", getJobDetails);
  *       500:
  *         description: Internal server error
  */
-router.get("/recruiter/requirements", requirePermission("requirements", "view_assigned"), getMyAssignments);
+router.get("/recruiter/requirements", requirePermission("requirements", "view"), getMyAssignments);
 
 /**
  * @swagger
@@ -967,6 +989,109 @@ router.get("/recruiter/requirements", requirePermission("requirements", "view_as
  *       500:
  *         description: Internal server error
  */
-router.post("/:id/assign-recruiter", requirePermission("requirements", "assign_recruiters"), assignRecruiterToJob);
+router.post("/:id/assign-recruiter", requirePermission("requirements", "assign"), assignRecruiterToJob);
+
+/**
+ * @swagger
+ * /api/jobs/{id}/reassign-recruiter:
+ *   patch:
+ *     summary: Reassign a recruiter for a job
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.patch("/:id/reassign-recruiter", requirePermission("requirements", "assign"), reassignRecruiterToJob);
+
+/**
+ * @swagger
+ * /api/jobs/{id}/remove-recruiter:
+ *   patch:
+ *     summary: Remove a recruiter from a job
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.patch("/:id/remove-recruiter", requirePermission("requirements", "assign"), removeRecruiterFromJob);
+
+/**
+ * @swagger
+ * /api/jobs/{id}/assign-team-lead:
+ *   post:
+ *     summary: Assign a team lead to a job
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Job ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - team_lead_id
+ *             properties:
+ *               team_lead_id:
+ *                 type: string
+ *                 description: Team Lead ID to assign
+ *     responses:
+ *       200:
+ *         description: Team lead assigned successfully
+ *
+ * @swagger
+ * /api/jobs/{id}/status:
+ *   patch:
+ *     summary: Update job status
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [draft, pending_approval, open, closed, on_hold]
+ *     responses:
+ *       200:
+ *         description: Job status updated successfully
+ *       400:
+ *         description: Bad Request
+ *       404:
+ *         description: Job not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/:id/assign-team-lead", requirePermission("requirements", "assign"), assignTeamLeadToJob);
+router.patch("/:id/remove-team-lead", requirePermission("requirements", "assign"), removeTeamLeadFromJob);
+
+router.patch("/:id/status", requirePermission("jobs", "update"), updateJobStatus);
 
 export default router;

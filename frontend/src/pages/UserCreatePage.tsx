@@ -1,13 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserStore } from "../store/useUserStore";
 import toast from "react-hot-toast";
 import { ArrowLeft, Save, User } from "lucide-react";
+import api from "../services/api";
+import { formatRoleName, filterInternalRoles } from "../utils/roles";
 
 export default function UserCreatePage() {
   const navigate = useNavigate();
   const { createUser } = useUserStore();
   const [loading, setLoading] = useState(false);
+  const [roles, setRoles] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const res = await api.get("/permissions/roles");
+        const filteredRoles = filterInternalRoles(res.data.roles || []);
+        setRoles(filteredRoles);
+      } catch (err) {
+        console.error("Failed to load roles", err);
+      }
+    };
+    fetchRoles();
+  }, []);
   
   const [formData, setFormData] = useState({
     email: "",
@@ -97,13 +113,17 @@ export default function UserCreatePage() {
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                disabled={roles.length === 0}
               >
-                <option value="recruiter">Recruiter</option>
-                <option value="team_lead">Team Lead</option>
-                <option value="client_manager">Client Manager</option>
-                <option value="bdm">Business Development Manager</option>
-                <option value="admin">Admin</option>
-                <option value="viewer">Viewer</option>
+                {roles.length > 0 ? (
+                  roles.map((role) => (
+                    <option key={role.id} value={role.name}>
+                      {formatRoleName(role.name)}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">Loading roles...</option>
+                )}
               </select>
               <p className="mt-1 text-xs text-gray-500">
                 Select the appropriate role for this user

@@ -52,13 +52,23 @@ export const registerUser = async (
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
+    // Fetch role_id from roles table
+    const roleResult = await query(
+      "SELECT id FROM roles WHERE name = $1",
+      [role]
+    );
+    let roleId = null;
+    if (roleResult.rows.length > 0) {
+      roleId = roleResult.rows[0].id;
+    }
+
     // Create user
     const id = uuidv4();
     const result = await query(
-      `INSERT INTO users (id, email, hashed_password, role, is_active, tenant_id, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) 
-       RETURNING id, email, role, created_at`,
-      [id, email, passwordHash, role, true, "default", new Date()],
+      `INSERT INTO users (id, email, hashed_password, role, role_id, is_active, tenant_id, created_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       RETURNING id, email, role, role_id, created_at`,
+      [id, email, passwordHash, role, roleId, true, "default", new Date()],
     );
 
     const user = result.rows[0];
@@ -69,6 +79,7 @@ export const registerUser = async (
         id: user.id,
         email: user.email,
         role: user.role,
+        roleId: user.role_id,
       },
       process.env.JWT_SECRET || "fallback-secret",
       { expiresIn: "24h" },
@@ -80,6 +91,7 @@ export const registerUser = async (
         id: user.id,
         email: user.email,
         role: user.role,
+        roleId: user.role_id,
         created_at: user.created_at,
       },
       token,
@@ -102,7 +114,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
     // Find user with role information
     const result = await query(
-      `SELECT u.id, u.email, u.hashed_password, u.role, u.created_at
+      `SELECT u.id, u.email, u.hashed_password, u.role, u.role_id, u.created_at
        FROM users u 
        WHERE u.email = $1`,
       [email],
@@ -132,21 +144,23 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
         id: user.id,
         email: user.email,
         role: user.role,
+        roleId: user.role_id,
       },
       process.env.JWT_SECRET || "fallback-secret",
       { expiresIn: "24h" },
     );
 
-    res.json({
-      message: "Login successful",
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.email.split('@')[0], // Generate name from email
-        role: user.role,
-        created_at: user.created_at,
-      },
-      token,
+      res.json({
+        message: "Login successful",
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.email.split('@')[0], // Generate name from email
+          role: user.role,
+          roleId: user.role_id,
+          created_at: user.created_at,
+        },
+        token,
     });
   } catch (error) {
     console.error("Login error:", error);

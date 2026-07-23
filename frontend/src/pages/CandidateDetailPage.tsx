@@ -8,7 +8,7 @@ import { calculateTotalExperience } from "../utils/experienceCalculator";
 type TabType = "overview" | "skills" | "experience" | "education";
 
 export default function CandidateDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, jobId } = useParams<{ id: string; jobId?: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -39,7 +39,8 @@ export default function CandidateDetailPage() {
       await fetchCandidate(candidateId);
     } catch (error) {
       toast.error("Failed to load candidate");
-      navigate("/candidates");
+      const backRoute = jobId ? `/recruiter/workspace/${jobId}/candidates` : "/candidates";
+      navigate(backRoute);
     }
   };
 
@@ -105,6 +106,22 @@ export default function CandidateDetailPage() {
 
   return (
     <div className="p-6">
+      {/* Back Navigation */}
+      <div className="mb-4">
+        <button
+          onClick={() => {
+            const backRoute = jobId ? `/recruiter/workspace/${jobId}/candidates` : "/candidates";
+            navigate(backRoute);
+          }}
+          className="flex items-center text-gray-500 hover:text-indigo-600 transition-colors"
+        >
+          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Candidates
+        </button>
+      </div>
+
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
         <div className="flex items-start justify-between">

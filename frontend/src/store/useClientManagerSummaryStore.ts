@@ -31,7 +31,7 @@ export const useClientManagerSummaryStore = create<ClientManagerSummaryState & C
     fetchSummary: async () => {
       set({ isLoading: true, error: null });
       try {
-        const response = await api.get('/api/dashboard/client-manager-summary');
+        const response = await api.get('/dashboard/client-manager-summary');
         
         set({
           summary: response.data,

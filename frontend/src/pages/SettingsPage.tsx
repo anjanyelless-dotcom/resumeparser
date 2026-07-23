@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import LabelingPage from "./LabelingPage";
 import PermissionManagementPage from "./PermissionManagementPage";
 import PipelineStagesPage from "./PipelineStagesPage";
@@ -10,7 +11,36 @@ import AuditLogPage from "./AuditLogPage";
 import DuplicateReviewPage from "./DuplicateReviewPage";
 
 export default function SettingsPage() {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<"general" | "labeling" | "permissions" | "pipeline-stages" | "email-templates" | "notifications" | "users" | "audit-logs" | "duplicates">("general");
+
+  useEffect(() => {
+    // Detect tab from URL pathname (e.g. /settings/audit-logs)
+    const pathSuffix = location.pathname.replace('/settings', '').replace('/', '');
+    console.log('Path suffix:', pathSuffix);
+    
+    if (pathSuffix === 'audit-logs') {
+      setActiveTab('audit-logs');
+      return;
+    }
+    if (pathSuffix === 'notifications') {
+      setActiveTab('notifications');
+      return;
+    }
+    if (pathSuffix === 'labeling') {
+      setActiveTab('labeling');
+      return;
+    }
+
+    // Detect tab from navigation state
+    if (location.state?.activeTab) {
+      if (location.state.activeTab === "roles") {
+        setActiveTab("permissions");
+      } else {
+        setActiveTab(location.state.activeTab as any);
+      }
+    }
+  }, [location.state, location.pathname]);
 
   return (
     <div className="p-6 min-h-full bg-gray-50">

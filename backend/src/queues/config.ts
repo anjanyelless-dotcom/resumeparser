@@ -10,6 +10,11 @@ const redisConfig = {
   lazyConnect: true,
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
+  retryStrategy: (times: number) => {
+    // Suppress connection errors by returning a delay instead of throwing immediately
+    // Wait 5 seconds before retrying to prevent spamming logs
+    return Math.min(times * 1000, 5000);
+  }
 };
 
 // Export config for BullMQ (it will create its own Redis connection)

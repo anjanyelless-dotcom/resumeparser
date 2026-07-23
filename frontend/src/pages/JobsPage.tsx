@@ -1,8 +1,15 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import PermissionGuard from "../components/common/PermissionGuard";
 import { useJobStore } from "../store/useJobStore";
 import toast from "react-hot-toast";
 import { api } from "../services/api";
+import AssignTeamLeadModal from "../components/team/AssignTeamLeadModal";
+import AssignRecruitersModal from "../components/team/AssignRecruitersModal";
+import JobProgressDrawer from "../components/jobs/JobProgressDrawer";
+import JobDetailsDrawer from "../components/jobs/JobDetailsDrawer";
+import { JobCard } from "../components/jobs/JobCard";
+import { MoreVertical } from "lucide-react";
 import { Country, State, City } from "country-state-city";
 
 interface Job {
@@ -50,6 +57,43 @@ interface Job {
   latitude?: string;
   longitude?: string;
   location_source?: "manual" | "pincode" | "geolocation";
+  // Dashboard Metrics
+  priority?: string;
+  team_lead_id?: string;
+  team_lead_name?: string;
+  team_lead_assignment_status?: string;
+  recruiters_assigned_count?: number;
+  recruiter_capacity_max?: number;
+  total_openings?: number;
+  filled_positions?: number;
+  remaining_positions?: number;
+  total_candidates?: number;
+  parsed?: number;
+  jd_matched?: number;
+  ai_matched?: number;
+  shortlisted?: number;
+  submitted?: number;
+  interviews?: number;
+  offers?: number;
+  joined?: number;
+  placements?: number;
+  current_recruitment_stage?: string;
+  next_action?: string;
+  next_action_type?: "MODAL" | "PAGE" | "NONE";
+  next_action_route?: string;
+  action_enabled?: boolean;
+  action_message?: string;
+  job_health_indicator?: string;
+  recruitment_progress_percentage?: number;
+  completed_stages?: string[];
+  pending_stages?: string[];
+  available_actions?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    enabled: boolean;
+    message: string;
+  }>;
 }
 
 interface JobFormData {
@@ -347,7 +391,31 @@ export const reverseGeocodeLocation = async (
 
 export default function JobsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedJobForTeamLead, setSelectedJobForTeamLead] = useState<Job | null>(null);
+  const [showAssignRecruitersModal, setShowAssignRecruitersModal] = useState(false);
+  const [selectedJobForRecruiters, setSelectedJobForRecruiters] = useState<Job | null>(null);
+  const [selectedJobForProgress, setSelectedJobForProgress] = useState<Job | null>(null);
+  const [selectedJobForDetails, setSelectedJobForDetails] = useState<Job | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Open create form via navigation state (from dashboard quick actions)
+    if (location.state?.showCreateModal) {
+      setIsCreateModalOpen(true);
+      window.history.replaceState({}, document.title);
+      return;
+    }
+    // Also support ?create=true query param (from /jobs?create=true links)
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('create') === 'true') {
+      setIsCreateModalOpen(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, location.search]);
+
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [currentSkill, setCurrentSkill] = useState("");
   const [currentPreferredSkill, setCurrentPreferredSkill] = useState("");
@@ -378,7 +446,56 @@ const [manualClientName, setManualClientName] = useState("");
     });
   };
 
-  
+
+
+
+  const handleActionClick = async (job: Job, action: any) => {
+    if (!action.enabled) {
+      if (action.message) {
+        toast.error(action.message);
+      }
+      return;
+    }
+
+    switch (action.id) {
+      case "assign_team_lead":
+      case "tl_assign":
+      case "tl_reassign":
+        setSelectedJobForTeamLead(job);
+        setShowAssignModal(true);
+        break;
+      case "tl_remove":
+        if (window.confirm("Are you sure you want to remove the Team Lead assignment?")) {
+          try {
+            await api.patch(`/jobs/${job.id}/remove-team-lead`, {
+              removal_reason: "Manual Removal"
+            });
+            toast.success("Team Lead removed successfully");
+            fetchJobs();
+          } catch (error: any) {
+            toast.error(error.response?.data?.error || error.message || "Failed to remove Team Lead");
+          }
+        }
+        break;
+      case "rec_assign":
+      case "rec_manage":
+      case "rec_assign_additional":
+        setSelectedJobForRecruiters(job);
+        setShowAssignRecruitersModal(true);
+        break;
+      case "edit_job":
+        openEditModal(job);
+        break;
+      case "close_job":
+        handleDeleteJob(job.id);
+        break;
+      case "view_progress":
+        navigate(`/jobs/${job.id}`);
+        break;
+      default:
+        console.warn("Unknown action:", action.id);
+    }
+  };
 
   const normalizeSkill = (skill: string) => {
     const trimmed = skill.trim();
@@ -410,6 +527,7 @@ const [manualClientName, setManualClientName] = useState("");
     fetchJobs,
     createJob,
     updateJob,
+    updateJobStatus,
     isLoading: storeLoading,
   } = useJobStore();
 
@@ -467,7 +585,13 @@ const [manualClientName, setManualClientName] = useState("");
 
   const loadJobs = async () => {
     try {
-      await fetchJobs();
+      const searchParams = new URLSearchParams(location.search);
+      const statusParam = searchParams.get('status');
+      
+      const params: any = {};
+      if (statusParam) params.status = statusParam;
+      
+      await fetchJobs(params);
     } catch (error) {
       toast.error("Failed to load jobs");
     }
@@ -931,13 +1055,6 @@ const [manualClientName, setManualClientName] = useState("");
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   return (
     <div className="p-6">
@@ -947,22 +1064,17 @@ const [manualClientName, setManualClientName] = useState("");
           <h1 className="text-2xl font-bold text-gray-900">Job Management</h1>
           <p className="text-gray-600">Create and manage job postings</p>
         </div>
-        {!isCreateModalOpen && (
-          <button
-            onClick={openCreateModal}
-            className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
-          >
-            <svg
-              className="h-5 w-5 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <PermissionGuard module="jobs" action="create">
+            <button
+              onClick={openCreateModal}
+              className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors shadow-sm text-sm font-medium"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Create Job
-          </button>
-        )}
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Create Job</span>
+            </button>
+          </PermissionGuard>
       </div>
 
       {/* Inline Create/Edit Form */}
@@ -1637,171 +1749,72 @@ const [manualClientName, setManualClientName] = useState("");
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
         </div>
-      ) : jobs && jobs.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {jobs.map((job) => (
-            <div
-              key={job.id}
-              className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6 flex flex-col h-full"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
+      ) : jobs && jobs.length > 0 ? (() => {
+        const isTeamLeadTab = location.pathname.includes('/team-lead-assignment');
+        const isRecruiterTab = location.pathname.includes('/recruiter-assignment');
+        const isJobsTab = !isTeamLeadTab && !isRecruiterTab;
+        
+        const variant = isTeamLeadTab ? "TEAM_LEAD" : isRecruiterTab ? "RECRUITER" : "JOB";
 
-                  </div>
-                  <p className="text-sm text-gray-600">{job.department}</p>
-                </div>
-                <button
-                  onClick={() => updateJob(job.id, { status: job.status === "active" ? "closed" : "active" })}
-                  className={`px-2 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer hover:opacity-80 ${getStatusColor(job.status)}`}
-                  title="Click to toggle status"
-                >
-                  {job.status}
-                </button>
-              </div>
+        const filteredJobs = jobs.filter(job => {
+          if (isTeamLeadTab) {
+            return job.current_recruitment_stage === "Waiting Team Lead Assignment" || job.team_lead_id || job.team_lead_name;
+          }
+          if (isRecruiterTab) {
+            return job.current_recruitment_stage === "Recruiter Assignment" || (job.recruiters_assigned_count && job.recruiters_assigned_count > 0);
+          }
+          if (location.pathname.includes('/requirement-approval')) {
+            return job.current_recruitment_stage === "Requirement Review";
+          }
+          return true;
+        });
 
-              {/* Description Preview */}
-              {job.description && (
-                <div 
-                  className="mb-4 cursor-pointer group"
-                  onClick={() => toggleDescription(job.id)}
-                >
-                  <p className={`text-sm text-gray-600 ${expandedDescriptions.has(job.id) ? '' : 'line-clamp-2'}`}>
-                    {job.description}
-                  </p>
-                  {job.description.length > 100 && (
-                    <span className="text-xs text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity mt-1 inline-block font-medium">
-                      {expandedDescriptions.has(job.id) ? "Show less" : "Show more"}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Job Details Grid */}
-              <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-4">
-                <div className="flex items-center text-xs text-gray-600">
-                  <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                  <span className="truncate">{job.location || "Location not set"}</span>
-                </div>
-                <div className="flex items-center text-xs text-gray-600">
-                  <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                  <span className="truncate">{job.employment_type || "Type not set"}</span>
-                </div>
-                <div className="flex items-center text-xs text-gray-600">
-                  <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  <span className="truncate">{job.min_experience_years}-{job.max_experience_years} years</span>
-                </div>
-                <div className="flex items-center text-xs text-gray-600">
-                  <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                  <span className="truncate">{job.education_requirement || "Education not set"}</span>
-                </div>
-                {job.work_mode && (
-                  <div className="flex items-center text-xs text-gray-600">
-                    <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                    <span className="truncate">{job.work_mode}</span>
-                  </div>
-                )}
-                {(job.salary_min || job.salary_max) && (
-                  <div className="flex items-center text-xs text-gray-600 col-span-2">
-                    <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span className="truncate">
-                      {job.salary_min ? job.salary_min : '0'} - {job.salary_max ? job.salary_max : '0'} {job.currency || 'USD'} {job.salary_period ? `/${job.salary_period}` : ''}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Skills */}
-              <div className="mb-4 space-y-3 flex-1">
-                {job.required_skills && job.required_skills.length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">Must Have</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(expandedSkills.has(job.id) ? job.required_skills : job.required_skills.slice(0, 3)).map((skill, index) => (
-                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
-                          {typeof skill === 'string' ? skill : skill.skill_name}
-                        </span>
-                      ))}
-                      {!expandedSkills.has(job.id) && job.required_skills.length > 3 && (
-                        <span 
-                          onClick={() => toggleSkills(job.id)}
-                          className="px-2 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded cursor-pointer transition-colors"
-                        >
-                          +{job.required_skills.length - 3} more
-                        </span>
-                      )}
-                      {expandedSkills.has(job.id) && job.required_skills.length > 3 && (
-                        <span 
-                          onClick={() => toggleSkills(job.id)}
-                          className="px-2 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded cursor-pointer transition-colors"
-                        >
-                          Show less
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {job.preferred_skills && job.preferred_skills.length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">Good to Have</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(expandedSkills.has(job.id) ? job.preferred_skills : job.preferred_skills.slice(0, 3)).map((skill, index) => (
-                        <span key={index} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">
-                          {typeof skill === 'string' ? skill : skill.skill_name}
-                        </span>
-                      ))}
-                      {!expandedSkills.has(job.id) && job.preferred_skills.length > 3 && (
-                        <span 
-                          onClick={() => toggleSkills(job.id)}
-                          className="px-2 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded cursor-pointer transition-colors"
-                        >
-                          +{job.preferred_skills.length - 3} more
-                        </span>
-                      )}
-                      {expandedSkills.has(job.id) && job.preferred_skills.length > 3 && (
-                        <span 
-                          onClick={() => toggleSkills(job.id)}
-                          className="px-2 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded cursor-pointer transition-colors"
-                        >
-                          Show less
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Card Footer */}
-              <div className="flex justify-between items-center text-xs text-gray-400 mb-3">
-                <span>Created: {formatDate(job.created_at)}</span>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200 mt-auto">
-                <button
-                  onClick={() => navigate("/matching", { state: { jobId: job.id } })}
-                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center bg-indigo-50 px-3 py-1.5 rounded-md transition-colors"
-                >
-                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  Match
-                </button>
-                <div className="flex space-x-3">
-                  <button onClick={() => openEditModal(job)} className="text-indigo-600 hover:text-indigo-700 text-sm font-medium transition-colors">
-                    Edit
-                  </button>
-                  <button onClick={() => handleDeleteJob(job.id)} className="text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
-                    Close
-                  </button>
-                </div>
-              </div>
+        if (filteredJobs.length === 0) {
+          let emptyTitle = "No jobs found";
+          let emptyDesc = "There are currently no jobs waiting for action in this workflow stage.";
+          
+          if (isTeamLeadTab) {
+            emptyTitle = "No Jobs Waiting for Team Lead Assignment";
+            emptyDesc = "All jobs have been assigned team leads.";
+          } else if (isRecruiterTab) {
+            emptyTitle = "No Jobs Waiting for Recruiter Assignment";
+            emptyDesc = "All jobs have been assigned recruiters.";
+          } else if (isJobsTab) {
+             emptyTitle = "No Jobs Found";
+             emptyDesc = "Get started by creating your first job posting.";
+          }
+          return (
+            <div className="bg-white rounded-lg border border-gray-200 p-12 text-center col-span-full">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">{emptyTitle}</h3>
+              <p className="mt-1 text-sm text-gray-500">{emptyDesc}</p>
             </div>
-          ))}
-        </div>
-      ) : (
+          );
+        }
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredJobs.map((job) => (
+              <JobCard
+                key={job.id}
+                job={job as any}
+                variant={variant as any}
+                onActionClick={handleActionClick as any}
+                onViewDetails={() => setSelectedJobForDetails(job)}
+                onViewProgress={() => setSelectedJobForProgress(job)}
+                onToggleStatus={(j) => updateJob((j as any).id, { status: (j as any).status === "active" ? "closed" : "active" })}
+                onEditJob={(j) => setEditingJob(j as any)}
+                onCopyLink={(j) => {
+                  navigator.clipboard.writeText(`${window.location.origin}/jobs/${j.id}`);
+                  toast.success("Link copied to clipboard");
+                }}
+              />
+            ))}
+          </div>
+        );
+      })() : (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -1810,6 +1823,51 @@ const [manualClientName, setManualClientName] = useState("");
           <p className="mt-1 text-sm text-gray-500">Get started by creating your first job posting</p>
         </div>
       )}
+      {/* Team Lead Assignment Modal */}
+      {selectedJobForTeamLead && (
+        <AssignTeamLeadModal
+          isOpen={showAssignModal}
+          onClose={() => {
+            setShowAssignModal(false);
+            setSelectedJobForTeamLead(null);
+          }}
+          jobId={selectedJobForTeamLead.id}
+          jobTitle={selectedJobForTeamLead.title}
+          currentTeamLeadId={selectedJobForTeamLead.team_lead_id}
+          onAssign={() => {
+            fetchJobs(); // Assuming fetchJobs exists in this component
+          }}
+        />
+      )}
+
+      {/* Recruiter Assignment Modal */}
+      {selectedJobForRecruiters && (
+        <AssignRecruitersModal
+          isOpen={showAssignRecruitersModal}
+          onClose={() => {
+            setShowAssignRecruitersModal(false);
+            setSelectedJobForRecruiters(null);
+          }}
+          jobId={selectedJobForRecruiters.id}
+          jobTitle={selectedJobForRecruiters.title}
+          onAssign={() => {
+            fetchJobs();
+          }}
+        />
+      )}
+
+      {/* Progressive Disclosure Drawers */}
+      <JobProgressDrawer
+        isOpen={!!selectedJobForProgress}
+        onClose={() => setSelectedJobForProgress(null)}
+        job={selectedJobForProgress}
+      />
+      
+      <JobDetailsDrawer
+        isOpen={!!selectedJobForDetails}
+        onClose={() => setSelectedJobForDetails(null)}
+        job={selectedJobForDetails}
+      />
     </div>
   );
 }

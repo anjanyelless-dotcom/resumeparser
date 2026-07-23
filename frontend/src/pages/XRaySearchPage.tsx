@@ -50,8 +50,31 @@ export default function XRaySearchPage() {
   const [filters, setFilters] = useState<FilterCriteria>({});
   const [xrayResults, setXrayResults] = useState<XRayResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [emptySearchAttempted, setEmptySearchAttempted] = useState(false);
+
+  const isFiltersEmpty = (criteria: FilterCriteria) => {
+    return !criteria.role && 
+           (!criteria.skills || criteria.skills.length === 0) &&
+           criteria.minExperience === undefined &&
+           criteria.maxExperience === undefined &&
+           (!criteria.locations || criteria.locations.length === 0) &&
+           (!criteria.education || criteria.education.length === 0) &&
+           (!criteria.noticePeriod || criteria.noticePeriod.length === 0) &&
+           (!criteria.currentCompany || criteria.currentCompany.length === 0) &&
+           (!criteria.employmentType || criteria.employmentType.length === 0) &&
+           !criteria.manualLocation &&
+           !criteria.manualCompany &&
+           !criteria.manualEducation;
+  };
 
   const handleGenerateXRay = async () => {
+    if (isFiltersEmpty(filters)) {
+      setEmptySearchAttempted(true);
+      setXrayResults(null);
+      return;
+    }
+    
+    setEmptySearchAttempted(false);
     try {
       setLoading(true);
       const response = await api.post<XRayResponse>("/candidates/xray-search", {
@@ -139,7 +162,17 @@ export default function XRaySearchPage() {
             </div>
           )}
 
-          {!loading && !xrayResults && (
+          {!loading && !xrayResults && emptySearchAttempted ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <ExternalLink className="h-16 w-16 text-slate-300" />
+              <h3 className="mt-4 text-lg font-bold text-slate-900">
+                No X-Ray Queries Generated Yet
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Please provide at least one search criterion (e.g., Role, Skill, or Location) before generating X-Ray search queries.
+              </p>
+            </div>
+          ) : !loading && !xrayResults && (
             <div className="flex flex-col items-center justify-center p-12 text-center">
               <ExternalLink className="h-16 w-16 text-slate-300" />
               <h3 className="mt-4 text-lg font-semibold text-slate-900">

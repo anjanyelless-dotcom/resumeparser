@@ -3,14 +3,17 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useClientStore } from "../store/useClientStore";
 import { useCommunicationStore } from "../store/useCommunicationStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { usePermissionStore } from "../store/usePermissionStore";
 import toast from "react-hot-toast";
 import { Building2, ArrowLeft, Phone, Mail, Users, Plus, Trash2, Edit2, Archive, MessageSquare, Calendar } from "lucide-react";
 import EditableField from "../components/candidate-detail/EditableField";
+import PermissionGuard from "../components/common/PermissionGuard";
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { hasPermission } = usePermissionStore();
   const { currentClient, contacts, isLoading, fetchClient, fetchClientContacts, updateClient, createContact, updateContact, deleteContact, archiveClient } = useClientStore();
   const { communications, createCommunication, getCommunications } = useCommunicationStore();
   
@@ -41,9 +44,10 @@ export default function ClientDetailPage() {
     if (id) {
       fetchClient(id).then(() => {
         // Check ownership after fetching
-        if (currentClient && user?.role === 'bdm' && currentClient.owner_user_id !== user.id) {
+        const canViewAll = hasPermission("clients", "view");
+        if (currentClient && !canViewAll && currentClient.owner_user_id !== user?.id) {
           toast.error("You can only view your own clients");
-          navigate("/bdm/pipeline");
+          navigate("/");
         }
       });
       fetchClientContacts(id);
@@ -161,14 +165,16 @@ export default function ClientDetailPage() {
             <ArrowLeft className="w-4 h-4" />
             Back to Clients
           </button>
-          <button
-            onClick={handleArchive}
-            disabled={currentClient.is_archived}
-            className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Archive className="w-4 h-4" />
-            {currentClient.is_archived ? "Archived" : "Archive Client"}
-          </button>
+          <PermissionGuard module="clients" action="delete" mode="hide">
+            <button
+              onClick={handleArchive}
+              disabled={currentClient.is_archived}
+              className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Archive className="w-4 h-4" />
+              {currentClient.is_archived ? "Archived" : "Archive Client"}
+            </button>
+          </PermissionGuard>
         </div>
 
         {/* Client Header */}
@@ -268,17 +274,19 @@ export default function ClientDetailPage() {
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-medium text-gray-900">Contacts</h2>
-              <button
-                onClick={() => {
-                  setEditingContact(null);
-                  setContactForm({ contact_name: "", designation: "", email: "", phone: "", is_primary: false });
-                  setShowContactForm(true);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
-                <Plus className="w-4 h-4" />
-                Add Contact
-              </button>
+              <PermissionGuard module="clients" action="edit" mode="hide">
+                <button
+                  onClick={() => {
+                    setEditingContact(null);
+                    setContactForm({ contact_name: "", designation: "", email: "", phone: "", is_primary: false });
+                    setShowContactForm(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Contact
+                </button>
+              </PermissionGuard>
             </div>
 
             {/* Contact Form */}
@@ -402,18 +410,22 @@ export default function ClientDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleContactEdit(contact)}
-                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleContactDelete(contact.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <PermissionGuard module="clients" action="edit" mode="hide">
+                        <>
+                          <button
+                            onClick={() => handleContactEdit(contact)}
+                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleContactDelete(contact.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      </PermissionGuard>
                     </div>
                   </div>
                 ))}
@@ -426,22 +438,24 @@ export default function ClientDetailPage() {
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-medium text-gray-900">Communications</h2>
-              <button
-                onClick={() => {
-                  setCommunicationForm({
-                    contact_id: "",
-                    communication_type: "call",
-                    subject: "",
-                    notes: "",
-                    follow_up_date: "",
-                  });
-                  setShowCommunicationForm(true);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
-                <Plus className="w-4 h-4" />
-                Add Entry
-              </button>
+              <PermissionGuard module="communications" action="create" mode="hide">
+                <button
+                  onClick={() => {
+                    setCommunicationForm({
+                      contact_id: "",
+                      communication_type: "call",
+                      subject: "",
+                      notes: "",
+                      follow_up_date: "",
+                    });
+                    setShowCommunicationForm(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Entry
+                </button>
+              </PermissionGuard>
             </div>
 
             {/* Communication Form */}

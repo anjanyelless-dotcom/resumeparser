@@ -1,5 +1,74 @@
+# Dependencies
+node_modules/
+venv/
+env/
+.venv/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+.env.*.local
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.nuxt/
+.cache/
+
+# AI Service models and large files
 ai-service/models/
 ai-service/models.tar.gz
-ai-service/models.tar.gz
-.vercel
-.env*
+ai-service/models-test/
+ai-service/logs/
+ai-service/debug_logs_*.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+coverage/
+.nyc_output/
+
+# Uploads and storage
+uploads/
+storage/
+temp/
+tmp/
+
+# Database
+*.sqlite
+*.db
+
+# Deployment
+.vercel/
+.netlify/
+
+# Build artifacts
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db

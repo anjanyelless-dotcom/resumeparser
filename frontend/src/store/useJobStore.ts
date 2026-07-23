@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
 
-interface Job {
+export interface Job {
   id: string;
   title: string;
   description: string;
@@ -23,6 +23,8 @@ interface Job {
   salary_max?: number;
   currency?: string;
   salary_period?: string;
+  client_id?: string;
+  manual_client_name?: string;
   number_of_openings?: number;
   notice_period?: string;
   required_skills?: Array<{
@@ -35,12 +37,61 @@ interface Job {
     skill_name: string;
     skill_type: "required" | "preferred";
   }>;
+  // Dashboard Metrics
+  priority?: string;
+  team_lead_id?: string;
+  team_lead_name?: string;
+  team_lead_assignment_status?: string;
+  recruiters_assigned_count?: number;
+  recruiter_capacity_max?: number;
+  total_openings?: number;
+  filled_positions?: number;
+  remaining_positions?: number;
+  total_candidates?: number;
+  parsed?: number;
+  jd_matched?: number;
+  ai_matched?: number;
+  shortlisted?: number;
+  submitted?: number;
+  interviews?: number;
+  offers?: number;
+  joined?: number;
+  placements?: number;
+  // Recruiter Progress Metrics
+  candidates_sourced?: number;
+  ai_shortlisted?: number;
+  submitted_count?: number;
+  client_approved?: number;
+  interviews_count?: number;
+  offers_count?: number;
+  assignment_priority?: string;
+  due_date?: string;
+  company_name?: string;
+  assigned_by_name?: string;
+  current_recruitment_stage?: string;
+  next_action?: string;
+  next_action_type?: "MODAL" | "PAGE" | "NONE";
+  next_action_route?: string;
+  action_enabled?: boolean;
+  action_message?: string;
+  job_health_indicator?: string;
+  recruitment_progress_percentage?: number;
+  completed_stages?: string[];
+  pending_stages?: string[];
+  available_actions?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    enabled: boolean;
+    message: string;
+  }>;
 }
 
 interface MatchResult {
   id: string;
   job_id: string;
   candidate_id: string;
+  job_title?: string;
   candidate_name: string;
   candidate_email: string;
   candidate_location: string;
@@ -58,7 +109,22 @@ interface MatchResult {
     | "Partial Match"
     | "Not Recommended";
   reason: string;
+  recruiter_decision?: string;
+  recruiter_notes?: string;
   created_at: string;
+}
+
+export interface PipelineSummary {
+  candidate_sourcing: number;
+  jd_matching: number;
+  ai_matching: number;
+  shortlisted: number;
+  hiring_process: number;
+  client_review: number;
+  interviews: number;
+  offers: number;
+  joined: number;
+  placed: number;
 }
 
 interface JobState {
@@ -77,24 +143,31 @@ interface JobState {
     has_next_page: boolean;
     has_prev_page: boolean;
   } | null;
+  activeJobId: string | null;
+  pipelineSummary: PipelineSummary | null;
 }
 
 interface JobActions {
-  fetchJobs: (params?: { page?: number; limit?: number; search?: string; department?: string; location?: string; adminView?: boolean }) => Promise<void>;
+  fetchJobs: (params?: { page?: number; limit?: number; search?: string; department?: string; location?: string; adminView?: boolean; status?: string }) => Promise<void>;
   fetchJob: (id: string) => Promise<void>;
   createJob: (jobData: Partial<Job>) => Promise<Job>;
   updateJob: (id: string, jobData: Partial<Job>) => Promise<Job>;
   clarifyJob: (id: string, jobData: Partial<Job>) => Promise<Job>;
+  updateJobStatus: (id: string, status: string) => Promise<void>;
   deleteJob: (id: string) => Promise<void>;
   runMatching: (jobId: string, limit?: number) => Promise<void>;
   fetchMatchResults: (jobId: string) => Promise<void>;
+  updateRecruiterDecision: (jobId: string, candidates: { candidate_id: string; decision: string; notes?: string }[]) => Promise<void>;
+  submitToHiringProcess: (jobId: string, candidateIds: string[]) => Promise<void>;
   setCurrentJob: (job: Job | null) => void;
   setMatchingProgress: (progress: number) => void;
   clearError: () => void;
   clearMatchResults: () => void;
+  setActiveJobId: (id: string | null) => void;
+  fetchPipelineSummary: (jobId: string) => Promise<void>;
 }
 
-export const useJobStore = create<JobState & JobActions>((set) => ({
+export const useJobStore = create<JobState & JobActions>((set, get) => ({
   // Initial state
   jobs: [],
   currentJob: null,
@@ -104,6 +177,8 @@ export const useJobStore = create<JobState & JobActions>((set) => ({
   matchingProgress: 0,
   error: null,
   pagination: null,
+  activeJobId: null,
+  pipelineSummary: null,
 
   // Actions
   fetchJobs: async (params = {}) => {
@@ -115,6 +190,7 @@ export const useJobStore = create<JobState & JobActions>((set) => ({
       if (params.search) queryParams.append('search', params.search);
       if (params.department) queryParams.append('department', params.department);
       if (params.location) queryParams.append('location', params.location);
+      if (params.status) queryParams.append('status', params.status);
       if (params.adminView) queryParams.append('adminView', 'true');
 
       const response = await api.get(`/jobs?${queryParams.toString()}`);
@@ -202,6 +278,24 @@ export const useJobStore = create<JobState & JobActions>((set) => ({
     }
   },
 
+  updateJobStatus: async (id: string, status: string) => {
+    try {
+      const response = await api.patch(`/jobs/${id}/status`, { status });
+      const updatedJob = response.data.job;
+
+      set((state) => ({
+        jobs: state.jobs.map((job) => (job.id === id ? { ...job, status: updatedJob.status } : job)),
+        currentJob: state.currentJob?.id === id ? { ...state.currentJob, status: updatedJob.status } : state.currentJob,
+      }));
+
+      toast.success("Job status updated successfully");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || "Failed to update job status";
+      toast.error(errorMessage);
+      throw error;
+    }
+  },
+
   deleteJob: async (id: string) => {
     try {
       await api.delete(`/jobs/${id}`);
@@ -222,7 +316,7 @@ export const useJobStore = create<JobState & JobActions>((set) => ({
     }
   },
 
-  runMatching: async (jobId: string, limit = 20) => {
+  runMatching: async (jobId: string, limit: number = 100) => {
     set({ isMatching: true, matchingProgress: 0, error: null });
     try {
       const response = await api.post(`/matching/job/${jobId}/candidates`, {
@@ -265,6 +359,46 @@ export const useJobStore = create<JobState & JobActions>((set) => ({
     }
   },
 
+  updateRecruiterDecision: async (jobId: string, candidates: { candidate_id: string; decision: string; notes?: string }[]) => {
+    try {
+        await api.patch(`/matching/job/${jobId}/decision`, { candidates });
+        
+        // Refresh dynamically from backend
+        await get().fetchMatchResults("all");
+        
+        toast.success("Recruiter decision updated");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Failed to update recruiter decision";
+      toast.error(errorMessage);
+      throw error;
+    }
+  },
+
+  submitToHiringProcess: async (jobId: string, candidateIds: string[]) => {
+    try {
+      await api.post(`/matching/job/${jobId}/submit-to-hiring`, { candidateIds });
+      
+      // Update local state to reflect submission
+      set((state) => ({
+        matchResults: state.matchResults.map((result) => {
+          if (candidateIds.includes(result.candidate_id)) {
+            return {
+              ...result,
+              recruiter_decision: 'Moved To Hiring Process',
+            };
+          }
+          return result;
+        })
+      }));
+      
+      toast.success("Candidates submitted to hiring process successfully");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Failed to submit to hiring process";
+      toast.error(errorMessage);
+      throw error;
+    }
+  },
+
   setCurrentJob: (job: Job | null) => {
     set({ currentJob: job });
   },
@@ -279,5 +413,24 @@ export const useJobStore = create<JobState & JobActions>((set) => ({
 
   clearMatchResults: () => {
     set({ matchResults: [] });
+  },
+
+  setActiveJobId: (id: string | null) => {
+    set({ activeJobId: id });
+    if (id) {
+      get().fetchJob(id);
+      get().fetchPipelineSummary(id);
+    } else {
+      set({ pipelineSummary: null, currentJob: null });
+    }
+  },
+
+  fetchPipelineSummary: async (jobId: string) => {
+    try {
+      const response = await api.get(`/api/jobs/${jobId}/pipeline-summary`);
+      set({ pipelineSummary: response.data });
+    } catch (error: any) {
+      console.error("Failed to fetch pipeline summary:", error);
+    }
   },
 }));

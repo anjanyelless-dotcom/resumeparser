@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Users, Check } from 'lucide-react';
 import api from '../../services/api';
 
+import toast from 'react-hot-toast';
+
 interface TeamMember {
   id: string;
   email: string;
@@ -16,6 +18,7 @@ interface AssignRecruitersModalProps {
   onClose: () => void;
   jobId: string;
   jobTitle: string;
+  assignedRecruiters?: { id: string; name: string }[];
   onAssign: () => void;
 }
 
@@ -24,17 +27,19 @@ export default function AssignRecruitersModal({
   onClose,
   jobId,
   jobTitle,
+  assignedRecruiters = [],
   onAssign,
 }: AssignRecruitersModalProps) {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedRecruiters, setSelectedRecruiters] = useState<Set<string>>(new Set());
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchTeamMembers();
+      setSelectedRecruiters(new Set()); // Reset selections on open
     }
   }, [isOpen]);
 
@@ -45,12 +50,19 @@ export default function AssignRecruitersModal({
       setTeamMembers(response.data.team_members);
     } catch (error) {
       console.error('Failed to fetch team members:', error);
+      toast.error('Failed to fetch team members');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const isAlreadyAssigned = (recruiterId: string) => {
+    return assignedRecruiters.some(ar => ar.id === recruiterId);
+  };
+
   const toggleRecruiter = (recruiterId: string) => {
+    if (isAlreadyAssigned(recruiterId)) return; // Prevent selecting already assigned recruiters
+    
     const newSelected = new Set(selectedRecruiters);
     if (newSelected.has(recruiterId)) {
       newSelected.delete(recruiterId);
@@ -62,7 +74,7 @@ export default function AssignRecruitersModal({
 
   const handleAssign = async () => {
     if (selectedRecruiters.size === 0) {
-      alert('Please select at least one recruiter');
+      toast.error('Please select at least one recruiter');
       return;
     }
 
@@ -75,11 +87,12 @@ export default function AssignRecruitersModal({
           priority,
         });
       }
+      toast.success('Recruiters assigned successfully');
       onAssign();
       onClose();
     } catch (error: any) {
       console.error('Failed to assign recruiters:', error);
-      alert(error.response?.data?.message || 'Failed to assign recruiters');
+      toast.error(error.response?.data?.message || 'Failed to assign recruiters');
     } finally {
       setIsSubmitting(false);
     }
@@ -116,12 +129,13 @@ export default function AssignRecruitersModal({
             </label>
             <select
               value={priority}
-              onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
+              onChange={(e) => setPriority(e.target.value as 'low' | 'normal' | 'high' | 'urgent')}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="low">Low</option>
-              <option value="medium">Medium</option>
+              <option value="normal">Normal</option>
               <option value="high">High</option>
+              <option value="urgent">Urgent</option>
             </select>
           </div>
 
@@ -136,42 +150,48 @@ export default function AssignRecruitersModal({
               <div className="text-center py-8 text-gray-500">No team members found</div>
             ) : (
               <div className="space-y-2">
-                {teamMembers.map((member) => (
+                {teamMembers.map((member) => {
+                  const isAssigned = isAlreadyAssigned(member.id);
+                  return (
                   <div
                     key={member.id}
                     onClick={() => toggleRecruiter(member.id)}
-                    className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-colors ${
-                      selectedRecruiters.has(member.id)
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                    className={`flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${
+                      isAssigned 
+                        ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                        : selectedRecruiters.has(member.id)
+                          ? 'border-indigo-500 bg-indigo-50 cursor-pointer'
+                          : 'border-gray-200 hover:border-gray-300 cursor-pointer'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                        selectedRecruiters.has(member.id)
-                          ? 'border-indigo-500 bg-indigo-500'
-                          : 'border-gray-300'
+                        isAssigned
+                          ? 'border-gray-400 bg-gray-200'
+                          : selectedRecruiters.has(member.id)
+                            ? 'border-indigo-500 bg-indigo-500'
+                            : 'border-gray-300'
                       }`}>
-                        {selectedRecruiters.has(member.id) && (
-                          <Check className="w-3 h-3 text-white" />
+                        {(isAssigned || selectedRecruiters.has(member.id)) && (
+                          <Check className={`w-3 h-3 ${isAssigned ? 'text-gray-500' : 'text-white'}`} />
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{member.email}</p>
+                        <p className="font-medium text-gray-900">
+                          {member.email} {isAssigned && <span className="ml-2 text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">Already Assigned</span>}
+                        </p>
                         <p className="text-sm text-gray-500">
                           {member.active_assignment_count} active assignments
                         </p>
                       </div>
                     </div>
                     <div className={`px-2 py-1 text-xs font-medium rounded ${
-                      member.is_active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-600'
+                      member.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                     }`}>
                       {member.is_active ? 'Active' : 'Inactive'}
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>

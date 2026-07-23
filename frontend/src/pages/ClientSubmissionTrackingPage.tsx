@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useSubmissionStore } from "../store/useSubmissionStore";
+import { useAuthStore } from "../store/useAuthStore";
 import toast from "react-hot-toast";
 import { Search, RefreshCw, User, Briefcase, Calendar, CheckCircle, XCircle, X } from "lucide-react";
 
@@ -17,7 +18,11 @@ export default function ClientSubmissionTrackingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { fetchSubmissionsForMyClients, updateClientOutcome } = useSubmissionStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
+  const { jobId } = useParams<{ jobId: string }>();
+  
+  const isBdm = user?.role === 'bdm';
 
   useEffect(() => {
     loadSubmissions();
@@ -41,6 +46,10 @@ export default function ClientSubmissionTrackingPage() {
 
   const filterSubmissions = () => {
     let filtered = submissions;
+
+    if (jobId) {
+      filtered = filtered.filter((sub) => sub.job_id === jobId);
+    }
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -98,6 +107,9 @@ export default function ClientSubmissionTrackingPage() {
       'Shortlisted': { color: 'bg-green-100 text-green-700', icon: CheckCircle },
       'Rejected': { color: 'bg-red-100 text-red-700', icon: XCircle },
       'Under Review': { color: 'bg-yellow-100 text-yellow-700', icon: Briefcase },
+      'Client Review': { color: 'bg-purple-100 text-purple-700', icon: Briefcase },
+      'Offer Extended': { color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
+      'Placed': { color: 'bg-indigo-100 text-indigo-700', icon: CheckCircle },
       'Submitted': { color: 'bg-blue-100 text-blue-700', icon: User },
     };
 
@@ -230,9 +242,14 @@ export default function ClientSubmissionTrackingPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Submitted
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Days in Stage
                   </th>
+                  {!isBdm && (
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -270,14 +287,21 @@ export default function ClientSubmissionTrackingPage() {
                         {formatDate(submission.created_at)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleRecordDecision(submission)}
-                        className="text-indigo-600 hover:text-indigo-900 focus:outline-none"
-                      >
-                        Record Client Decision
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 font-medium">
+                        {submission.days_in_stage ?? 0} days
+                      </div>
                     </td>
+                    {!isBdm && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleRecordDecision(submission)}
+                          className="text-indigo-600 hover:text-indigo-900 focus:outline-none"
+                        >
+                          Record Client Decision
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

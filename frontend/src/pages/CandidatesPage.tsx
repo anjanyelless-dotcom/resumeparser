@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useCandidateStore } from "../store/useCandidateStore";
 import { useFilterStore } from "../store/filterStore";
 import toast from "react-hot-toast";
@@ -12,6 +12,7 @@ type FilterType = "all" | "high-confidence" | "needs-review";
 type SortType = "date-added" | "name" | "confidence-score" | "match-score";
 
 export default function CandidatesPage() {
+  const { jobId } = useParams<{ jobId: string }>();
   const [filter, setFilter] = useState<FilterType>("all");
   const [sort, setSort] = useState<SortType>("date-added");
   const [currentPage, setCurrentPage] = useState(1);
@@ -118,7 +119,7 @@ export default function CandidatesPage() {
       // Use higher limit when searching to show all matching results
       const hasSearchFilter = searchTerm || company || jobTitle || certification || salaryMin || salaryMax;
       const limit = hasSearchFilter ? 100 : itemsPerPage;
-      await fetchCandidates(currentPage, limit, searchTerm, company, jobTitle, certification, salaryMin, salaryMax);
+      await fetchCandidates(currentPage, limit, searchTerm, company, jobTitle, certification, salaryMin, salaryMax, false, jobId);
     } catch (error) {
       toast.error("Failed to load candidates");
     }
@@ -181,16 +182,18 @@ export default function CandidatesPage() {
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Candidates</h1>
-            <p className="text-gray-500 mt-1">
-              Manage and review candidate profiles with AI-powered resume parsing insights
-            </p>
+        {/* Header - Hidden in Workspace */}
+        {!jobId && (
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Candidates</h1>
+              <p className="text-gray-500 mt-1">
+                Manage and review candidate profiles with AI-powered resume parsing insights
+              </p>
+            </div>
+            <CandidateViewToggle onViewChange={setViewMode} />
           </div>
-          <CandidateViewToggle onViewChange={setViewMode} />
-        </div>
+        )}
 
         {/* Search and Filters */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
@@ -352,7 +355,10 @@ export default function CandidatesPage() {
                 <CandidateCard
                   key={candidate.id}
                   candidate={candidate as any}
-                  onViewProfile={(id) => navigate(`/candidates/${id}`)}
+                  onViewProfile={(id) => {
+                    const route = jobId ? `/recruiter/workspace/${jobId}/candidates/${id}` : `/candidates/${id}`;
+                    navigate(route);
+                  }}
                 />
               ))}
             </div>

@@ -19,37 +19,11 @@ import {
   getBestExperience,
 } from "../services/experience.service";
 import { calculateTotalExperience } from "../utils/experienceCalculator";
-import { saveSkillsBestEffort } from "./candidate.controller";
+import { checkDuplicateBeforeInsert } from "../services/duplicate.service";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers — used to store ALL parsed sections inline (no-Redis mode)
 // ─────────────────────────────────────────────────────────────────────────────
-
-interface CandidatesSchemaInfo {
-  columnNames: Set<string>;
-  hasResumeFilePath: boolean;
-  hasOriginalFilename: boolean;
-  hasFilePath: boolean;
-  hasCreatedByUserId: boolean;
-}
-let candidatesSchemaCache: CandidatesSchemaInfo | null = null;
-
-async function getCandidatesSchemaInfo(client: any): Promise<CandidatesSchemaInfo> {
-  if (candidatesSchemaCache) return candidatesSchemaCache;
-  const result = await client.query(
-    `SELECT column_name FROM information_schema.columns WHERE table_name = 'candidates' AND table_schema = 'public'`
-  );
-  const columns = new Set<string>(result.rows.map((row: any) => String(row.column_name)));
-  const schema: CandidatesSchemaInfo = {
-    columnNames: columns,
-    hasResumeFilePath: columns.has('resume_file_path'),
-    hasOriginalFilename: columns.has('original_filename'),
-    hasFilePath: columns.has('file_path'),
-    hasCreatedByUserId: columns.has('created_by_user_id'),
-  };
-  candidatesSchemaCache = schema;
-  return schema;
-}
 
 function parseDateStr(raw: any): string | null {
   if (!raw) return null;
@@ -123,8 +97,6 @@ function parseGrade(raw: any): number | null {
 // Stores ALL sections from the AI response into PostgreSQL
 async function storeAllParsedData(client: any, candidateId: string, ai: any, filePath?: string) {
   // ── 1. UPDATE candidates table ────────────────────────────────────────────
-  const candidatesSchema = await getCandidatesSchemaInfo(client);
-
   const emailHash = ai.email
     ? crypto.createHash("md5").update(ai.email.trim().toLowerCase()).digest("hex")
     : null;
@@ -139,33 +111,47 @@ async function storeAllParsedData(client: any, candidateId: string, ai: any, fil
     ai.location ||
     (Array.isArray(ai.locations) && ai.locations.length > 0 ? ai.locations[0] : null);
 
-  const candidateFields: { column: string; value: any }[] = [];
-  const push = (column: string, value: any) => { if (candidatesSchema.columnNames.has(column)) candidateFields.push({ column, value }); };
-
-  push("full_name", trunc(ai.name));
-  push("email", trunc(ai.email));
-  push("phone", trunc(ai.phone, 50));
-  push("location", trunc(location));
-  push("linkedin_url", trunc(ai.linkedin, 500));
-  push("github_url", trunc(ai.github, 500));
-  push("portfolio_url", trunc(ai.portfolio_url || ai.portfolio || ai.website || ai.personal_website, 500));
-  push("summary", trunc(ai.summary, 2000));
-  push("email_hash", emailHash);
-  push("resume_hash", resumeHash);
-  push("raw_resume_text", ai.raw_text || ai.raw_resume_text || null);
-  push("domain", ai.domain?.primary_domain || null);
-  push("domain_confidence", ai.domain?.confidence || null);
-  push("licenses", JSON.stringify(ai.licenses || []));
-
-  const setClauses = candidateFields.map((f, i) => `${f.column} = COALESCE($${i + 1}, ${f.column})`).join(", ");
-  const updateParams = candidateFields.map((f) => f.value);
-  const paramIdx = candidateFields.length + 1;
+  const qualityScore = ai.extraction_quality?.extraction_quality_percentage
+    ? Math.round(ai.extraction_quality.extraction_quality_percentage) : null;
+  const confidenceScore = ai.confidence?.overall ?? null;
 
   await client.query(
     `UPDATE candidates
-     SET ${setClauses}${setClauses ? ", " : ""}status = 'success', review_status = 'pending', updated_at = NOW()
-     WHERE id = $${paramIdx}`,
-    [...updateParams, candidateId]
+     SET full_name            = COALESCE($1,  full_name),
+         email                = COALESCE($2,  email),
+         phone                = COALESCE($3,  phone),
+         location             = COALESCE($4,  location),
+         linkedin_url         = COALESCE($5,  linkedin_url),
+         github_url           = COALESCE($6,  github_url),
+         portfolio_url        = COALESCE($7,  portfolio_url),
+         summary              = COALESCE($8,  summary),
+         status               = 'success',
+         review_status        = 'pending',
+         email_hash           = COALESCE($9,  email_hash),
+         resume_hash          = COALESCE($10, resume_hash),
+         raw_resume_text      = COALESCE($11, raw_resume_text),
+         domain               = COALESCE($12, domain),
+         domain_confidence    = COALESCE($13, domain_confidence),
+         licenses             = COALESCE($14, licenses),
+         updated_at           = NOW()
+     WHERE id = $15`,
+    [
+      trunc(ai.name),
+      trunc(ai.email),
+      trunc(ai.phone, 50),
+      trunc(location),
+      trunc(ai.linkedin, 500),
+      trunc(ai.github, 500),
+      trunc(ai.portfolio_url || ai.portfolio || ai.website || ai.personal_website, 500),
+      trunc(ai.summary, 2000),
+      emailHash,
+      resumeHash,
+      ai.raw_text || ai.raw_resume_text || null,
+      ai.domain?.primary_domain || null,
+      ai.domain?.confidence || null,
+      JSON.stringify(ai.licenses || []),
+      candidateId,
+    ]
   );
   console.log(`  ✅ Candidate profile updated`);
 
@@ -237,7 +223,31 @@ async function storeAllParsedData(client: any, candidateId: string, ai: any, fil
 
   // ── 4. SKILLS + CANDIDATE_SKILLS ──────────────────────────────────────────
   const rawSkills: any[] = Array.isArray(ai.skills) ? ai.skills : [];
-  await saveSkillsBestEffort(client, candidateId, rawSkills, []);
+  await client.query("DELETE FROM candidate_skills WHERE candidate_id = $1", [candidateId]);
+  for (const sk of rawSkills) {
+    const skillName = typeof sk === "string" ? sk.trim() : (sk.name || sk.skill_name || "").trim();
+    if (!skillName) continue;
+    const nameTrimmed = trunc(skillName)!;
+
+    // Find or create the skill row for this candidate
+    const existing = await client.query("SELECT id FROM skills WHERE name = $1 AND candidate_id = $2", [nameTrimmed, candidateId]);
+    let skillId: string;
+    if (existing.rows.length > 0) {
+      skillId = existing.rows[0].id;
+    } else {
+      const ins = await client.query(
+        "INSERT INTO skills (id, candidate_id, name, skill_name, category) VALUES ($1,$2,$3,$4,'technical') RETURNING id",
+        [uuidv4(), candidateId, nameTrimmed, nameTrimmed]
+      );
+      skillId = ins.rows[0].id;
+    }
+
+    await client.query(
+      `INSERT INTO candidate_skills (candidate_id, skill_id, proficiency_level)
+       VALUES ($1,$2,'intermediate') ON CONFLICT DO NOTHING`,
+      [candidateId, skillId]
+    );
+  }
   console.log(`  ✅ Skills: ${rawSkills.length} entries stored`);
 
   // ── 5. CERTIFICATIONS ─────────────────────────────────────────────────────
@@ -278,6 +288,9 @@ export const uploadResume = async (
   res: Response,
 ): Promise<void> => {
   let client: any = null;
+  const { tenant_id, job_id } = req.body;
+  const tenantId = tenant_id || (req as any).user?.tenant_id || "default";
+  const userId = (req as any).user?.id;
 
   try {
     // 1. Validate file
@@ -288,7 +301,6 @@ export const uploadResume = async (
     validateUploadedFile(req.file);
 
     const fileInfo    = getFileInfo(req.file);
-    const userId      = (req as any).user?.id;
     const llmProvider = req.body.llm_provider || "";
     const forceOcr    = req.body.force_ocr === "true" || req.body.force_ocr === true;
 
@@ -334,26 +346,16 @@ export const uploadResume = async (
     await client.query("BEGIN");
 
     const candidateId = uuidv4();
-    const tenantId    = (req as any).user?.tenant_id || "default";
 
     // ── DUPLICATE CHECK ── before creating the candidate
     // We won't have name/email/phone yet at this early stage (before AI parse),
     // so duplicate check runs AFTER the AI parse in the direct parse path below.
     // The early candidate row is created as 'pending' and removed if duplicate.
 
-    const candidatesSchema = await getCandidatesSchemaInfo(client);
-    const candidateColumns = ["id", "status", "review_status", "tenant_id", "consent_given", "raw_resume_text"];
-    const candidateValues: any[] = [candidateId, "pending", "pending", tenantId, false, rawResumeText || null];
-    if (candidatesSchema.hasCreatedByUserId) { candidateColumns.push("created_by_user_id"); candidateValues.push(userId); }
-    if (candidatesSchema.hasResumeFilePath) { candidateColumns.push("resume_file_path"); candidateValues.push(fileInfo.path); }
-    if (candidatesSchema.hasOriginalFilename) { candidateColumns.push("original_filename"); candidateValues.push(fileInfo.originalname); }
-    if (candidatesSchema.hasFilePath) { candidateColumns.push("file_path"); candidateValues.push(fileInfo.path); }
-
-    const placeholders = candidateColumns.map((_, i) => `$${i + 1}`).join(", ");
     const cRes = await client.query(
-      `INSERT INTO candidates (${candidateColumns.join(", ")}, created_at, updated_at)
-       VALUES (${placeholders}, NOW(), NOW()) RETURNING *`,
-      candidateValues
+      `INSERT INTO candidates (id, status, review_status, tenant_id, consent_given, raw_resume_text, created_by_user_id, resume_file_path, original_filename, job_id, created_at, updated_at)
+       VALUES ($1,'pending','pending',$2,false,$3,$4,$5,$6,$7,NOW(),NOW()) RETURNING *`,
+      [candidateId, tenantId, rawResumeText || null, userId, fileInfo.path, fileInfo.originalname, job_id || null]
     );
     const candidate = cRes.rows[0];
     console.log(`  ✅ Candidate created: ${candidate.id}`);
@@ -367,39 +369,25 @@ export const uploadResume = async (
     const parsingJob = pjRes.rows[0];
     console.log(`  ✅ Parsing job created: ${parsingJob.id}`);
 
-    // Log activity (best-effort; use a savepoint so a schema mismatch doesn't abort the main transaction)
-    try {
-      await client.query("SAVEPOINT sp_activity");
-      await client.query(
-        `INSERT INTO activity_log (action, entity_id, entity_type, user_id, created_at, details)
-         VALUES ($1, $2, $3, $4, NOW(), $5)`,
-        ['candidate_sourced', candidate.id, 'candidate', userId, JSON.stringify({
-          filename: fileInfo.originalname,
-          method: 'resume_upload'
-        })]
-      );
-      await client.query("RELEASE SAVEPOINT sp_activity");
-    } catch (logErr: any) {
-      await client.query("ROLLBACK TO SAVEPOINT sp_activity").catch(() => {});
-      console.warn(`⚠️  Could not write activity_log: ${logErr.message}`);
-    }
+    // Log activity
+    await client.query(
+      `INSERT INTO activity_log (action, entity_id, entity_type, user_id, created_at, details)
+       VALUES ($1, $2, $3, $4, NOW(), $5)`,
+      ['candidate_sourced', candidate.id, 'candidate', userId, JSON.stringify({
+        filename: fileInfo.originalname,
+        method: 'resume_upload'
+      })]
+    );
 
-    // Log audit (best-effort; use a savepoint so a schema mismatch doesn't abort the main transaction)
-    try {
-      await client.query("SAVEPOINT sp_audit");
-      await client.query(
-        `INSERT INTO audit_logs (id, action, resource_type, resource_id, user_id, created_at, details)
-         VALUES ($1, $2, $3, $4, $5, NOW(), $6)`,
-        [uuidv4(), 'create', 'candidates', candidate.id, userId, JSON.stringify({
-          filename: fileInfo.originalname,
-          method: 'resume_upload'
-        })]
-      );
-      await client.query("RELEASE SAVEPOINT sp_audit");
-    } catch (logErr: any) {
-      await client.query("ROLLBACK TO SAVEPOINT sp_audit").catch(() => {});
-      console.warn(`⚠️  Could not write audit_logs: ${logErr.message}`);
-    }
+    // Log audit
+    await client.query(
+      `INSERT INTO audit_logs (id, action, resource_type, resource_id, user_id, created_at, details)
+       VALUES ($1, $2, $3, $4, $5, NOW(), $6)`,
+      [uuidv4(), 'create', 'candidates', candidate.id, userId, JSON.stringify({
+        filename: fileInfo.originalname,
+        method: 'resume_upload'
+      })]
+    );
 
     // ── DIRECT PARSE PATH: call AI service inline ──────────────────────────
     await client.query("COMMIT"); // commit DB records before slow AI call
@@ -420,7 +408,7 @@ export const uploadResume = async (
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            file_path: path.resolve(fileInfo.path),
+            file_path: fileInfo.path,
             candidate_id: candidateId,
             ...(llmProvider ? { llm_provider: llmProvider } : {}),
             force_ocr: forceOcr,
@@ -455,7 +443,38 @@ export const uploadResume = async (
         // Store ALL sections into the database
         console.log(`📥 Storing parsed data for candidate ${candidateId}...`);
 
-        // Duplicate candidate checks disabled per product requirement; always save the upload
+        // ── DUPLICATE CHECK after AI extraction (we have name/email/phone now) ──
+        const forceSave = req.body.forceSave === 'true' || req.body.forceSave === true;
+        
+        let dupCheck = null;
+        if (!forceSave) {
+          dupCheck = await checkDuplicateBeforeInsert(directClient, {
+            email: aiData.email || null,
+            phone: aiData.phone || null,
+            full_name: aiData.name || null,
+            linkedin_url: aiData.linkedin_url || null,
+            tenant_id: tenantId,
+          });
+        }
+        if (dupCheck && dupCheck.isDuplicate) {
+          // Clean up the pending candidate we just created
+          await directClient.query(
+            `DELETE FROM candidates WHERE id = $1 AND status = 'pending'`,
+            [candidateId]
+          );
+          if (req.file) deleteUploadedFile(req.file.path);
+          console.log(`⚠️  Duplicate detected: ${dupCheck.message}`);
+          res.status(409).json({
+            error: "Duplicate candidate",
+            message: dupCheck.message,
+            code: "DUPLICATE_CANDIDATE",
+            field: dupCheck.field,
+            existingCandidateId: dupCheck.existingCandidateId,
+            existingCandidateName: dupCheck.existingCandidateName,
+          });
+          return;
+        }
+
         await storeAllParsedData(directClient, candidateId, aiData, fileInfo.path);
 
         // Mark parsing_job as completed
@@ -479,7 +498,7 @@ export const uploadResume = async (
         res.status(201).json({
           success: true,
           message: "Resume uploaded and parsed successfully",
-          warning: undefined,
+          warning: dupCheck?.warning || undefined,
           data: {
             candidateId: candidate.id,
             parsingJobId: parsingJob.id,

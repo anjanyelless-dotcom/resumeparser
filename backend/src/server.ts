@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config({ path: './.env' });
+dotenv.config({ path: './.env', override: true });
 import { createServer } from "http";
 import app from "./app";
 import pool from "./database/db";
@@ -12,6 +12,25 @@ async function startServer(): Promise<void> {
     // Test database connection
     const client = await pool.connect();
     console.log("✅ Database connected successfully");
+
+    // Automatically run RBAC migrations on startup
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const schemaPath = path.join(__dirname, '..', 'migrations', '20260718_add_enterprise_rbac_schema.sql');
+      const seedPath = path.join(__dirname, '..', 'migrations', '20260718_seed_enterprise_rbac.sql');
+      
+      if (fs.existsSync(schemaPath)) {
+        await client.query(fs.readFileSync(schemaPath, 'utf8'));
+      }
+      if (fs.existsSync(seedPath)) {
+        await client.query(fs.readFileSync(seedPath, 'utf8'));
+      }
+      console.log("✅ RBAC Schema & Roles verified/updated");
+    } catch (err: any) {
+      console.error("❌ Failed to run RBAC migrations:", err.message);
+    }
+
     client.release();
 
     // Create HTTP server
@@ -38,11 +57,6 @@ async function startServer(): Promise<void> {
       console.log(`💼 Jobs endpoints: http://${host}:${PORT}/api/jobs`);
       console.log(`🔌 Socket.io server initialized`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
-
-      // Notify PM2 that the server is ready (matches wait_ready: true in ecosystem.config.js)
-      if (process.send) {
-        process.send('ready');
-      }
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);

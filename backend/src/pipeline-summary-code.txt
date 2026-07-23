@@ -1,0 +1,62 @@
+export const getPipelineSummary = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const client = await getClient();
+    try {
+      // 1. Total Candidates (Candidates mapped to this job)
+      const candidatesRes = await client.query('SELECT COUNT(*) as count FROM candidates WHERE job_id = ', [id]);
+      const totalCandidates = parseInt(candidatesRes.rows[0].count);
+
+      // 2. JD Matched (Count of candidates that have jd_match_results or match_scores for this job)
+      const jdMatchedRes = await client.query('SELECT COUNT(DISTINCT candidate_id) as count FROM match_scores WHERE job_id = ', [id]);
+      const jdMatched = parseInt(jdMatchedRes.rows[0].count);
+
+      // 3. AI Matched (Same as JD Matched in this context unless we have a separate AI match table, using match_scores)
+      const aiMatched = jdMatched;
+
+      // 4. Shortlisted (Submissions with status = 'under_review' or 'accepted' etc. Actually, all submissions that are created mean they were shortlisted from matching)
+      const shortlistedRes = await client.query('SELECT COUNT(*) as count FROM submissions WHERE job_id = ', [id]);
+      const shortlisted = parseInt(shortlistedRes.rows[0].count);
+
+      // 5. Submitted (Client Review)
+      const clientReviewRes = await client.query('SELECT COUNT(*) as count FROM submissions WHERE job_id =  AND status = \'submitted\'', [id]);
+      const clientReview = parseInt(clientReviewRes.rows[0].count);
+
+      // 6. Interviews
+      const interviewsRes = await client.query('SELECT COUNT(DISTINCT s.id) as count FROM interviews i JOIN submissions s ON i.submission_id = s.id WHERE s.job_id = ', [id]);
+      const interviews = parseInt(interviewsRes.rows[0].count);
+
+      // 7. Offers
+      const offersRes = await client.query('SELECT COUNT(*) as count FROM submissions WHERE job_id =  AND status IN (\'offer_extended\', \'offer_accepted\')', [id]);
+      const offers = parseInt(offersRes.rows[0].count);
+
+      // 8. Joined / Placed
+      const joinedRes = await client.query('SELECT COUNT(*) as count FROM submissions WHERE job_id =  AND status = \'placed\'', [id]);
+      const placed = parseInt(joinedRes.rows[0].count);
+
+      // Analytics
+      const recruiterConversionRate = totalCandidates > 0 ? ((shortlisted / totalCandidates) * 100).toFixed(1) + '%' : '0%';
+      const pipelineConversionRate = shortlisted > 0 ? ((placed / shortlisted) * 100).toFixed(1) + '%' : '0%';
+
+      res.json({
+        totalCandidates,
+        jdMatched,
+        aiMatched,
+        shortlisted,
+        clientReview,
+        interviews,
+        offers,
+        joined: placed,
+        placed,
+        recruiterConversionRate,
+        pipelineConversionRate,
+        averageTimeInStage: '3.2 days' // Placeholder for now
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error fetching pipeline summary:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};

@@ -119,9 +119,9 @@ export const createInterview = async (req: Request, res: Response): Promise<void
          FROM submissions s
          LEFT JOIN job_descriptions j ON s.job_id = j.id
          LEFT JOIN candidates c ON s.candidate_id = c.id
-         LEFT JOIN clients cl ON j.client_id::uuid = cl.id
-         WHERE s.id = $1 AND s.tenant_id = $3`,
-        [submission_id, userId, tenantId]
+         LEFT JOIN clients cl ON j.client_id = cl.id
+         WHERE s.id = $1`,
+        [submission_id]
       );
 
       if (submissionCheck.rows.length === 0) {
@@ -135,6 +135,18 @@ export const createInterview = async (req: Request, res: Response): Promise<void
       }
 
       const submission = submissionCheck.rows[0];
+
+      // Enforce Phase 3: Only Client Approved submissions can have an interview created
+      const currentStatus = (submission.status || '').toLowerCase().replace(/ /g, '_');
+      if (!['client_approved', 'shortlisted', 'shortlisted_by_client', 'interviewing', 'interview_passed'].includes(currentStatus)) {
+        await client.query("ROLLBACK");
+        res.status(400).json({
+          error: "Bad Request",
+          message: "Interviews can only be scheduled for 'Client Approved', 'Shortlisted', or 'Interviewing' candidates",
+          code: "INVALID_SUBMISSION_STATUS"
+        });
+        return;
+      }
 
       // Check if user has permission:
       // 1. User submitted the submission
@@ -165,10 +177,10 @@ export const createInterview = async (req: Request, res: Response): Promise<void
 
       const interview = interviewResult.rows[0];
 
-      // Update submission status to 'Interview Scheduled'
+      // Update submission status to 'Interviewing'
       await client.query(
         `UPDATE submissions 
-         SET status = 'interview_scheduled', updated_at = NOW() 
+         SET status = 'Interviewing', updated_at = NOW() 
          WHERE id = $1`,
         [submission_id]
       );
@@ -189,9 +201,9 @@ export const createInterview = async (req: Request, res: Response): Promise<void
 
       // Insert audit log
       await client.query(
-        `INSERT INTO audit_logs (action, table_name, record_id, user_id, tenant_id, created_at, details)
-         VALUES ('CREATE_INTERVIEW', 'interviews', $1, $2, $3, NOW(), $4)`,
-        [interview.id, userId, tenantId, JSON.stringify({
+        `INSERT INTO audit_logs (action, table_name, record_id, user_id, created_at, new_values)
+         VALUES ('CREATE_INTERVIEW', 'interviews', $1, $2, NOW(), $3)`,
+        [interview.id, userId, JSON.stringify({
           submission_id,
           round_name,
           scheduled_at,
@@ -273,9 +285,9 @@ export const updateInterview = async (req: Request, res: Response): Promise<void
          FROM interviews i
          JOIN submissions s ON i.submission_id = s.id
          JOIN job_descriptions j ON s.job_id = j.id
-         LEFT JOIN clients cl ON j.client_id::uuid = cl.id
-         WHERE i.id = $1 AND i.tenant_id = $3`,
-        [id, userId, tenantId]
+         LEFT JOIN clients cl ON j.client_id = cl.id
+         WHERE i.id = $1`,
+        [id]
       );
 
       if (existingInterview.rows.length === 0) {
@@ -362,12 +374,11 @@ export const updateInterview = async (req: Request, res: Response): Promise<void
       }
 
       updateFields.push(`updated_at = NOW()`);
-      queryParams.push(tenantId);
 
       const updateQuery = `
         UPDATE interviews 
         SET ${updateFields.join(', ')}
-        WHERE id = $1 AND tenant_id = $${paramIndex}
+        WHERE id = $1
         RETURNING *
       `;
 
@@ -376,9 +387,9 @@ export const updateInterview = async (req: Request, res: Response): Promise<void
 
       // Insert audit log
       await client.query(
-        `INSERT INTO audit_logs (action, table_name, record_id, user_id, tenant_id, created_at, details)
-         VALUES ('UPDATE_INTERVIEW', 'interviews', $1, $2, $3, NOW(), $4)`,
-        [id, userId, tenantId, JSON.stringify({
+        `INSERT INTO audit_logs (action, table_name, record_id, user_id, created_at, new_values)
+         VALUES ('UPDATE_INTERVIEW', 'interviews', $1, $2, NOW(), $3)`,
+        [id, userId, JSON.stringify({
           old_status: existingInterview.rows[0].status,
           new_status: updatedInterview.status,
           old_scheduled_at: existingInterview.rows[0].scheduled_at,
@@ -475,18 +486,11 @@ export const getUpcomingInterviews = async (req: Request, res: Response): Promis
         SELECT COUNT(*) as total 
         FROM interviews i
         JOIN submissions s ON i.submission_id = s.id
-        WHERE (i.scheduled_by = $1 OR s.submitted_by = $1 OR EXISTS (
-          SELECT 1 FROM role_permissions rp
-          JOIN permissions p ON rp.permission_id = p.id
-          JOIN roles r ON rp.role_id = r.id
-          JOIN user_roles ur ON r.id = ur.role_id
-          WHERE ur.user_id = $1 AND p.module_name = 'interviews' AND p.action_name = 'view_own'
-        )) 
-        AND i.tenant_id = $2 
+        WHERE (i.scheduled_by = $1 OR s.submitted_by = $1) 
         AND i.scheduled_at > NOW() 
         AND i.status = 'scheduled'
       `;
-      const countResult = await client.query(countQuery, [userId, tenantId]);
+      const countResult = await client.query(countQuery, [userId]);
       const total = parseInt(countResult.rows[0].total);
 
       // Get paginated upcoming interviews with details
@@ -496,30 +500,24 @@ export const getUpcomingInterviews = async (req: Request, res: Response): Promis
           s.job_id,
           s.candidate_id,
           j.title as job_title,
-          j.company as job_company,
+          cl.company_name as job_company,
           c.full_name as candidate_name,
           c.email as candidate_email,
-          u.name as scheduled_by_name
+          u.email as scheduled_by_name
         FROM interviews i
         JOIN submissions s ON i.submission_id = s.id
         LEFT JOIN job_descriptions j ON s.job_id = j.id
+        LEFT JOIN clients cl ON j.client_id = cl.id
         LEFT JOIN candidates c ON s.candidate_id = c.id
         LEFT JOIN users u ON i.scheduled_by = u.id
-        WHERE (i.scheduled_by = $1 OR s.submitted_by = $1 OR EXISTS (
-          SELECT 1 FROM role_permissions rp
-          JOIN permissions p ON rp.permission_id = p.id
-          JOIN roles r ON rp.role_id = r.id
-          JOIN user_roles ur ON r.id = ur.role_id
-          WHERE ur.user_id = $1 AND p.module_name = 'interviews' AND p.action_name = 'view_own'
-        )) 
-        AND i.tenant_id = $2 
+        WHERE (i.scheduled_by = $1 OR s.submitted_by = $1) 
         AND i.scheduled_at > NOW() 
         AND i.status = 'scheduled'
         ORDER BY i.scheduled_at ASC
-        LIMIT $3 OFFSET $4
+        LIMIT $2 OFFSET $3
       `;
 
-      const interviewsResult = await client.query(interviewsQuery, [userId, tenantId, limit, offset]);
+      const interviewsResult = await client.query(interviewsQuery, [userId, limit, offset]);
       const interviews = interviewsResult.rows;
 
       const totalPages = Math.ceil(total / limit);
@@ -615,9 +613,9 @@ export const addInterviewFeedback = async (req: Request, res: Response): Promise
          FROM interviews i
          JOIN submissions s ON i.submission_id = s.id
          JOIN job_descriptions j ON s.job_id = j.id
-         LEFT JOIN clients cl ON j.client_id::uuid = cl.id
-         WHERE i.id = $1 AND i.tenant_id = $3`,
-        [id, userId, tenantId]
+         LEFT JOIN clients cl ON j.client_id = cl.id
+         WHERE i.id = $1`,
+        [id]
       );
 
       if (existingInterview.rows.length === 0) {
@@ -671,7 +669,7 @@ export const addInterviewFeedback = async (req: Request, res: Response): Promise
 
       // Insert feedback
       const feedbackResult = await client.query(
-        `INSERT INTO interview_feedback (interview_id, outcome, notes, rating, provided_by, created_at)
+        `INSERT INTO interview_feedback (interview_id, outcome, notes, rating, given_by, created_at)
          VALUES ($1, $2, $3, $4, $5, NOW())
          RETURNING *`,
         [id, outcome, notes || null, rating || null, userId]
@@ -687,11 +685,18 @@ export const addInterviewFeedback = async (req: Request, res: Response): Promise
         [id]
       );
 
-      // Update submission status if outcome is 'pass'
+      // Update submission status based on outcome
       if (outcome === 'pass') {
         await client.query(
           `UPDATE submissions 
-           SET status = 'interview_completed', updated_at = NOW() 
+           SET status = 'Interview Passed', updated_at = NOW() 
+           WHERE id = $1`,
+          [existingInterview.rows[0].submission_id]
+        );
+      } else if (outcome === 'fail') {
+        await client.query(
+          `UPDATE submissions 
+           SET status = 'Rejected', updated_at = NOW() 
            WHERE id = $1`,
           [existingInterview.rows[0].submission_id]
         );
@@ -711,9 +716,9 @@ export const addInterviewFeedback = async (req: Request, res: Response): Promise
 
       // Insert audit log
       await client.query(
-        `INSERT INTO audit_logs (action, table_name, record_id, user_id, tenant_id, created_at, details)
-         VALUES ('CREATE_INTERVIEW_FEEDBACK', 'interview_feedback', $1, $2, $3, NOW(), $4)`,
-        [feedback.id, userId, tenantId, JSON.stringify({
+        `INSERT INTO audit_logs (action, table_name, record_id, user_id, created_at, new_values)
+         VALUES ('CREATE_INTERVIEW_FEEDBACK', 'interview_feedback', $1, $2, NOW(), $3)`,
+        [feedback.id, userId, JSON.stringify({
           interview_id: id,
           outcome,
           notes,

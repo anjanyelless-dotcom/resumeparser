@@ -41,12 +41,51 @@ Table permissions {
 }
 
 Table role_permissions {
-  id uuid PK
-  role varchar(255)
-  permission_id uuid
-  created_at timestamptz
+  id uuid [pk]
+  role_id uuid [ref: > roles.id]
+  module_id uuid [ref: > modules.id]
+  action uuid [ref: > actions.id]
+  scope_id uuid [ref: > scopes.id]
+  permission_id uuid [ref: > permissions.id, note: 'Legacy']
+  allowed boolean [default: true]
+  sidebar_visible boolean [default: true]
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+  updated_by uuid [ref: > users.id]
 
   Note: 'Maps roles to permissions'
+}
+
+Table modules {
+  id uuid [pk]
+  name varchar(255) [unique, not null]
+  display_name varchar(255) [not null]
+  sort_order int [default: 0]
+  icon varchar(255)
+  path varchar(255)
+  created_at timestamptz [default: `now()`]
+  deleted_at timestamptz
+  deleted_by uuid [ref: > users.id]
+}
+
+Table actions {
+  id uuid [pk]
+  name varchar(255) [unique, not null]
+  display_name varchar(255) [not null]
+  sort_order int [default: 0]
+  created_at timestamptz [default: `now()`]
+  deleted_at timestamptz
+  deleted_by uuid [ref: > users.id]
+}
+
+Table scopes {
+  id uuid [pk]
+  name varchar(255) [unique, not null]
+  display_name varchar(255) [not null]
+  description text
+  created_at timestamptz [default: `now()`]
+  deleted_at timestamptz
+  deleted_by uuid [ref: > users.id]
 }
 
 Table api_keys {

@@ -15,6 +15,7 @@ import {
   createContactValidation,
   updateContactValidation,
   updatePipelineStageValidation,
+  convertClientToActive,
 } from "../controllers/client.controller";
 import { authenticateToken, requirePermission } from "../middleware/auth.middleware";
 
@@ -367,6 +368,35 @@ router.patch("/:id/archive", requirePermission("clients", "delete"), archiveClie
  *         description: Internal server error
  */
 router.patch("/:id/pipeline-stage", updatePipelineStageValidation, requirePermission("clients", "manage_pipeline"), updatePipelineStage);
+
+/**
+ * @swagger
+ * /api/clients/{id}/convert:
+ *   post:
+ *     summary: Convert a pipeline client to an active client
+ *     tags: [Clients]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Client converted successfully
+ *       400:
+ *         description: Invalid state for conversion
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Client not found
+ */
+router.post("/:id/convert", requirePermission("clients", "manage_pipeline"), convertClientToActive);
 
 /**
  * @swagger

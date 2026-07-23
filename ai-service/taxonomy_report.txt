@@ -1,0 +1,149 @@
+Total skills: 28226
+Categories: 147
+Accounting: 82
+Administration: 342
+Affiliate Marketing: 99
+Agriculture: 200
+Animation: 107
+Arbitration: 145
+Architecture: 406
+Artificial Intelligence: 144
+Audit: 176
+Automation Testing: 64
+Automobile: 193
+Aviation: 155
+B2B Sales: 133
+B2C Sales: 51
+Backend: 1104
+Banking: 166
+Biotechnology: 186
+Blockchain: 243
+Brand Management: 126
+Business Analysis: 108
+Business Intelligence: 489
+CRM: 132
+Call Center: 137
+Channel Sales: 101
+Chemical: 167
+Civil: 178
+Civil Law: 166
+Clinical Research: 54
+Cloud Computing: 764
+Compensation & Benefits: 101
+Compliance: 142
+Construction: 77
+Consulting: 140
+Content Marketing: 149
+Contract Management: 153
+Corporate Law: 153
+Criminal Law: 171
+Curriculum Development: 175
+Customer Support: 90
+Cyber Security: 327
+Data Engineering: 520
+Data Science: 661
+Database Administration: 518
+Dentistry: 173
+DevOps: 307
+Digital Marketing: 66
+E-commerce: 76
+E-learning: 176
+Education: 895
+Electrical: 169
+Electronics: 135
+Embedded Systems: 65
+Employee Relations: 145
+Energy: 148
+Engineering: 668
+Enterprise Sales: 82
+Export & Import: 146
+Fashion: 98
+Finance: 144
+Food & Beverage: 101
+Food Processing: 154
+Frontend: 370
+Game Development: 67
+Government: 311
+Graphic Design: 96
+HR: 172
+HR Operations: 127
+Healthcare: 173
+Help Desk: 164
+Hospitality: 135
+Hotel Management: 115
+Housekeeping: 139
+IP Law: 146
+Industrial: 59
+Inside Sales: 99
+Insurance: 58
+Interior Design: 150
+Inventory: 66
+Investment Banking: 115
+IoT: 67
+Journalism: 192
+Laboratory: 469
+Learning & Development: 194
+Legal: 179
+Litigation: 125
+Logistics: 140
+Machine Learning: 315
+Manufacturing: 289
+Marine: 83
+Marketing: 140
+Mechanical: 90
+Media: 203
+Medical Billing: 80
+Medical Coding: 130
+Merchandising: 129
+Mining: 133
+Mobile Development: 165
+NGO: 199
+Networking: 390
+Nursing: 92
+Oil & Gas: 162
+Operations: 344
+POS Systems: 134
+Payroll: 115
+Performance Marketing: 132
+Petroleum: 67
+Pharmacy: 146
+Physiotherapy: 150
+Procurement: 188
+Product Management: 100
+Production: 133
+Project Management: 72
+Public Administration: 133
+QA: 523
+Quality Control: 355
+Radiology: 138
+Real Estate: 140
+Recruitment: 153
+Renewable Energy: 103
+Research: 121
+Retail: 77
+Retail Sales: 125
+Risk Management: 67
+SEM: 124
+SEO: 162
+Sales: 86
+Software Development: 783
+Store Operations: 130
+Supply Chain: 54
+Surveying: 75
+Talent Acquisition: 134
+Tax Law: 163
+Taxation: 68
+Teaching: 200
+Technical Support: 308
+Technology: 751
+Telecommunications: 156
+Textile: 102
+Tourism: 109
+Training: 361
+Transportation: 107
+Travel: 77
+Treasury: 65
+UI/UX Design: 247
+Urban Planning: 143
+VFX: 136
+Warehouse: 98

@@ -56,7 +56,7 @@ export const useCommunicationStore = create<CommunicationState & CommunicationAc
     createCommunication: async (data) => {
       set({ isSubmitting: true, error: null });
       try {
-        const response = await api.post('/api/communications', data);
+        const response = await api.post('/communications', data);
         const communication = response.data.communication;
         
         set({ isSubmitting: false });
@@ -81,7 +81,7 @@ export const useCommunicationStore = create<CommunicationState & CommunicationAc
         if (from) params.from = from;
         if (to) params.to = to;
 
-        const response = await api.get('/api/communications', { params });
+        const response = await api.get('/communications', { params });
         
         set({
           communications: response.data.communications || [],
@@ -96,7 +96,7 @@ export const useCommunicationStore = create<CommunicationState & CommunicationAc
     getFollowUpsDue: async () => {
       set({ isLoading: true, error: null });
       try {
-        const response = await api.get('/api/communications/follow-ups-due');
+        const response = await api.get('/communications/follow-ups-due');
         
         set({
           followUps: response.data.followUps || [],

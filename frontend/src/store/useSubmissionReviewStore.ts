@@ -42,6 +42,7 @@ interface SubmissionReviewStore {
   fetchPendingSubmissions: (params?: {
     page?: number;
     limit?: number;
+    status?: string;
   }) => Promise<void>;
   reviewSubmission: (submissionId: string, decision: string, notes?: string) => Promise<void>;
   clearError: () => void;
@@ -59,6 +60,7 @@ export const useSubmissionReviewStore = create<SubmissionReviewStore>((set, get)
       const queryParams = new URLSearchParams();
       if (params.page) queryParams.append('page', params.page.toString());
       if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.status) queryParams.append('status', params.status);
 
       const response = await api.get(`/submissions/pending-review?${queryParams.toString()}`);
       set({

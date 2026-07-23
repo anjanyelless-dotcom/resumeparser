@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { body, validationResult } from "express-validator";
 import { getClient } from "../database/db";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
+import { buildScopeFilter } from "../utils/rbac.utils";
 
 // Validation rules
 export const createClientValidation = [
@@ -122,8 +123,8 @@ export const updateContactValidation = [
 
 export const updatePipelineStageValidation = [
   body("stage")
-    .isIn(['prospect', 'qualified', 'proposal_sent', 'negotiation', 'won', 'lost'])
-    .withMessage("Stage must be one of: prospect, qualified, proposal_sent, negotiation, won, lost"),
+    .isIn(['lead', 'contacted', 'meeting_scheduled', 'proposal_sent', 'negotiation', 'won', 'lost'])
+    .withMessage("Stage must be one of: lead, contacted, meeting_scheduled, proposal_sent, negotiation, won, lost"),
   body("notes")
     .optional()
     .isLength({ max: 1000 })
@@ -142,6 +143,8 @@ interface Client {
   is_archived?: boolean;
   tenant_id?: string;
   created_at?: Date;
+  status?: string;
+  pipeline_stage?: string;
 }
 
 interface ClientContact {
@@ -161,6 +164,8 @@ interface ClientFilter {
   city?: string;
   country?: string;
   is_archived?: boolean;
+  status?: string;
+  pipeline_stage?: string;
 }
 
 // Middleware to normalize client data
@@ -196,16 +201,15 @@ const writeAuditLog = async (
   const client = await getClient();
   try {
     await client.query(
-      `INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, ip_address, details)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO audit_logs (id, user_id, action, table_name, record_id, new_values)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         crypto.randomUUID(),
         userId,
         action,
         resourceType,
         resourceId,
-        ipAddress || 'unknown',
-        JSON.stringify(details),
+        details ? JSON.stringify(details) : null,
       ]
     );
   } catch (error) {
@@ -229,15 +233,9 @@ export const createClient = async (req: AuthenticatedRequest, res: Response): Pr
     }
 
     const clientData: Partial<Client> = req.body;
-    const userRole = req.user?.role;
 
-    // For BDM role, default owner_user_id to req.user.id if not explicitly provided
-    // A BDM who signs a client usually starts as its owner
+    // Default owner_user_id to req.user.id if not explicitly provided
     let ownerId = clientData.owner_user_id;
-    if (!ownerId && userRole === 'bdm') {
-      ownerId = req.user?.id;
-    }
-    // For other roles, also default to req.user.id if not provided
     if (!ownerId) {
       ownerId = req.user?.id;
     }
@@ -245,9 +243,9 @@ export const createClient = async (req: AuthenticatedRequest, res: Response): Pr
     const client = await getClient();
     try {
       const result = await client.query(
-        `INSERT INTO clients (company_name, industry, address, city, country, owner_user_id, tenant_id, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-         RETURNING id, company_name, industry, address, city, country, owner_user_id, tenant_id, created_at`,
+        `INSERT INTO clients (company_name, industry, address, city, country, owner_user_id, tenant_id, created_at, pipeline_stage, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9)
+         RETURNING id, company_name, industry, address, city, country, owner_user_id, tenant_id, created_at, pipeline_stage, status`,
         [
           clientData.company_name,
           clientData.industry || null,
@@ -256,16 +254,18 @@ export const createClient = async (req: AuthenticatedRequest, res: Response): Pr
           clientData.country || null,
           ownerId,
           clientData.tenant_id || 'default',
+          clientData.pipeline_stage || 'lead',
+          clientData.status || 'pipeline'
         ]
       );
 
       const createdClient = result.rows[0];
 
-      // Insert into client_pipeline_history for initial 'prospect' stage
+      // Insert into client_pipeline_history for initial 'lead' stage
       await client.query(
         `INSERT INTO client_pipeline_history (client_id, from_stage, to_stage, changed_by, notes, changed_at)
-         VALUES ($1, NULL, 'prospect', $2, 'Initial stage on client creation', NOW())`,
-        [createdClient.id, req.user!.id]
+         VALUES ($1, NULL, $2, $3, 'Initial stage on client creation', NOW())`,
+        [createdClient.id, createdClient.pipeline_stage, req.user!.id]
       );
 
       // Write audit log
@@ -299,7 +299,6 @@ export const getAllClients = async (
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const userId = (req as any).user?.id;
-    const userRole = (req as any).user?.role;
 
     const filters: ClientFilter = {
       search: (req.query.search as string) || undefined,
@@ -307,6 +306,7 @@ export const getAllClients = async (
       city: (req.query.city as string) || undefined,
       country: (req.query.country as string) || undefined,
       is_archived: req.query.is_archived === "true" ? true : req.query.is_archived === "false" ? false : undefined,
+      status: (req.query.status as string) || undefined,
     };
 
     const client = await getClient();
@@ -316,40 +316,51 @@ export const getAllClients = async (
       const queryParams: any[] = [];
       let paramIndex = 1;
 
-      // Add client_manager scoping
-      if (userRole === 'client_manager' && userId) {
-        whereConditions.push(`owner_user_id = $${paramIndex}`);
-        queryParams.push(userId);
-        paramIndex++;
+      // Add dynamic data scoping
+      const scope = buildScopeFilter((req as any).user, 'clients', '');
+      if (scope.sql) {
+        // Strip leading ' AND ' or ' ' from scope.sql since we push to array
+        const cleanSql = scope.sql.replace(/^\s*AND\s*/i, '').replace(/^\s+/, '');
+        if (cleanSql) {
+          whereConditions.push(cleanSql.replace('$PARAM', `$${paramIndex}`));
+          queryParams.push(...scope.params);
+          paramIndex += scope.params.length;
+        }
       }
 
       if (filters.search) {
-        whereConditions.push(`(company_name ILIKE $${paramIndex})`);
+        whereConditions.push(`(c.company_name ILIKE $${paramIndex})`);
         queryParams.push(`%${filters.search}%`);
         paramIndex++;
       }
 
       if (filters.industry) {
-        whereConditions.push(`industry = $${paramIndex}`);
+        whereConditions.push(`c.industry = $${paramIndex}`);
         queryParams.push(filters.industry);
         paramIndex++;
       }
 
       if (filters.city) {
-        whereConditions.push(`city = $${paramIndex}`);
+        whereConditions.push(`c.city = $${paramIndex}`);
         queryParams.push(filters.city);
         paramIndex++;
       }
 
       if (filters.country) {
-        whereConditions.push(`country = $${paramIndex}`);
+        whereConditions.push(`c.country = $${paramIndex}`);
         queryParams.push(filters.country);
         paramIndex++;
       }
 
       if (filters.is_archived !== undefined) {
-        whereConditions.push(`is_archived = $${paramIndex}`);
+        whereConditions.push(`c.is_archived = $${paramIndex}`);
         queryParams.push(filters.is_archived);
+        paramIndex++;
+      }
+
+      if (filters.status) {
+        whereConditions.push(`c.status = $${paramIndex}`);
+        queryParams.push(filters.status);
         paramIndex++;
       }
 
@@ -358,18 +369,25 @@ export const getAllClients = async (
       const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
       // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM clients ${whereClause}`;
+      const countQuery = `SELECT COUNT(*) as total FROM clients c ${whereClause}`;
       const countResult = await client.query(countQuery, queryParams);
       const total = parseInt(countResult.rows[0].total) || 0;
 
       // Get paginated results
       const offset = (page - 1) * limit;
       const dataQuery = `
-        SELECT id, company_name, industry, address, city, country, owner_user_id, 
-               pipeline_stage, is_archived, tenant_id, created_at
-        FROM clients 
+        SELECT c.id, c.company_name, c.industry, c.address, c.city, c.country, c.owner_user_id, 
+               c.pipeline_stage, c.status, c.is_archived, c.tenant_id, c.created_at,
+               c.next_follow_up, c.last_activity,
+               cc.contact_name as primary_contact_name,
+               cc.email as primary_contact_email,
+               cc.phone as primary_contact_phone,
+               (SELECT COUNT(*) FROM job_descriptions jd WHERE jd.client_id = c.id) as total_requirements,
+               (SELECT COUNT(*) FROM placements p WHERE p.client_id = c.id) as total_placements
+        FROM clients c
+        LEFT JOIN client_contacts cc ON c.id = cc.client_id AND cc.is_primary = true
         ${whereClause}
-        ORDER BY created_at DESC
+        ORDER BY c.created_at DESC
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
       queryParams.push(limit, offset);
@@ -409,7 +427,8 @@ export const getClientById = async (req: AuthenticatedRequest, res: Response): P
     try {
       const result = await client.query(
         `SELECT id, company_name, industry, address, city, country, owner_user_id, 
-               is_archived, tenant_id, created_at
+               pipeline_stage, status, is_archived, tenant_id, created_at,
+               next_follow_up, last_activity
          FROM clients 
          WHERE id = $1`,
         [clientId]
@@ -496,6 +515,17 @@ export const updateClient = async (req: AuthenticatedRequest, res: Response): Pr
         paramIndex++;
       }
 
+      if (clientData.status !== undefined) {
+        updateFields.push(`status = $${paramIndex}`);
+        updateValues.push(clientData.status);
+        paramIndex++;
+      }
+      if (clientData.pipeline_stage !== undefined) {
+        updateFields.push(`pipeline_stage = $${paramIndex}`);
+        updateValues.push(clientData.pipeline_stage);
+        paramIndex++;
+      }
+
       if (updateFields.length === 0) {
         res.status(400).json({ error: "No fields to update" });
         return;
@@ -504,8 +534,8 @@ export const updateClient = async (req: AuthenticatedRequest, res: Response): Pr
       const updateQuery = `
         UPDATE clients 
         SET ${updateFields.join(', ')}
-        WHERE id = $${updateValues.length}
-        RETURNING id, company_name, industry, address, city, country, owner_user_id, is_archived, tenant_id, created_at
+        WHERE id = $${updateValues.length + 1}
+        RETURNING id, company_name, industry, address, city, country, owner_user_id, pipeline_stage, status, is_archived, tenant_id, created_at, next_follow_up, last_activity
       `;
 
       updateValues.push(clientId);
@@ -989,8 +1019,10 @@ export const updatePipelineStage = async (req: AuthenticatedRequest, res: Respon
       console.log("Current stage from DB:", currentStage);
       console.log("Requested new stage:", stage);
 
-      // Verify ownership: user must own the client OR be admin
-      if (clientData.owner_user_id !== userId && userRole !== 'admin') {
+      // Verify ownership: user must own the client OR have all-access permission
+      const perms = (req as any).user?.permissions || [];
+      const canManageAll = perms.includes('clients:view') || perms.includes('clients:view_all');
+      if (clientData.owner_user_id !== userId && !canManageAll) {
         await client.query("ROLLBACK");
         res.status(403).json({
           error: "Forbidden",
@@ -1114,6 +1146,114 @@ export const getBDMSummary = async (req: AuthenticatedRequest, res: Response): P
     }
   } catch (error) {
     console.error("Get BDM summary error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const convertClientToActive = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const clientId = Array.isArray(id) ? id[0] : id;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const client = await getClient();
+    try {
+      await client.query("BEGIN");
+
+      // Verify client exists and check ownership/status
+      const clientResult = await client.query(
+        `SELECT id, company_name, pipeline_stage, status, owner_user_id 
+         FROM clients 
+         WHERE id = $1`,
+        [clientId]
+      );
+
+      if (clientResult.rows.length === 0) {
+        await client.query("ROLLBACK");
+        res.status(404).json({ error: "Client not found" });
+        return;
+      }
+
+      const clientData = clientResult.rows[0];
+
+      // Validate status
+      if (clientData.status === 'active') {
+        await client.query("ROLLBACK");
+        res.status(400).json({ error: "Client is already active" });
+        return;
+      }
+
+      // Validate pipeline stage is 'won'
+      if (clientData.pipeline_stage !== 'won') {
+        await client.query("ROLLBACK");
+        res.status(400).json({ error: "Client pipeline stage must be 'won' before conversion" });
+        return;
+      }
+
+      // Verify ownership
+      const perms = (req as any).user?.permissions || [];
+      const canManageAll = perms.includes('clients:manage') || perms.includes('clients:manage_all');
+      if (clientData.owner_user_id !== userId && !canManageAll) {
+        await client.query("ROLLBACK");
+        res.status(403).json({
+          error: "Forbidden",
+          message: "You can only convert your own clients",
+        });
+        return;
+      }
+
+      // Update status to active
+      await client.query(
+        `UPDATE clients 
+         SET status = 'active'
+         WHERE id = $1`,
+        [clientId]
+      );
+
+      // Insert into history
+      await client.query(
+        `INSERT INTO client_pipeline_history (client_id, from_stage, to_stage, changed_by, notes, changed_at)
+         VALUES ($1, $2, 'active_client', $3, 'Converted to Active Client', NOW())`,
+        [clientId, clientData.pipeline_stage, userId]
+      );
+
+      // Write audit log
+      await writeAuditLog(
+        userId,
+        "CONVERT_CLIENT",
+        "clients",
+        clientId,
+        {
+          previous_status: clientData.status,
+          new_status: 'active',
+          client_name: clientData.company_name
+        },
+        req.ip
+      );
+
+      await client.query("COMMIT");
+
+      res.json({
+        message: "Client converted to active successfully",
+        client: {
+          id: clientData.id,
+          company_name: clientData.company_name,
+          status: 'active',
+        },
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error("Convert client error:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { getClient } from "../database/db";
 import { authenticateToken } from "../middleware/auth.middleware";
 import bcrypt from "bcryptjs";
+import { buildScopeFilter } from "../utils/rbac.utils";
 
 interface TeamMember {
   id: string;
@@ -21,6 +22,34 @@ interface User {
   created_at: string;
 }
 
+// Get all team leads
+export const getTeamLeads = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const client = await getClient();
+    try {
+      const query = `
+        SELECT id, email, role, is_active, created_at
+        FROM users
+        WHERE role = 'team_lead' AND is_active = true
+        ORDER BY email ASC
+      `;
+      const result = await client.query(query);
+
+      res.json({
+        team_leads: result.rows,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error("Get team leads error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 // Get all users with pagination
 export const getAllUsers = async (
   req: Request,
@@ -29,58 +58,73 @@ export const getAllUsers = async (
   try {
     const skip = parseInt(req.query.skip as string) || 0;
     const limit = parseInt(req.query.limit as string) || 20;
+    const search = req.query.search as string;
+    const role = req.query.role as string;
+    const status = req.query.status as string;
     const userId = (req as any).user?.id;
     const userRole = (req as any).user?.role;
 
     const client = await getClient();
     try {
-      let result;
-      let total;
+      // Use dynamic scoping for users list
+      const scope = buildScopeFilter((req as any).user, 'users', 'u');
+      
+      let conditions = ['1=1'];
+      let queryParams: any[] = [...scope.params];
+      let paramCount = scope.params.length;
 
-      if (userRole === 'admin') {
-        // Admins can view all users
-        const countResult = await client.query("SELECT COUNT(*) as total FROM users");
-        total = parseInt(countResult.rows[0].total);
-
-        result = await client.query(
-          `SELECT id, email, role, is_active, tenant_id, created_at
-           FROM users
-           ORDER BY created_at DESC
-           LIMIT $1 OFFSET $2`,
-          [limit, skip]
-        );
-      } else if (userRole === 'client_manager') {
-        // Client managers can only see recruiters assigned to their clients' jobs
-        const query = `
-          SELECT DISTINCT u.id, u.email, u.role, u.is_active, u.tenant_id, u.created_at
-          FROM users u
-          JOIN job_recruiter_assignments jra ON u.id = jra.recruiter_id
-          JOIN job_descriptions j ON jra.job_id = j.id
-          JOIN clients c ON j.client_id = c.id
-          WHERE c.owner_user_id = $1
-          ORDER BY u.created_at DESC
-          LIMIT $2 OFFSET $3
-        `;
-        result = await client.query(query, [userId, limit, skip]);
-
-        const countQuery = `
-          SELECT COUNT(DISTINCT u.id) as total
-          FROM users u
-          JOIN job_recruiter_assignments jra ON u.id = jra.recruiter_id
-          JOIN job_descriptions j ON jra.job_id = j.id
-          JOIN clients c ON j.client_id = c.id
-          WHERE c.owner_user_id = $1
-        `;
-        const countResult = await client.query(countQuery, [userId]);
-        total = parseInt(countResult.rows[0].total);
-      } else {
-        // Other roles are forbidden
-        res.status(403).json({
-          error: "Forbidden",
-          message: "Only admins and client managers can view users",
-        });
-        return;
+      if (scope.sql) {
+        let scopeSql = scope.sql;
+        if (scopeSql.includes('$PARAM')) {
+          scopeSql = scopeSql.replace('$PARAM', '$1'); 
+        }
+        // scope.sql starts with AND, so we can just append it or strip AND
+        conditions.push(scopeSql.replace(/^\s*AND\s+/i, ''));
       }
+
+      if (search) {
+        paramCount++;
+        conditions.push(`(u.email ILIKE $${paramCount} OR u.id::text ILIKE $${paramCount})`);
+        queryParams.push(`%${search}%`);
+      }
+
+      if (role && role !== 'All Roles') {
+        paramCount++;
+        conditions.push(`u.role = $${paramCount}`);
+        queryParams.push(role);
+      }
+
+      if (status && status !== 'All Status') {
+        if (status.toLowerCase() === 'active') {
+          conditions.push(`u.is_active = true`);
+        } else if (status.toLowerCase() === 'inactive') {
+          conditions.push(`u.is_active = false`);
+        }
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+      const countQuery = `
+        SELECT COUNT(DISTINCT u.id) as total 
+        FROM users u
+        ${whereClause}
+      `;
+      const countResult = await client.query(countQuery, queryParams);
+      const total = parseInt(countResult.rows[0].total);
+
+      const limitIndex = ++paramCount;
+      const skipIndex = ++paramCount;
+      
+      const pagedParams = [...queryParams, limit, skip];
+
+      const query = `
+        SELECT DISTINCT u.id, u.email, u.role, u.is_active, u.tenant_id, u.created_at
+        FROM users u
+        ${whereClause}
+        ORDER BY u.created_at DESC
+        LIMIT $${limitIndex} OFFSET $${skipIndex}
+      `;
+      const result = await client.query(query, pagedParams);
 
       const users: User[] = result.rows.map(row => ({
         id: row.id,
@@ -127,18 +171,16 @@ export const getMyTeam = async (
       return;
     }
 
-    // Only team leads and admins can access this endpoint
-    if (userRole !== 'team_lead' && userRole !== 'admin') {
-      res.status(403).json({
-        error: "Forbidden",
-        message: "Only team leads and admins can view team members",
-      });
-      return;
-    }
-
     const client = await getClient();
     try {
-      let query = `
+      const scope = buildScopeFilter((req as any).user, 'users', 'u');
+      
+      let scopeSql = scope.sql;
+      if (scopeSql.includes('$PARAM')) {
+        scopeSql = scopeSql.replace('$PARAM', '$2'); // $1 is tenantId
+      }
+      
+      const query = `
         SELECT 
           u.id,
           u.email,
@@ -149,27 +191,13 @@ export const getMyTeam = async (
         FROM users u
         LEFT JOIN job_recruiter_assignments jra ON u.id = jra.recruiter_id
         WHERE u.tenant_id = $1
-          AND u.role = 'recruiter'
-      `;
-
-      const params: any[] = [tenantId];
-      let paramCount = 1;
-
-      // Team leads can only see their own team members
-      if (userRole === 'team_lead') {
-        paramCount++;
-        query += ` AND u.team_lead_id = $${paramCount}`;
-        params.push(userId);
-      }
-
-      // Admins can see all recruiters (no additional filter needed)
-      // If you want to restrict admins to specific teams, add logic here
-
-      query += `
+          AND u.role IN ('recruiter', 'team_lead', 'admin')
+          ${scopeSql}
         GROUP BY u.id, u.email, u.role, u.is_active, u.team_lead_id
         ORDER BY u.email
       `;
 
+      const params: any[] = [tenantId, ...scope.params];
       const result = await client.query(query, params);
 
       const teamMembers: TeamMember[] = result.rows.map(row => ({
@@ -241,6 +269,52 @@ export const updateUserRole = async (
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to update user role",
+    });
+  }
+};
+
+// Update user team lead
+export const updateUserTeamLead = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { team_lead_id } = req.body;
+    const userRole = (req as any).user?.role;
+
+    if (userRole !== 'admin') {
+      res.status(403).json({
+        error: "Forbidden",
+        message: "Only admins can update team leads",
+      });
+      return;
+    }
+
+    const client = await getClient();
+    try {
+      const result = await client.query(
+        "UPDATE users SET team_lead_id = $1 WHERE id = $2 RETURNING id, email, team_lead_id",
+        [team_lead_id || null, id]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      res.json({
+        message: "User team lead updated successfully",
+        user: result.rows[0],
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error("Update team lead error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: "Failed to update team lead",
     });
   }
 };
@@ -383,18 +457,22 @@ export const createUser = async (
       return;
     }
 
-    // Validate role
-    const validRoles = ['admin', 'recruiter', 'team_lead', 'client_manager', 'bdm', 'viewer'];
-    if (!validRoles.includes(role)) {
-      res.status(400).json({
-        error: "Bad Request",
-        message: `Invalid role. Valid roles are: ${validRoles.join(', ')}`,
-      });
-      return;
-    }
-
     const client = await getClient();
     try {
+      // Validate role dynamically from database
+      const roleResult = await client.query(
+        "SELECT id FROM roles WHERE name = $1",
+        [role]
+      );
+      if (roleResult.rows.length === 0) {
+        res.status(400).json({
+          error: "Bad Request",
+          message: `Invalid role: ${role}`,
+        });
+        return;
+      }
+      const roleId = roleResult.rows[0].id;
+
       // Check if email already exists
       const existingUser = await client.query(
         "SELECT id FROM users WHERE email = $1",
@@ -414,10 +492,10 @@ export const createUser = async (
 
       // Create user
       const result = await client.query(
-        `INSERT INTO users (id, email, hashed_password, role, is_active, tenant_id, created_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, true, 'default', NOW())
+        `INSERT INTO users (id, email, hashed_password, role, role_id, is_active, tenant_id, created_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, true, 'default', NOW())
          RETURNING id, email, role, is_active, tenant_id, created_at`,
-        [email, hashedPassword, role]
+        [email, hashedPassword, role, roleId]
       );
 
       res.status(201).json({

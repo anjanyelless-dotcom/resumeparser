@@ -27,6 +27,38 @@ export default function SubmissionDetailPage() {
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const [showPlacementModal, setShowPlacementModal] = useState(false);
+  const [placementData, setPlacementData] = useState({ joining_date: '', placement_fee: '', notes: '' });
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    try {
+      setIsLoading(true);
+      await api.patch(`/submissions/${id}/status`, { status: newStatus });
+      toast.success(`Status updated to ${newStatus}`);
+      await fetchSubmissionDetails(id!);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update status");
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreatePlacement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsLoading(true);
+      await api.post(`/placements/${id}`, {
+        ...placementData,
+        placement_fee: placementData.placement_fee ? parseFloat(placementData.placement_fee) : null
+      });
+      toast.success("Placement created successfully");
+      setShowPlacementModal(false);
+      await fetchSubmissionDetails(id!);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to create placement");
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -71,15 +103,30 @@ export default function SubmissionDetailPage() {
         icon: <XCircle className="w-4 h-4" />,
         label: "Rejected"
       },
-      offered: {
+      "offer extended": {
         color: "bg-purple-100 text-purple-800 border-purple-300",
         icon: <CheckCircle className="w-4 h-4" />,
-        label: "Offered"
+        label: "Offer Extended"
       },
-      hired: {
+      "offer accepted": {
         color: "bg-emerald-100 text-emerald-800 border-emerald-300",
         icon: <CheckCircle className="w-4 h-4" />,
-        label: "Hired"
+        label: "Offer Accepted"
+      },
+      "offer declined": {
+        color: "bg-red-100 text-red-800 border-red-300",
+        icon: <XCircle className="w-4 h-4" />,
+        label: "Offer Declined"
+      },
+      joined: {
+        color: "bg-blue-100 text-blue-800 border-blue-300",
+        icon: <CheckCircle className="w-4 h-4" />,
+        label: "Joined"
+      },
+      placed: {
+        color: "bg-emerald-100 text-emerald-800 border-emerald-300",
+        icon: <CheckCircle className="w-4 h-4" />,
+        label: "Placed"
       }
     };
 
@@ -133,12 +180,33 @@ export default function SubmissionDetailPage() {
             <ArrowLeft className="w-5 h-5" />
             Back to Submissions
           </button>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Submission Details</h1>
               <p className="text-gray-600 mt-1">View detailed information about this candidate submission</p>
             </div>
-            {getStatusBadge(submission.status)}
+            <div className="flex items-center gap-4">
+              {getStatusBadge(submission.status)}
+              
+              {/* Lifecycle Actions */}
+              <div className="flex flex-wrap items-center gap-2 border-l pl-4 border-gray-200">
+                {submission.status === 'interview_completed' && (
+                  <button onClick={() => handleStatusUpdate('Offer Extended')} className="px-3 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">Extend Offer</button>
+                )}
+                {submission.status === 'Offer Extended' && (
+                  <>
+                    <button onClick={() => handleStatusUpdate('Offer Accepted')} className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">Accept Offer</button>
+                    <button onClick={() => handleStatusUpdate('Offer Declined')} className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">Decline Offer</button>
+                  </>
+                )}
+                {submission.status === 'Offer Accepted' && (
+                  <button onClick={() => handleStatusUpdate('Joined')} className="px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700">Mark as Joined</button>
+                )}
+                {submission.status === 'Joined' && (
+                  <button onClick={() => setShowPlacementModal(true)} className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">Create Placement</button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -277,6 +345,62 @@ export default function SubmissionDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Placement Modal */}
+      {showPlacementModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Create Placement</h2>
+            <form onSubmit={handleCreatePlacement} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Joining Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={placementData.joining_date}
+                  onChange={(e) => setPlacementData({ ...placementData, joining_date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Placement Fee</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={placementData.placement_fee}
+                  onChange={(e) => setPlacementData({ ...placementData, placement_fee: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600"
+                  placeholder="e.g. 5000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={placementData.notes}
+                  onChange={(e) => setPlacementData({ ...placementData, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600"
+                  rows={3}
+                ></textarea>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowPlacementModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+                >
+                  Confirm Placement
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useJobStore } from "../store/useJobStore";
 import toast from "react-hot-toast";
 import {
@@ -14,30 +14,33 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import CandidateFilterSearch from "./CandidateFilterSearch";
+import XRaySearchPage from "./XRaySearchPage";
+import BooleanSearchPage from "./BooleanSearchPage";
 
 export default function MatchingPage() {
-  const location = useLocation();
+  const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
-  const [selectedJob, setSelectedJob] = useState<string>(location.state?.jobId || "");
+  const [activeTab, setActiveTab] = useState("ai-matching");
   const [isMatching, setIsMatching] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
+  const [selectedJobId, setSelectedJobId] = useState<string>("all");
 
-  const { runMatching, fetchMatchResults, fetchJobs, jobs: storeJobs, matchResults: storeMatchResults } = useJobStore();
+  const { runMatching, fetchMatchResults, fetchJobs, jobs: storeJobs, matchResults: storeMatchResults, updateRecruiterDecision, submitToHiringProcess } = useJobStore();
 
   const jobs = storeJobs || [];
   const matchResults = storeMatchResults || [];
 
   useEffect(() => {
     loadJobs();
-    loadMatchResults();
-  }, []);
-
-  useEffect(() => {
-    if (location.state?.jobId) {
-      setSelectedJob(location.state.jobId);
+    if (jobId) {
+      loadMatchResults(jobId);
+    } else {
+      loadMatchResults(selectedJobId);
     }
-  }, [location.state?.jobId]);
+  }, [jobId, selectedJobId]);
 
   const loadJobs = async () => {
     try {
@@ -47,16 +50,17 @@ export default function MatchingPage() {
     }
   };
 
-  const loadMatchResults = async () => {
+  const loadMatchResults = async (id: string) => {
     try {
-      await fetchMatchResults("all");
+      await fetchMatchResults(id);
     } catch (error) {
       console.error("Failed to load match results");
     }
   };
 
   const handleRunMatching = async () => {
-    if (!selectedJob) {
+    const targetJobId = jobId || (selectedJobId !== "all" ? selectedJobId : null);
+    if (!targetJobId) {
       toast.error("Please select a job first");
       return;
     }
@@ -64,9 +68,9 @@ export default function MatchingPage() {
     setIsMatching(true);
     setShowSuccessBanner(false);
     try {
-      await runMatching(selectedJob);
+      await runMatching(targetJobId, 100);
       setShowSuccessBanner(true);
-      loadMatchResults();
+      loadMatchResults(targetJobId);
     } catch (error: any) {
       toast.error(error.message || "Matching failed");
     } finally {
@@ -166,11 +170,65 @@ export default function MatchingPage() {
       .join("");
   };
 
-  const filteredResults = selectedJob
-    ? matchResults.filter((result) => result.job_id === selectedJob)
-    : matchResults;
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedCandidates(new Set(filteredResults.map(r => r.candidate_id)));
+    } else {
+      setSelectedCandidates(new Set());
+    }
+  };
 
-  const selectedJobObj = jobs.find((j) => j.id === selectedJob);
+  const handleSelectCandidate = (candidateId: string, checked: boolean) => {
+    setSelectedCandidates(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(candidateId);
+      else next.delete(candidateId);
+      return next;
+    });
+  };
+
+  const handleBulkDecision = async (decision: string) => {
+    const currentJobId = jobId || (selectedJobId !== "all" ? selectedJobId : undefined);
+    if (selectedCandidates.size === 0 || !currentJobId) return;
+    try {
+      const candidates = Array.from(selectedCandidates).map(id => ({ candidate_id: id, decision }));
+      await updateRecruiterDecision(currentJobId, candidates);
+      setSelectedCandidates(new Set());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSubmitToHiring = async () => {
+    const currentJobId = jobId || (selectedJobId !== "all" ? selectedJobId : undefined);
+    if (!currentJobId) return;
+    try {
+      const shortlisted = filteredResults.filter(r => r.recruiter_decision === 'Shortlisted').map(r => r.candidate_id);
+      if (shortlisted.length === 0) return;
+      await submitToHiringProcess(currentJobId, shortlisted);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const getDecisionColor = (decision?: string) => {
+    switch (decision) {
+      case 'Shortlisted': return 'bg-green-100 text-green-800';
+      case 'Rejected': return 'bg-red-100 text-red-800';
+      case 'Moved To Hiring Process': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const effectiveJobId = jobId || (selectedJobId !== "all" ? selectedJobId : undefined);
+
+  const filteredResults = effectiveJobId
+    ? matchResults.filter((result) => result.job_id === effectiveJobId)
+    : matchResults;
+    
+  const shortlistedCandidates = filteredResults.filter(r => r.recruiter_decision === 'Shortlisted');
+
+  const selectedJobObj = jobs.find((j) => j.id === effectiveJobId);
   const jobStatus = (selectedJobObj?.status || "active").toLowerCase();
   
   const isDraft = jobStatus === "draft";
@@ -243,72 +301,102 @@ export default function MatchingPage() {
 
   return (
     <div className="p-6 max-w-full w-full overflow-hidden">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Candidate Matching</h1>
-        <p className="text-gray-600">
-          Match candidates against job requirements
-        </p>
-      </div>
+      {!jobId && (
+        <>
+          {/* ── Page Header ── */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Candidate Matching</h1>
+            <p className="text-gray-500 mt-1 text-sm">
+              Match candidates against job requirements
+            </p>
+          </div>
 
-      {/* Tab Navigation */}
-      <div className="mb-6 border-b border-gray-200">
-        <nav className="flex space-x-8">
-          <button
-            className="py-2 px-1 border-b-2 border-indigo-500 text-indigo-600 font-medium text-sm"
-          >
-            JD Matching
-          </button>
-          <button
-            onClick={() => navigate("/candidates/filter-search")}
-            className="py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors"
-          >
-            Filter Search
-          </button>
-          <button
-            onClick={() => navigate("/candidates/xray-search")}
-            className="py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors"
-          >
-            X-Ray Search
-          </button>
-          <button
-            onClick={() => navigate("/candidates/boolean-search")}
-            className="py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors"
-          >
-            Boolean Search
-          </button>
-        </nav>
-      </div>
+          {/* ── Tab Navigation ── */}
+          <div className="mb-6">
+            <div className="border-b border-gray-200">
+              <nav className="flex space-x-8 overflow-x-auto scrollbar-hide" aria-label="Tabs">
+                <button
+                  onClick={() => navigate("/ai-recruitment/jd-matching")}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "jd-matching"
+                      ? "border-indigo-500 text-indigo-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 cursor-pointer"
+                  }`}
+                >
+                  JD Matching
+                </button>
+                <button
+                  onClick={() => setActiveTab("filter-search")}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "filter-search"
+                      ? "border-[#f18622] text-[#f18622]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 cursor-pointer"
+                  }`}
+                >
+                  Filter Search
+                </button>
+                <button
+                  onClick={() => setActiveTab("xray-search")}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "xray-search"
+                      ? "border-[#f18622] text-[#f18622]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 cursor-pointer"
+                  }`}
+                >
+                  X-Ray Search
+                </button>
+                <button
+                  onClick={() => setActiveTab("boolean-search")}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "boolean-search"
+                      ? "border-[#f18622] text-[#f18622]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 cursor-pointer"
+                  }`}
+                >
+                  Boolean Search
+                </button>
+              </nav>
+            </div>
+          </div>
+        </>
+      )}
 
-      {/* Controls */}
+      {/* Tab Content */}
+      {activeTab === "ai-matching" && (
+        <>
+          {/* Controls */}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
           <div className="flex-1 max-w-md">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Select Job
-            </label>
-            <select
-              value={selectedJob}
-              onChange={(e) => {
-                setSelectedJob(e.target.value);
-                setExpandedRows(new Set());
-                setShowSuccessBanner(false);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">All Jobs</option>
-              {jobs.map((job) => (
-                <option key={job.id} value={job.id}>
-                  {job.title} - {job.department}
-                </option>
-              ))}
-            </select>
+            {!jobId && (
+              <div>
+                <label
+                  htmlFor="job-select"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Select Job
+                </label>
+                <select
+                  id="job-select"
+                  value={selectedJobId}
+                  onChange={(e) => setSelectedJobId(e.target.value)}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
+                >
+                  <option value="all">All Jobs</option>
+                  {jobs.map((job) => (
+                    <option key={job.id} value={job.id}>
+                      {job.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">
             <button
               onClick={handleRunMatching}
-              disabled={isMatching || !selectedJob || !isActive}
+              disabled={isMatching || !selectedJobObj || !isActive}
               className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
             >
               {isMatching ? (
@@ -379,7 +467,7 @@ export default function MatchingPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {selectedJob && !isActive ? (
+        {selectedJobObj && !isActive ? (
           <div className="lg:col-span-4 bg-white rounded-lg shadow-sm p-12 flex flex-col items-center justify-center text-center">
             {isDraft && (
               <div className="max-w-md">
@@ -441,10 +529,27 @@ export default function MatchingPage() {
                 <p className="text-gray-600">Running matching algorithm...</p>
               </div>
             ) : filteredResults.length > 0 ? (
+              <>
+              {/* Bulk Actions */}
+              <div className="flex gap-2 mb-4 px-6 pt-4">
+                <button 
+                  onClick={() => handleBulkDecision('Shortlisted')}
+                  disabled={selectedCandidates.size === 0}
+                  className="px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-green-200 transition-colors"
+                >Shortlist Selected</button>
+                <button 
+                  onClick={() => handleBulkDecision('Rejected')}
+                  disabled={selectedCandidates.size === 0}
+                  className="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-red-200 transition-colors"
+                >Reject Selected</button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                        <input type="checkbox" onChange={(e) => handleSelectAll(e.target.checked)} checked={selectedCandidates.size > 0 && selectedCandidates.size === filteredResults.length} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Rank
                       </th>
@@ -463,6 +568,9 @@ export default function MatchingPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Recommendation
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Decision
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -472,6 +580,9 @@ export default function MatchingPage() {
                           className="hover:bg-gray-50 cursor-pointer"
                           onClick={() => toggleRowExpansion(result.id)}
                         >
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                            <input type="checkbox" checked={selectedCandidates.has(result.candidate_id)} onChange={(e) => handleSelectCandidate(result.candidate_id, e.target.checked)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm font-medium text-gray-900">
                               #{index + 1}
@@ -481,12 +592,12 @@ export default function MatchingPage() {
                             <div className="flex items-center">
                               <div className="h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center">
                                 <span className="text-xs font-medium text-indigo-600">
-                                  {getInitials(result.candidate_name)}
+                                  {getInitials(result.candidate_name || (result.candidate_email ? result.candidate_email.split('@')[0] : '?'))}
                                 </span>
                               </div>
                               <div className="ml-3">
                                 <p className="text-sm font-medium text-gray-900">
-                                  {result.candidate_name}
+                                  {result.candidate_name || (result.candidate_email ? result.candidate_email.split('@')[0] : 'Unknown')}
                                 </p>
                                 <p className="text-xs text-gray-500">
                                   {result.candidate_email}
@@ -524,12 +635,17 @@ export default function MatchingPage() {
                               {result.recommendation}
                             </span>
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getDecisionColor(result.recruiter_decision)}`}>
+                              {result.recruiter_decision || 'Pending'}
+                            </span>
+                          </td>
                         </tr>
 
                         {/* Expanded Row */}
                         {expandedRows.has(result.id) && (
                           <tr>
-                            <td colSpan={6} className="px-6 py-4 bg-gray-50">
+                            <td colSpan={8} className="px-6 py-4 bg-gray-50">
                               <div className="space-y-4">
                                 {/* Score Breakdown */}
                                 <div>
@@ -620,6 +736,42 @@ export default function MatchingPage() {
                   </tbody>
                 </table>
               </div>
+              
+              {/* Shortlisted Queue Section */}
+              {shortlistedCandidates.length > 0 && (
+                 <div className="mt-8 bg-white rounded-lg shadow-sm p-6 border-t-4 border-indigo-500">
+                    <div className="flex justify-between items-center mb-4">
+                       <div>
+                         <h3 className="text-lg font-bold text-gray-900">Shortlisted Queue ({shortlistedCandidates.length})</h3>
+                         <p className="text-sm text-gray-500">Review shortlisted candidates and submit them to the formal hiring process.</p>
+                       </div>
+                       <button onClick={handleSubmitToHiring} className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">Submit To Hiring Process</button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {shortlistedCandidates.map((c) => (
+                         <div key={c.candidate_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50">
+                           <div className="flex items-center mb-3">
+                              <div className="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                                <span className="text-sm font-bold text-indigo-600">
+                                  {getInitials(c.candidate_name || (c.candidate_email ? c.candidate_email.split('@')[0] : '?'))}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">{c.candidate_name || (c.candidate_email ? c.candidate_email.split('@')[0] : 'Unknown')}</p>
+                                <p className="text-xs text-gray-500">{c.candidate_email}</p>
+                              </div>
+                           </div>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Match Score</span>
+                              <span className="font-bold text-indigo-600">{c.overall_score}%</span>
+                           </div>
+                         </div>
+                      ))}
+                    </div>
+                 </div>
+              )}
+              </>
             ) : (
               <div className="p-12 text-center">
                 <svg
@@ -639,7 +791,7 @@ export default function MatchingPage() {
                   No matching results
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  {selectedJob
+                  {selectedJobObj
                     ? "Run matching to see results"
                     : "Select a job and run matching"}
                 </p>
@@ -751,9 +903,23 @@ export default function MatchingPage() {
             </div>
           </div>
         </div>
-          </>
-        )}
-      </div>
+      </>
+    )}
+    </div>
+    </>
+    )}
+
+      {activeTab === "filter-search" && (
+        <CandidateFilterSearch />
+      )}
+
+      {activeTab === "xray-search" && (
+        <XRaySearchPage />
+      )}
+
+      {activeTab === "boolean-search" && (
+        <BooleanSearchPage />
+      )}
     </div>
   );
 }

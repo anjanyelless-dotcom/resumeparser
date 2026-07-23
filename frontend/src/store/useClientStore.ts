@@ -13,10 +13,16 @@ export interface Client {
   pipeline_stage?: string;
   source?: string;
   expected_deal_value?: number;
+  status: string;
   is_archived: boolean;
   tenant_id: string;
   created_at: string;
   updated_at?: string;
+  primary_contact_name?: string;
+  primary_contact_email?: string;
+  primary_contact_phone?: string;
+  total_requirements?: number;
+  total_placements?: number;
 }
 
 interface ClientContact {
@@ -48,11 +54,12 @@ interface ClientState {
 }
 
 interface ClientActions {
-  fetchClients: (params?: { page?: number; limit?: number; search?: string; industry?: string; city?: string; country?: string; is_archived?: boolean }) => Promise<void>;
+  fetchClients: (params?: { page?: number; limit?: number; search?: string; industry?: string; city?: string; country?: string; is_archived?: boolean; status?: string }) => Promise<void>;
   fetchClient: (id: string) => Promise<void>;
   createClient: (clientData: Partial<Client>) => Promise<Client>;
   updateClient: (id: string, clientData: Partial<Client>) => Promise<Client>;
   archiveClient: (id: string) => Promise<void>;
+  convertClientToActive: (id: string) => Promise<void>;
   fetchClientContacts: (clientId: string) => Promise<void>;
   createContact: (clientId: string, contactData: Partial<ClientContact>) => Promise<ClientContact>;
   updateContact: (id: string, contactData: Partial<ClientContact>) => Promise<ClientContact>;
@@ -82,6 +89,7 @@ export const useClientStore = create<ClientState & ClientActions>((set) => ({
       if (params.city) queryParams.append('city', params.city);
       if (params.country) queryParams.append('country', params.country);
       if (params.is_archived !== undefined) queryParams.append('is_archived', params.is_archived.toString());
+      if (params.status) queryParams.append('status', params.status);
 
       const response = await api.get(`/clients?${queryParams.toString()}`);
       set({ 
@@ -110,7 +118,7 @@ export const useClientStore = create<ClientState & ClientActions>((set) => ({
 
   createClient: async (clientData: Partial<Client>) => {
     try {
-      const response = await api.post("/api/clients", clientData);
+      const response = await api.post("/clients", clientData);
       const newClient = response.data.client;
 
       set((state) => ({
@@ -161,6 +169,25 @@ export const useClientStore = create<ClientState & ClientActions>((set) => ({
       toast.success("Client archived successfully");
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || "Failed to archive client";
+      set({ error: errorMessage });
+      toast.error(errorMessage);
+      throw error;
+    }
+  },
+
+  convertClientToActive: async (id: string) => {
+    try {
+      const response = await api.post(`/clients/${id}/convert`);
+      const convertedClient = response.data.client;
+
+      set((state) => ({
+        clients: state.clients.map((client) => (client.id === id ? convertedClient : client)),
+        currentClient: state.currentClient?.id === id ? convertedClient : state.currentClient,
+      }));
+
+      toast.success("Client converted to active successfully");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Failed to convert client";
       set({ error: errorMessage });
       toast.error(errorMessage);
       throw error;

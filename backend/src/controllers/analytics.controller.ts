@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { query } from "../database/db";
 import { getClient } from "../database/db";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
+import { buildScopeFilter } from "../utils/rbac.utils";
 
 // Helper to generate minimal valid PDF
 const generatePDFBuffer = (data: {
@@ -63,40 +64,42 @@ startxref
 export const getParsingStats = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
 
     // Build WHERE clause based on role
     let whereClause = "";
     const queryParams: any[] = [];
     let paramIndex = 1;
 
+    const scope = buildScopeFilter(req.user, 'analytics', 'u');
+
     // Viewer and Admin see all parsing stats
     // Recruiter, Team Lead, Client Manager, BDM see filtered data
-    if (userRole === 'recruiter' && userId) {
+    if ((perms.includes('analytics:view_own') || perms.includes('candidates:view_own')) && userId) {
       // Recruiter sees parsing stats for their own candidates
       whereClause = `WHERE pj.candidate_id IN (
         SELECT id FROM candidates WHERE review_status = 'approved'
       )`;
-    } else if (userRole === 'team_lead' && userId) {
+    } else if (scope.sql.includes('team_lead_id')) {
       // Team Lead sees parsing stats for their team's recruiters' candidates
       whereClause = `WHERE pj.candidate_id IN (
         SELECT c.id FROM candidates c
         JOIN job_recruiter_assignments jra ON c.id = jra.candidate_id
         JOIN users u ON jra.recruiter_id = u.id
-        WHERE u.team_lead_id = $1 AND c.review_status = 'approved'
+        WHERE c.review_status = 'approved' ${scope.sql.replace('$PARAM', `$${paramIndex}`)}
       )`;
-      queryParams.push(userId);
-      paramIndex++;
-    } else if ((userRole === 'client_manager' || userRole === 'bdm') && userId) {
+      queryParams.push(...scope.params);
+      paramIndex += scope.params.length;
+    } else if (scope.sql.includes('owner_user_id')) {
       // Client Manager and BDM see parsing stats for their clients' candidates
       whereClause = `WHERE pj.candidate_id IN (
         SELECT c.id FROM candidates c
         JOIN job_descriptions j ON c.id IN (SELECT candidate_id FROM submissions WHERE job_id = j.id)
         JOIN clients cli ON j.client_id = cli.id
-        WHERE cli.owner_user_id = $1 AND c.review_status = 'approved'
+        WHERE c.review_status = 'approved' ${scope.sql.replace('u.owner_user_id', 'cli.owner_user_id').replace('$PARAM', `$${paramIndex}`)}
       )`;
-      queryParams.push(userId);
-      paramIndex++;
+      queryParams.push(...scope.params);
+      paramIndex += scope.params.length;
     }
 
     const statsResult = await query(`
@@ -131,33 +134,35 @@ export const getParsingStats = async (req: AuthenticatedRequest, res: Response):
 export const getSkillDistribution = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
 
     // Build WHERE clause based on role for candidate filtering
     let candidateFilter = "";
     const queryParams: any[] = [];
 
-    if (userRole === 'recruiter' && userId) {
+    const scope = buildScopeFilter(req.user, 'analytics', 'u');
+
+    if ((perms.includes('analytics:view_own') || perms.includes('candidates:view_own')) && userId) {
       // Recruiter sees skills from their own candidates
       candidateFilter = `AND c.review_status = 'approved'`;
-    } else if (userRole === 'team_lead' && userId) {
+    } else if (scope.sql.includes('team_lead_id')) {
       // Team Lead sees skills from their team's recruiters' candidates
       candidateFilter = `AND c.id IN (
         SELECT c2.id FROM candidates c2
         JOIN job_recruiter_assignments jra ON c2.id = jra.candidate_id
         JOIN users u ON jra.recruiter_id = u.id
-        WHERE u.team_lead_id = $1 AND c2.review_status = 'approved'
+        WHERE c2.review_status = 'approved' ${scope.sql.replace('$PARAM', '$1')}
       )`;
-      queryParams.push(userId);
-    } else if ((userRole === 'client_manager' || userRole === 'bdm') && userId) {
+      queryParams.push(...scope.params);
+    } else if (scope.sql.includes('owner_user_id')) {
       // Client Manager and BDM see skills from their clients' candidates
       candidateFilter = `AND c.id IN (
         SELECT c2.id FROM candidates c2
         JOIN job_descriptions j ON c2.id IN (SELECT candidate_id FROM submissions WHERE job_id = j.id)
         JOIN clients cli ON j.client_id = cli.id
-        WHERE cli.owner_user_id = $1 AND c2.review_status = 'approved'
+        WHERE c2.review_status = 'approved' ${scope.sql.replace('u.owner_user_id', 'cli.owner_user_id').replace('$PARAM', '$1')}
       )`;
-      queryParams.push(userId);
+      queryParams.push(...scope.params);
     }
 
     const skillsResult = await query(`
@@ -183,30 +188,32 @@ export const getSkillDistribution = async (req: AuthenticatedRequest, res: Respo
 export const getMetrics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
 
     // Build WHERE clause for candidate filtering
     let candidateWhere = "WHERE status != 'deleted'";
     const queryParams: any[] = [];
 
-    if (userRole === 'recruiter' && userId) {
+    const scope = buildScopeFilter(req.user, 'analytics', 'u');
+
+    if ((perms.includes('analytics:view_own') || perms.includes('candidates:view_own')) && userId) {
       candidateWhere = "WHERE status != 'deleted' AND review_status = 'approved'";
-    } else if (userRole === 'team_lead' && userId) {
+    } else if (scope.sql.includes('team_lead_id')) {
       candidateWhere = `WHERE status != 'deleted' AND id IN (
         SELECT c.id FROM candidates c
         JOIN job_recruiter_assignments jra ON c.id = jra.candidate_id
         JOIN users u ON jra.recruiter_id = u.id
-        WHERE u.team_lead_id = $1 AND c.review_status = 'approved'
+        WHERE c.review_status = 'approved' ${scope.sql.replace('$PARAM', '$1')}
       )`;
-      queryParams.push(userId);
-    } else if ((userRole === 'client_manager' || userRole === 'bdm') && userId) {
+      queryParams.push(...scope.params);
+    } else if (scope.sql.includes('owner_user_id')) {
       candidateWhere = `WHERE status != 'deleted' AND id IN (
         SELECT c.id FROM candidates c
         JOIN job_descriptions j ON c.id IN (SELECT candidate_id FROM submissions WHERE job_id = j.id)
         JOIN clients cli ON j.client_id = cli.id
-        WHERE cli.owner_user_id = $1 AND c.review_status = 'approved'
+        WHERE c.review_status = 'approved' ${scope.sql.replace('u.owner_user_id', 'cli.owner_user_id').replace('$PARAM', '$1')}
       )`;
-      queryParams.push(userId);
+      queryParams.push(...scope.params);
     }
 
     const totalResult = await query(`SELECT COUNT(*)::int as count FROM candidates ${candidateWhere}`, queryParams);
@@ -253,35 +260,37 @@ export const getUploadTrends = async (req: AuthenticatedRequest, res: Response):
   try {
     const rangeDays = parseInt(req.query.range as string) || 30;
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
 
     // Build WHERE clause for candidate filtering
     let candidateFilter = "";
     const queryParams: any[] = [rangeDays];
     let paramIndex = 2;
 
-    if (userRole === 'recruiter' && userId) {
+    const scope = buildScopeFilter(req.user, 'analytics', 'u');
+
+    if ((perms.includes('analytics:view_own') || perms.includes('candidates:view_own')) && userId) {
       candidateFilter = `AND pj.candidate_id IN (
         SELECT id FROM candidates WHERE review_status = 'approved'
       )`;
-    } else if (userRole === 'team_lead' && userId) {
+    } else if (scope.sql.includes('team_lead_id')) {
       candidateFilter = `AND pj.candidate_id IN (
         SELECT c.id FROM candidates c
         JOIN job_recruiter_assignments jra ON c.id = jra.candidate_id
         JOIN users u ON jra.recruiter_id = u.id
-        WHERE u.team_lead_id = $${paramIndex} AND c.review_status = 'approved'
+        WHERE c.review_status = 'approved' ${scope.sql.replace('$PARAM', `$${paramIndex}`)}
       )`;
-      queryParams.push(userId);
-      paramIndex++;
-    } else if ((userRole === 'client_manager' || userRole === 'bdm') && userId) {
+      queryParams.push(...scope.params);
+      paramIndex += scope.params.length;
+    } else if (scope.sql.includes('owner_user_id')) {
       candidateFilter = `AND pj.candidate_id IN (
         SELECT c.id FROM candidates c
         JOIN job_descriptions j ON c.id IN (SELECT candidate_id FROM submissions WHERE job_id = j.id)
         JOIN clients cli ON j.client_id = cli.id
-        WHERE cli.owner_user_id = $${paramIndex} AND c.review_status = 'approved'
+        WHERE c.review_status = 'approved' ${scope.sql.replace('u.owner_user_id', 'cli.owner_user_id').replace('$PARAM', `$${paramIndex}`)}
       )`;
-      queryParams.push(userId);
-      paramIndex++;
+      queryParams.push(...scope.params);
+      paramIndex += scope.params.length;
     }
 
     const trendsResult = await query(`
@@ -308,30 +317,32 @@ export const getUploadTrends = async (req: AuthenticatedRequest, res: Response):
 export const getRecruiterActivity = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
 
     // Build WHERE clause for candidate filtering
     let candidateWhere = "";
     const queryParams: any[] = [];
 
-    if (userRole === 'recruiter' && userId) {
+    const scope = buildScopeFilter(req.user, 'analytics', 'u');
+
+    if ((perms.includes('analytics:view_own') || perms.includes('candidates:view_own')) && userId) {
       candidateWhere = "WHERE review_status = 'approved'";
-    } else if (userRole === 'team_lead' && userId) {
+    } else if (scope.sql.includes('team_lead_id')) {
       candidateWhere = `WHERE id IN (
         SELECT c.id FROM candidates c
         JOIN job_recruiter_assignments jra ON c.id = jra.candidate_id
         JOIN users u ON jra.recruiter_id = u.id
-        WHERE u.team_lead_id = $1 AND c.review_status = 'approved'
+        WHERE c.review_status = 'approved' ${scope.sql.replace('$PARAM', '$1')}
       )`;
-      queryParams.push(userId);
-    } else if ((userRole === 'client_manager' || userRole === 'bdm') && userId) {
+      queryParams.push(...scope.params);
+    } else if (scope.sql.includes('owner_user_id')) {
       candidateWhere = `WHERE id IN (
         SELECT c.id FROM candidates c
         JOIN job_descriptions j ON c.id IN (SELECT candidate_id FROM submissions WHERE job_id = j.id)
         JOIN clients cli ON j.client_id = cli.id
-        WHERE cli.owner_user_id = $1 AND c.review_status = 'approved'
+        WHERE c.review_status = 'approved' ${scope.sql.replace('u.owner_user_id', 'cli.owner_user_id').replace('$PARAM', '$1')}
       )`;
-      queryParams.push(userId);
+      queryParams.push(...scope.params);
     }
 
     // Join labeled_data with candidates for role-based filtering
@@ -384,7 +395,7 @@ export const getClientPerformance = async (req: AuthenticatedRequest, res: Respo
     const fromDate = req.query.from as string;
     const toDate = req.query.to as string;
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
 
     let dateFilter = "";
     const queryParams: any[] = [];
@@ -392,24 +403,22 @@ export const getClientPerformance = async (req: AuthenticatedRequest, res: Respo
 
     // Add role-based client filtering
     let clientFilter = "";
-    if (userRole === 'client_manager' && userId) {
-      clientFilter = "AND c.owner_user_id = $1";
+    const scope = buildScopeFilter(req.user, 'analytics', 'u');
+    
+    if (scope.sql.includes('owner_user_id')) {
+      clientFilter = `AND c.owner_user_id = $${paramIndex}`;
       queryParams.push(userId);
-      paramIndex = 2;
-    } else if (userRole === 'bdm' && userId) {
-      clientFilter = "AND c.owner_user_id = $1";
-      queryParams.push(userId);
-      paramIndex = 2;
-    } else if (userRole === 'recruiter' && userId) {
+      paramIndex++;
+    } else if ((perms.includes('analytics:view_own') || perms.includes('candidates:view_own')) && userId) {
       // Recruiter sees performance for clients where they made placements
-      clientFilter = "AND p.recruiter_id = $1";
+      clientFilter = `AND p.recruiter_id = $${paramIndex}`;
       queryParams.push(userId);
-      paramIndex = 2;
-    } else if (userRole === 'team_lead' && userId) {
+      paramIndex++;
+    } else if (scope.sql.includes('team_lead_id')) {
       // Team Lead sees performance for their team's recruiters' clients
-      clientFilter = "AND p.recruiter_id IN (SELECT id FROM users WHERE team_lead_id = $1)";
-      queryParams.push(userId);
-      paramIndex = 2;
+      clientFilter = `AND p.recruiter_id IN (SELECT id FROM users WHERE 1=1 ${scope.sql.replace('u.', '').replace('$PARAM', `$${paramIndex}`)})`;
+      queryParams.push(...scope.params);
+      paramIndex += scope.params.length;
     }
     // Admin and Viewer see all clients (no filter)
 
@@ -468,7 +477,7 @@ export const getPlacements = async (req: AuthenticatedRequest, res: Response): P
     const fromDate = req.query.from as string;
     const toDate = req.query.to as string;
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
 
     let dateFilter = "";
     const queryParams: any[] = [];
@@ -476,22 +485,19 @@ export const getPlacements = async (req: AuthenticatedRequest, res: Response): P
 
     // Add role-based filtering
     let placementFilter = "";
-    if (userRole === 'client_manager' && userId) {
+    const scope = buildScopeFilter(req.user, 'analytics', 'u');
+    if (scope.sql.includes('owner_user_id')) {
       placementFilter = `AND p.client_id IN (SELECT id FROM clients WHERE owner_user_id = $${paramIndex})`;
       queryParams.push(userId);
       paramIndex++;
-    } else if (userRole === 'bdm' && userId) {
-      placementFilter = `AND p.client_id IN (SELECT id FROM clients WHERE owner_user_id = $${paramIndex})`;
-      queryParams.push(userId);
-      paramIndex++;
-    } else if (userRole === 'recruiter' && userId) {
+    } else if ((perms.includes('analytics:view_own') || perms.includes('candidates:view_own')) && userId) {
       placementFilter = `AND p.recruiter_id = $${paramIndex}`;
       queryParams.push(userId);
       paramIndex++;
-    } else if (userRole === 'team_lead' && userId) {
-      placementFilter = `AND p.recruiter_id IN (SELECT id FROM users WHERE team_lead_id = $${paramIndex})`;
-      queryParams.push(userId);
-      paramIndex++;
+    } else if (scope.sql.includes('team_lead_id')) {
+      placementFilter = `AND p.recruiter_id IN (SELECT id FROM users WHERE 1=1 ${scope.sql.replace('u.', '').replace('$PARAM', `$${paramIndex}`)})`;
+      queryParams.push(...scope.params);
+      paramIndex += scope.params.length;
     }
     // Admin and Viewer see all placements (no filter)
 
@@ -544,7 +550,7 @@ export const getRevenue = async (req: AuthenticatedRequest, res: Response): Prom
     const fromDate = req.query.from as string;
     const toDate = req.query.to as string;
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
 
     let dateFilter = "";
     const queryParams: any[] = [];
@@ -552,22 +558,19 @@ export const getRevenue = async (req: AuthenticatedRequest, res: Response): Prom
 
     // Add role-based filtering
     let placementFilter = "";
-    if (userRole === 'client_manager' && userId) {
+    const scope = buildScopeFilter(req.user, 'analytics', 'u');
+    if (scope.sql.includes('owner_user_id')) {
       placementFilter = `AND p.client_id IN (SELECT id FROM clients WHERE owner_user_id = $${paramIndex})`;
       queryParams.push(userId);
       paramIndex++;
-    } else if (userRole === 'bdm' && userId) {
-      placementFilter = `AND p.client_id IN (SELECT id FROM clients WHERE owner_user_id = $${paramIndex})`;
-      queryParams.push(userId);
-      paramIndex++;
-    } else if (userRole === 'recruiter' && userId) {
+    } else if ((perms.includes('analytics:view_own') || perms.includes('candidates:view_own')) && userId) {
       placementFilter = `AND p.recruiter_id = $${paramIndex}`;
       queryParams.push(userId);
       paramIndex++;
-    } else if (userRole === 'team_lead' && userId) {
-      placementFilter = `AND p.recruiter_id IN (SELECT id FROM users WHERE team_lead_id = $${paramIndex})`;
-      queryParams.push(userId);
-      paramIndex++;
+    } else if (scope.sql.includes('team_lead_id')) {
+      placementFilter = `AND p.recruiter_id IN (SELECT id FROM users WHERE 1=1 ${scope.sql.replace('u.', '').replace('$PARAM', `$${paramIndex}`)})`;
+      queryParams.push(...scope.params);
+      paramIndex += scope.params.length;
     }
     // Admin and Viewer see all placements (no filter)
 
@@ -1254,7 +1257,7 @@ startxref
 export const getTeamClosures = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.id;
-    const userRole = (req as any).user?.role;
+    const perms = (req as any).user?.permissions || [];
     const tenantId = (req as any).user?.tenant_id || "default";
     const fromDate = req.query.from as string;
     const toDate = req.query.to as string;
@@ -1269,7 +1272,7 @@ export const getTeamClosures = async (req: Request, res: Response): Promise<void
     }
 
     // Only team leads and admins can access this endpoint
-    if (userRole !== 'team_lead' && userRole !== 'admin') {
+    if (!(perms.includes('analytics:view_team') || perms.includes('team:view_kpis')) && !(perms.includes('analytics:view') || perms.includes('dashboard:view'))) {
       res.status(403).json({
         error: "Forbidden",
         message: "Only team leads and admins can access team closures analytics",
@@ -1278,7 +1281,7 @@ export const getTeamClosures = async (req: Request, res: Response): Promise<void
     }
 
     // Admins can filter by specific team lead, but team leads can only see their own team
-    const effectiveTeamLeadId = (userRole === 'admin' && teamLeadId) ? teamLeadId : userId;
+    const effectiveTeamLeadId = ((perms.includes('analytics:view') || perms.includes('dashboard:view')) && teamLeadId) ? teamLeadId : userId;
 
     const client = await getClient();
     try {
@@ -1357,7 +1360,7 @@ export const getTeamClosures = async (req: Request, res: Response): Promise<void
 export const getSubmissionSuccessRate = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.id;
-    const userRole = (req as any).user?.role;
+    const perms = (req as any).user?.permissions || [];
     const tenantId = (req as any).user?.tenant_id || "default";
     const fromDate = req.query.from as string;
     const toDate = req.query.to as string;
@@ -1372,7 +1375,7 @@ export const getSubmissionSuccessRate = async (req: Request, res: Response): Pro
     }
 
     // Only team leads and admins can access this endpoint
-    if (userRole !== 'team_lead' && userRole !== 'admin') {
+    if (!(perms.includes('analytics:view_team') || perms.includes('team:view_kpis')) && !(perms.includes('analytics:view') || perms.includes('dashboard:view'))) {
       res.status(403).json({
         error: "Forbidden",
         message: "Only team leads and admins can access submission success rate analytics",
@@ -1381,7 +1384,7 @@ export const getSubmissionSuccessRate = async (req: Request, res: Response): Pro
     }
 
     // Admins can filter by specific team lead, but team leads can only see their own team
-    const effectiveTeamLeadId = (userRole === 'admin' && teamLeadId) ? teamLeadId : userId;
+    const effectiveTeamLeadId = ((perms.includes('analytics:view') || perms.includes('dashboard:view')) && teamLeadId) ? teamLeadId : userId;
 
     const client = await getClient();
     try {
@@ -1489,7 +1492,7 @@ export const getSubmissionSuccessRate = async (req: Request, res: Response): Pro
 export const getNewClientsAcquired = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
     const bdmId = req.query.bdmId as string;
     const fromDate = req.query.from as string;
     const toDate = req.query.to as string;
@@ -1522,11 +1525,11 @@ export const getNewClientsAcquired = async (req: AuthenticatedRequest, res: Resp
 
       // Build user scope filter
       let userFilter = "";
-      if (userRole === 'admin' && bdmId) {
+      if ((perms.includes('analytics:view') || perms.includes('dashboard:view')) && bdmId) {
         userFilter = "AND cph.changed_by = $" + paramIndex;
         queryParams.push(bdmId);
         paramIndex++;
-      } else if (userRole !== 'admin') {
+      } else if (!(perms.includes('analytics:view') || perms.includes('dashboard:view'))) {
         userFilter = "AND cph.changed_by = $" + paramIndex;
         queryParams.push(userId);
         paramIndex++;
@@ -1559,7 +1562,7 @@ export const getNewClientsAcquired = async (req: AuthenticatedRequest, res: Resp
 export const getRevenueGenerated = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
     const bdmId = req.query.bdmId as string;
     const fromDate = req.query.from as string;
     const toDate = req.query.to as string;
@@ -1592,11 +1595,11 @@ export const getRevenueGenerated = async (req: AuthenticatedRequest, res: Respon
 
       // Build user scope filter
       let userFilter = "";
-      if (userRole === 'admin' && bdmId) {
+      if ((perms.includes('analytics:view') || perms.includes('dashboard:view')) && bdmId) {
         userFilter = "AND c.owner_user_id = $" + paramIndex;
         queryParams.push(bdmId);
         paramIndex++;
-      } else if (userRole !== 'admin') {
+      } else if (!(perms.includes('analytics:view') || perms.includes('dashboard:view'))) {
         userFilter = "AND c.owner_user_id = $" + paramIndex;
         queryParams.push(userId);
         paramIndex++;
@@ -1631,7 +1634,7 @@ export const getRevenueGenerated = async (req: AuthenticatedRequest, res: Respon
 export const getOpenOpportunities = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
     const bdmId = req.query.bdmId as string;
     const fromDate = req.query.from as string;
     const toDate = req.query.to as string;
@@ -1664,11 +1667,11 @@ export const getOpenOpportunities = async (req: AuthenticatedRequest, res: Respo
 
       // Build user scope filter
       let userFilter = "";
-      if (userRole === 'admin' && bdmId) {
+      if ((perms.includes('analytics:view') || perms.includes('dashboard:view')) && bdmId) {
         userFilter = "AND c.owner_user_id = $" + paramIndex;
         queryParams.push(bdmId);
         paramIndex++;
-      } else if (userRole !== 'admin') {
+      } else if (!(perms.includes('analytics:view') || perms.includes('dashboard:view'))) {
         userFilter = "AND c.owner_user_id = $" + paramIndex;
         queryParams.push(userId);
         paramIndex++;
@@ -1711,14 +1714,14 @@ export const getOpenOpportunities = async (req: AuthenticatedRequest, res: Respo
 export const getClientManagerSummary = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const perms = req.user?.permissions || [];
 
     if (!userId) {
       res.status(401).json({ error: "Unauthorized", message: "User ID is required" });
       return;
     }
 
-    if (userRole !== 'client_manager') {
+    if (!(perms.includes('analytics:view_own_clients') || perms.includes('clients:view_own'))) {
       res.status(403).json({ error: "Forbidden", message: "Only client managers can access this endpoint" });
       return;
     }

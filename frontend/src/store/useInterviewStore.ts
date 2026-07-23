@@ -59,11 +59,13 @@ export const useInterviewStore = create<InterviewState & InterviewActions>(
     isSubmittingFeedback: false,
     error: null,
 
-    // Actions
+    // ──────────────────────────────────────────────────────
+    // Create Interview — POST /api/interviews
+    // ──────────────────────────────────────────────────────
     createInterview: async (submissionId: string, roundName: string, scheduledAt: string, mode: string) => {
       set({ isScheduling: true, error: null });
       try {
-        const response = await api.post('/api/interviews', {
+        const response = await api.post('/interviews', {
           submission_id: submissionId,
           round_name: roundName,
           scheduled_at: scheduledAt,
@@ -72,8 +74,8 @@ export const useInterviewStore = create<InterviewState & InterviewActions>(
 
         const interview = response.data.interview;
         
-        // Refresh interviews for this submission
-        await get().getInterviewsBySubmission(submissionId);
+        // Refresh upcoming interviews list
+        await get().getUpcomingInterviews();
         
         set({ isScheduling: false });
         toast.success('Interview scheduled successfully!');
@@ -95,6 +97,9 @@ export const useInterviewStore = create<InterviewState & InterviewActions>(
       }
     },
 
+    // ──────────────────────────────────────────────────────
+    // Update Interview — PATCH /api/interviews/:id
+    // ──────────────────────────────────────────────────────
     updateInterview: async (interviewId: string, scheduledAt?: string, status?: string) => {
       set({ isLoading: true, error: null });
       try {
@@ -105,10 +110,8 @@ export const useInterviewStore = create<InterviewState & InterviewActions>(
 
         const interview = response.data.interview;
         
-        // Refresh interviews for the submission
-        if (interview.submission_id) {
-          await get().getInterviewsBySubmission(interview.submission_id);
-        }
+        // Refresh upcoming interviews
+        await get().getUpcomingInterviews();
         
         set({ isLoading: false });
         toast.success('Interview updated successfully!');
@@ -120,41 +123,50 @@ export const useInterviewStore = create<InterviewState & InterviewActions>(
       }
     },
 
+    // ──────────────────────────────────────────────────────
+    // Get Upcoming Interviews — GET /api/interviews/upcoming
+    // ──────────────────────────────────────────────────────
     getUpcomingInterviews: async () => {
       set({ isLoading: true, error: null });
       try {
-        const response = await api.get('/api/interviews/upcoming');
+        const response = await api.get('/interviews/upcoming');
         
         set({
           upcomingInterviews: response.data.interviews || [],
+          interviews: response.data.interviews || [],
           isLoading: false
         });
       } catch (error: any) {
         set({ isLoading: false, error: 'Failed to fetch upcoming interviews' });
-        toast.error(error.response?.data?.message || 'Failed to fetch upcoming interviews');
+        console.error('Failed to fetch upcoming interviews:', error?.response?.data?.message || error.message);
       }
     },
 
+    // ──────────────────────────────────────────────────────
+    // Get Interviews for My Clients — uses upcoming endpoint
+    // ──────────────────────────────────────────────────────
     getInterviewsForMyClients: async () => {
       set({ isLoading: true, error: null });
       try {
-        // We'll need to fetch interviews for the client manager's clients
-        // For now, we'll use the upcoming interviews endpoint which should be scoped
-        // In the future, this could be a dedicated endpoint like /api/interviews/for-my-clients
-        const response = await api.get('/api/interviews/upcoming');
+        const response = await api.get('/interviews/upcoming');
         
+        const interviews = response.data.interviews || [];
         set({
-          interviews: response.data.interviews || [],
+          interviews,
+          upcomingInterviews: interviews,
           isLoading: false
         });
-        return response.data.interviews || [];
+        return interviews;
       } catch (error: any) {
-        set({ isLoading: false, error: 'Failed to fetch interviews for your clients' });
-        toast.error(error.response?.data?.message || 'Failed to fetch interviews for your clients');
+        set({ isLoading: false, error: 'Failed to fetch interviews' });
+        console.error('Failed to fetch interviews for clients:', error?.response?.data?.message || error.message);
         return [];
       }
     },
 
+    // ──────────────────────────────────────────────────────
+    // Add Interview Feedback — POST /api/interviews/:id/feedback
+    // ──────────────────────────────────────────────────────
     addInterviewFeedback: async (interviewId: string, outcome: string, notes?: string, rating?: number) => {
       set({ isSubmittingFeedback: true, error: null });
       try {
@@ -166,6 +178,9 @@ export const useInterviewStore = create<InterviewState & InterviewActions>(
 
         set({ isSubmittingFeedback: false });
         toast.success('Interview feedback added successfully!');
+        
+        // Refresh interviews after feedback
+        await get().getUpcomingInterviews();
       } catch (error: any) {
         set({ isSubmittingFeedback: false });
         
@@ -181,30 +196,27 @@ export const useInterviewStore = create<InterviewState & InterviewActions>(
       }
     },
 
+    // ──────────────────────────────────────────────────────
+    // Get Interviews by Submission — GET /api/interviews/upcoming (filtered)
+    // ──────────────────────────────────────────────────────
     getInterviewsBySubmission: async (submissionId: string) => {
       set({ isLoading: true, error: null });
       try {
-        const response = await api.get(`/submissions?candidateId=&jobId=&status=&submissionId=${submissionId}`);
-        
-        // Get interviews for each submission and merge
-        const interviews = [];
-        for (const submission of response.data.submissions || []) {
-          try {
-            const interviewResponse = await api.get(`/interviews?submissionId=${submission.id}`);
-            interviews.push(...(interviewResponse.data.interviews || []));
-          } catch (error) {
-            // Skip if interviews endpoint doesn't exist or fails
-            console.warn('Failed to fetch interviews for submission:', submission.id);
-          }
-        }
+        // Use upcoming endpoint and filter client-side since no dedicated endpoint exists
+        const response = await api.get('/interviews/upcoming');
+        const allInterviews = response.data.interviews || [];
+        const submissionInterviews = allInterviews.filter(
+          (i: Interview) => i.submission_id === submissionId
+        );
         
         set({
-          interviews,
+          interviews: submissionInterviews,
           isLoading: false
         });
       } catch (error: any) {
         set({ isLoading: false, error: 'Failed to fetch interviews' });
-        // Don't show toast for this background fetch
+        // Silently fail - this is a background fetch
+        console.warn('getInterviewsBySubmission failed:', error?.response?.data?.message || error.message);
       }
     },
 

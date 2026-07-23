@@ -3,433 +3,513 @@ import { useNavigate } from "react-router-dom";
 import { useCandidateStore } from "../store/useCandidateStore";
 import { useJobStore } from "../store/useJobStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { usePermissionStore } from "../store/usePermissionStore";
 import { api } from "../services/api";
 import { DashboardCard } from "../components/dashboard/DashboardCard";
+import PermissionGuard from "../components/common/PermissionGuard";
+import { getRequiredPermission } from "../utils/routePermissions";
 import {
-  keyMetrics,
-  recruitmentOperations,
-  resumeIntelligence,
+  businessDevelopment,
+  recruitmentPlanning,
+  teamLeadManagement,
+  candidateSourcing,
+  aiRecruitment,
+  hiringProcess,
   teamManagement,
-  clientBdmOperations,
-  systemAdministration,
-  quickActions
+  analyticsReports,
+  administration,
+  quickActions,
 } from "../config/dashboardConfig";
 import {
-  Users,
-  Briefcase,
-  FileText,
-  Calendar,
-  Clock,
-  TrendingUp,
-  Activity,
-  Settings
+  Users, Briefcase, FileText, Calendar, TrendingUp, Activity,
+  Settings, UserCheck, Building2, Brain, Upload, FolderKanban,
+  Sparkles, Target, Award, Star, BarChart3, Shield, CheckCircle2, XCircle,
 } from "lucide-react";
 
+// ─── Types ──────────────────────────────────────────────────
 interface RecentActivity {
   id: string;
-  type: 'candidate' | 'job' | 'submission' | 'interview';
+  type: "candidate" | "job" | "submission" | "interview" | "system";
   description: string;
   timestamp: string;
-  user?: string;
 }
 
+// ─── Helpers ─────────────────────────────────────────────────
+function formatRelativeTime(ts: string): string {
+  try {
+    const d = new Date(ts);
+    const diff = Date.now() - d.getTime();
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    if (h < 24) return `${h}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return d.toLocaleDateString();
+  } catch { return ts; }
+}
+
+const metricIconMap: Record<string, any> = {
+  candidates: Users, jobs: Briefcase, "open-requirements": Target,
+  clients: Building2, "today-submissions": FileText, "interviews-scheduled": Calendar,
+  "parsed-resumes": Brain, "ai-match-success": TrendingUp, submissions: FileText, upload: Upload,
+};
+
+// ─── Section definition ───────────────────────────────────────
+interface SectionDef {
+  key: string;
+  title: string;
+  icon: React.ReactNode;
+  modules: any[];
+  cols: string;         // Tailwind grid-cols-* class
+}
+
+// ─── Main Page ────────────────────────────────────────────────
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { candidates, fetchCandidates, pagination } = useCandidateStore();
-  const { jobs, fetchJobs, matchResults, fetchMatchResults } = useJobStore();
+  const { candidates, fetchCandidates, pagination: candidatePagination } = useCandidateStore();
+  const { jobs, fetchJobs, fetchMatchResults } = useJobStore();
   const { isAuthenticated, user } = useAuthStore();
+  const hasPermission = usePermissionStore((s) => s.hasPermission);
+
   const [isLoading, setIsLoading] = useState(true);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
-  const [dynamicMetrics, setDynamicMetrics] = useState(keyMetrics);
+  const [dynamicMetrics, setDynamicMetrics] = useState<any[]>([]);
+  const [orgSummary, setOrgSummary] = useState<any>(null);
 
   useEffect(() => {
-    // Redirect to login if not authenticated
-    if (!isAuthenticated) {
-      navigate("/login");
+    if (!isAuthenticated) { navigate("/login"); return; }
+    loadData();
+  }, [isAuthenticated]);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const hasPerm = usePermissionStore.getState().hasPermission;
+      const ps: Promise<any>[] = [];
+      if (hasPerm("candidates", "view")) ps.push(fetchCandidates(1, 100));
+      if (hasPerm("jobs", "view")) ps.push(fetchJobs());
+      if (hasPerm("ai_matching", "view")) ps.push(fetchMatchResults("all"));
+      if (ps.length) await Promise.all(ps);
+
+      try {
+        const res = await api.get("/dashboard/summary");
+        const data = res.data;
+        if (data?.metrics?.length) {
+          setDynamicMetrics(data.metrics.map((m: any) => {
+            const path = m.id === 'ai-match-success' ? '/analytics-reports/ai-analytics' : m.path;
+            return {
+              id: m.id, title: m.label, description: m.description || "",
+              path, count: m.value, trend: m.trend, color: m.color,
+              icon: metricIconMap[m.id] || TrendingUp,
+            };
+          }));
+        }
+        if (data?.recentActivities?.length) setRecentActivities(data.recentActivities);
+        if (data?.orgSummary) setOrgSummary(data.orgSummary);
+      } catch { /* no dashboard/summary endpoint yet – graceful skip */ }
+
+      // Auto-navigate for Recruiters
+      if (user?.role === "recruiter") {
+        const jobs = useJobStore.getState().jobs;
+        const activeJobs = jobs.filter(j => j.status !== 'Completed' && j.status !== 'Closed');
+        if (activeJobs.length === 1) {
+          navigate(`/recruiter/workspace/${activeJobs[0].id}`);
+        } else if (activeJobs.length > 1) {
+          navigate(`/recruiter/requirements`);
+        }
+      }
+
+    } catch (e: any) {
+      if (e?.response?.status === 401 || e?.response?.status === 400) navigate("/login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Permission-aware visible modules ─────────────────────────
+  const visible = (modules: any[]) =>
+    modules.filter((m) => {
+      const perm = getRequiredPermission(m.path.split("?")[0]);
+      if (!perm) return true;
+      return hasPermission(perm.module, perm.action);
+    });
+
+  // ── Navigate handler: respect ?tab= params ────────────────────
+  const goTo = (module: any) => {
+    const raw: string = module.path;
+    const [pathname, search] = raw.split("?");
+    const params = search ? Object.fromEntries(new URLSearchParams(search)) : undefined;
+
+    if (raw.includes("?create=true")) {
+      navigate(pathname, { state: { showCreateModal: true } });
       return;
     }
-
-    // Load initial data with proper pagination
-    const loadDashboardData = async () => {
-      setIsLoading(true);
-      try {
-        const limit = 100;
-        
-        await Promise.all([
-          fetchCandidates(1, limit),
-          fetchJobs(),
-          fetchMatchResults("all"),
-        ]);
-        
-        // Fetch dynamic admin summary
-        if (user?.role === 'admin') {
-          try {
-            const res = await api.get('/dashboard/admin-summary');
-            const data = res.data;
-            
-            // Map the static keyMetrics to the dynamic data
-            setDynamicMetrics(prev => prev.map(metric => {
-              switch (metric.id) {
-                case 'total-candidates': return { ...metric, count: data.totalCandidates ?? 0 };
-                case 'active-jobs': return { ...metric, count: data.activeJobs ?? 0 };
-                case 'total-recruiters': return { ...metric, count: data.totalRecruiters ?? 0 };
-                case 'total-clients': return { ...metric, count: data.totalClients ?? 0 };
-                case 'today-submissions': return { ...metric, count: data.todaysSubmissions ?? 0 };
-                case 'interviews-scheduled': return { ...metric, count: data.interviewsScheduled ?? 0 };
-                case 'parsed-resumes': return { ...metric, count: data.parsedResumes ?? 0 };
-                case 'ai-match-success': return { ...metric, count: data.aiMatchSuccessRate ? `${data.aiMatchSuccessRate}%` : '0%' };
-                default: return metric;
-              }
-            }));
-
-            if (data.recentActivities && Array.isArray(data.recentActivities)) {
-              setRecentActivities(data.recentActivities);
-            } else {
-              generateRecentActivities();
-            }
-          } catch (e) {
-            console.error('Failed to fetch dynamic admin dashboard metrics', e);
-            generateRecentActivities();
-          }
-        } else {
-          // Keep mock for non-admins for now if not implemented
-          generateRecentActivities();
-        }
-        
-      } catch (error) {
-        console.error("Failed to load dashboard data:", error);
-        if (error && typeof error === 'object' && 'response' in error) {
-          const axiosError = error as any;
-          if (axiosError.response?.status === 401 || axiosError.response?.status === 400) {
-            navigate("/login");
-          }
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadDashboardData();
-  }, [fetchCandidates, fetchJobs, fetchMatchResults, isAuthenticated, navigate]);
-
-  useEffect(() => {
-    // Data is loaded, calculations can be added if needed
-  }, [pagination, jobs, matchResults]);
-
-  const generateRecentActivities = () => {
-    const activities: RecentActivity[] = [
-      {
-        id: '1',
-        type: 'candidate',
-        description: 'New candidate registered: John Smith',
-        timestamp: '2 minutes ago',
-        user: 'System'
-      },
-      {
-        id: '2',
-        type: 'job',
-        description: 'New job created: Senior Full Stack Developer',
-        timestamp: '15 minutes ago',
-        user: 'Admin'
-      },
-      {
-        id: '3',
-        type: 'submission',
-        description: 'Resume submitted for Java Developer position',
-        timestamp: '1 hour ago',
-        user: 'Recruiter'
-      },
-      {
-        id: '4',
-        type: 'interview',
-        description: 'Interview scheduled with candidate #1234',
-        timestamp: '2 hours ago',
-        user: 'Team Lead'
-      },
-      {
-        id: '5',
-        type: 'candidate',
-        description: 'Resume parsing completed for candidate #5678',
-        timestamp: '3 hours ago',
-        user: 'System'
-      }
-    ];
-    setRecentActivities(activities);
+    if (params?.tab) {
+      navigate(pathname, { state: { defaultTab: params.tab } });
+      return;
+    }
+    navigate(pathname);
   };
 
-  const handleCardClick = (module: any) => {
-    navigate(module.path);
+  // ── Card with PermissionGuard ─────────────────────────────────
+  const card = (m: any, handler = goTo) => {
+    const perm = getRequiredPermission(m.path.split("?")[0]);
+    const el = <DashboardCard key={m.id} {...m} onClick={() => handler(m)} />;
+    if (!perm) return el;
+    return (
+      <PermissionGuard key={m.id} module={perm.module} action={perm.action} mode="hide">
+        {el}
+      </PermissionGuard>
+    );
   };
 
-  const handleQuickAction = (action: any) => {
-    navigate(action.path);
+  // ── Section renderer ──────────────────────────────────────────
+  const section = ({ key, title, icon, modules, cols: _cols }: SectionDef) => {
+    const mods = visible(modules);
+    if (!mods.length) return null;
+    const stripBrackets = (str: string) => str.replace(/\s*\([^)]*\)/g, '');
+
+    return (
+      <div key={key} className="mb-8">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-green-600 flex-shrink-0">{icon}</span>
+          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">{stripBrackets(title)}</h2>
+        </div>
+        <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4`}>
+          {mods.map((m) => card(m))}
+        </div>
+      </div>
+    );
   };
 
-  const getActivityIcon = (type: RecentActivity['type']) => {
+  // ── Section definitions ───────────────────────────────────────
+  const sections: SectionDef[] = [
+    {
+      key: "bdm", title: "BUSINESS DEVELOPMENT (BDM)",
+      icon: <FolderKanban className="h-4 w-4" />,
+      modules: businessDevelopment,
+      cols: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6",
+    },
+    {
+      key: "recruitment-planning", title: "RECRUITMENT PLANNING (MANAGER)",
+      icon: <Briefcase className="h-4 w-4" />,
+      modules: recruitmentPlanning,
+      cols: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7",
+    },
+    {
+      key: "team-lead", title: "TEAM LEAD MANAGEMENT",
+      icon: <UserCheck className="h-4 w-4" />,
+      modules: teamLeadManagement,
+      cols: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6",
+    },
+    {
+      key: "candidate-sourcing", title: "CANDIDATE SOURCING (RECRUITER)",
+      icon: <Users className="h-4 w-4" />,
+      modules: candidateSourcing.map((m) =>
+        m.id === "candidates"
+          ? { ...m, count: candidatePagination?.total_items || candidates?.length || 0 }
+          : m
+      ),
+      cols: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6",
+    },
+    {
+      key: "ai-recruitment", title: "AI RECRUITMENT",
+      icon: <Sparkles className="h-4 w-4" />,
+      modules: aiRecruitment,
+      cols: "grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8",
+    },
+    {
+      key: "hiring-process", title: "HIRING PROCESS (END TO END)",
+      icon: <Target className="h-4 w-4" />,
+      modules: hiringProcess,
+      cols: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7",
+    },
+    {
+      key: "team-management", title: "TEAM MANAGEMENT",
+      icon: <Award className="h-4 w-4" />,
+      modules: teamManagement,
+      cols: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7",
+    },
+    {
+      key: "analytics-reports", title: "ANALYTICS & REPORTS",
+      icon: <BarChart3 className="h-4 w-4" />,
+      modules: analyticsReports,
+      cols: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6",
+    },
+    {
+      key: "administration", title: "ADMINISTRATION",
+      icon: <Settings className="h-4 w-4" />,
+      modules: administration,
+      cols: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6",
+    },
+  ];
+
+  // ── Activity icon helper ──────────────────────────────────────
+  const actIcon = (type: RecentActivity["type"]) => {
+    const cls = "h-4 w-4";
     switch (type) {
-      case 'candidate':
-        return <Users className="h-4 w-4 text-blue-600" />;
-      case 'job':
-        return <Briefcase className="h-4 w-4 text-green-600" />;
-      case 'submission':
-        return <FileText className="h-4 w-4 text-purple-600" />;
-      case 'interview':
-        return <Calendar className="h-4 w-4 text-orange-600" />;
-      default:
-        return <Activity className="h-4 w-4 text-gray-600" />;
+      case "candidate": return <Users className={`${cls} text-blue-500`} />;
+      case "job": return <Briefcase className={`${cls} text-green-500`} />;
+      case "submission": return <FileText className={`${cls} text-purple-500`} />;
+      case "interview": return <Calendar className={`${cls} text-orange-500`} />;
+      default: return <Activity className={`${cls} text-gray-400`} />;
     }
   };
 
-  const recentJobs = (jobs || []).slice(0, 5);
-  const recentCandidates = (candidates || []).slice(0, 5);
-
+  // ─────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="mb-8">
-          <div className="h-8 bg-gray-200 rounded w-48 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-96"></div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
-              <div className="h-20 bg-gray-200 rounded"></div>
+      <div className="p-6 animate-pulse">
+        <div className="h-8 bg-gray-200 rounded w-72 mb-2" />
+        <div className="h-4 bg-gray-200 rounded w-96 mb-8" />
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="mb-7">
+            <div className="h-4 bg-gray-200 rounded w-48 mb-3" />
+            <div className="grid grid-cols-6 gap-3">
+              {[1, 2, 3, 4, 5, 6].map((j) => (
+                <div key={j} className="bg-gray-100 rounded-xl h-20" />
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      {/* Page Header */}
+    <div className="p-6 max-w-7xl mx-auto">
+
+      {/* ── Header ── */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-600 mt-2">
-          Welcome back, {user?.email || 'Admin'}! Here's your comprehensive overview.
+        <h1 className="text-3xl font-bold text-slate-900">
+          Admin Dashboard
+        </h1>
+        <p className="text-slate-500 mt-2 text-sm">
+          Welcome back, {user?.name || user?.email?.split("@")[0] || "Admin"}! Here's your comprehensive overview.
         </p>
       </div>
 
-      {/* Section 1: Key Metrics */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <TrendingUp className="h-5 w-5 mr-2 text-indigo-600" />
-          Key Metrics
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
-          {dynamicMetrics.map((metric) => (
+      {/* ── Organization Summary ── */}
+      {orgSummary && (
+        <div className="mb-10">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-indigo-600 flex-shrink-0"><Users className="h-4 w-4" /></span>
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Organization Summary</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <DashboardCard
-              key={metric.id}
-              {...metric}
-              onClick={() => handleCardClick(metric)}
+              icon={Users}
+              title="Total Users"
+              description="All registered users"
+              count={orgSummary.totalUsers || 0}
+              color="indigo"
+              onClick={() => navigate("/users")}
             />
-          ))}
-        </div>
-      </div>
-
-      {/* Section 2: Recruitment Operations */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <Briefcase className="h-5 w-5 mr-2 text-green-600" />
-          Recruitment Operations
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {recruitmentOperations.map((module) => (
             <DashboardCard
-              key={module.id}
-              {...module}
-              onClick={() => handleCardClick(module)}
+              icon={UserCheck}
+              title="Recruiters"
+              description="Recruiter accounts"
+              count={orgSummary.recruiters || 0}
+              color="blue"
+              onClick={() => navigate("/users")}
             />
-          ))}
-        </div>
-      </div>
-
-      {/* Section 3: Resume Intelligence */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <Activity className="h-5 w-5 mr-2 text-blue-600" />
-          Resume Intelligence
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {resumeIntelligence.map((module) => (
             <DashboardCard
-              key={module.id}
-              {...module}
-              onClick={() => handleCardClick(module)}
+              icon={Award}
+              title="Team Leads"
+              description="Leading recruitment teams"
+              count={orgSummary.teamLeads || 0}
+              color="green"
+              onClick={() => navigate("/users")}
             />
-          ))}
-        </div>
-      </div>
-
-      {/* Section 4: Team Management */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <Users className="h-5 w-5 mr-2 text-purple-600" />
-          Team Management
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {teamManagement.map((module) => (
             <DashboardCard
-              key={module.id}
-              {...module}
-              onClick={() => handleCardClick(module)}
+              icon={Building2}
+              title="Managers"
+              description="Recruitment managers"
+              count={orgSummary.managers || 0}
+              color="purple"
+              onClick={() => navigate("/users")}
             />
-          ))}
-        </div>
-      </div>
-
-      {/* Section 5: Client & BDM Operations */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <FileText className="h-5 w-5 mr-2 text-orange-600" />
-          Client & BDM Operations
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {clientBdmOperations.map((module) => (
             <DashboardCard
-              key={module.id}
-              {...module}
-              onClick={() => handleCardClick(module)}
+              icon={FolderKanban}
+              title="Business Development"
+              description="BDM users"
+              count={orgSummary.bdm || 0}
+              color="orange"
+              onClick={() => navigate("/users")}
             />
-          ))}
-        </div>
-      </div>
-
-      {/* Section 6: System Administration */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <Settings className="h-5 w-5 mr-2 text-gray-600" />
-          System Administration
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {systemAdministration.map((module) => (
             <DashboardCard
-              key={module.id}
-              {...module}
-              onClick={() => handleCardClick(module)}
+              icon={CheckCircle2}
+              title="Active Users"
+              description="Currently active accounts"
+              count={orgSummary.activeUsers || 0}
+              color="green"
+              onClick={() => navigate("/users")}
             />
-          ))}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <Clock className="h-5 w-5 mr-2 text-indigo-600" />
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {quickActions.map((action) => (
             <DashboardCard
-              key={action.id}
-              {...action}
-              onClick={() => handleQuickAction(action)}
+              icon={XCircle}
+              title="Inactive Users"
+              description="Disabled / inactive accounts"
+              count={orgSummary.inactiveUsers || 0}
+              color="red"
+              onClick={() => navigate("/users")}
             />
-          ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Bottom Section: Recent Activity, Jobs, Candidates */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ── Dynamic KPI Bar ── */}
+      {dynamicMetrics.length > 0 && (
+        <div className="mb-10">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-blue-600 flex-shrink-0"><TrendingUp className="h-4 w-4" /></span>
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Key Metrics</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {dynamicMetrics.map((m) => (
+              <DashboardCard key={m.id} {...m} onClick={() => navigate(m.path)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── 9 Sections ── */}
+      {sections.map((s) => section(s))}
+
+      {/* ── Quick Actions ── */}
+      {(() => {
+        const mods = visible(quickActions);
+        if (!mods.length) return null;
+        return (
+          <div className="mb-10">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-green-600 flex-shrink-0"><Star className="h-4 w-4" /></span>
+              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Quick Actions</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+              {mods.map((m) => (
+                <div key={m.id}>
+                  {card(m, goTo)}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Bottom Row: Activity + Jobs + Candidates ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-2">
+
         {/* Recent Activity */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">Recent Activity</h3>
+            <Activity className="h-4 w-4 text-gray-300" />
           </div>
           <div className="p-4">
             {recentActivities.length > 0 ? (
-              <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {getActivityIcon(activity.type)}
+              <div className="space-y-3">
+                {recentActivities.slice(0, 8).map((a) => (
+                  <div key={a.id} className="flex items-start gap-3">
+                    <div className="mt-0.5 p-1.5 rounded-full bg-gray-50 flex-shrink-0">
+                      {actIcon(a.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900">{activity.description}</p>
-                      <p className="text-xs text-gray-500 mt-1">{activity.timestamp}</p>
-                      {activity.user && (
-                        <p className="text-xs text-gray-400 mt-1">by {activity.user}</p>
-                      )}
+                      <p className="text-xs text-gray-800 line-clamp-2">{a.description}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{formatRelativeTime(a.timestamp)}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center text-gray-500 py-8">
-                <Activity className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2">No recent activity</p>
+              <div className="text-center py-8">
+                <Activity className="mx-auto h-10 w-10 text-gray-100 mb-2" />
+                <p className="text-xs text-gray-400">No recent activity</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Recent Jobs */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Jobs</h3>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">Recent Jobs</h3>
+            <Briefcase className="h-4 w-4 text-gray-300" />
           </div>
           <div className="p-4">
-            {recentJobs.length > 0 ? (
-              <div className="space-y-3">
-                {recentJobs.map((job) => (
+            {(jobs || []).length > 0 ? (
+              <div className="space-y-2">
+                {(jobs || []).slice(0, 5).map((job) => (
                   <div
                     key={job.id}
-                    className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer"
+                    className="p-3 border border-gray-50 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => navigate(`/jobs/${job.id}`)}
                   >
-                    <p className="text-sm font-medium text-gray-900">{job.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">{job.department}</p>
-                    <p className="text-xs text-gray-400 mt-1">{job.location}</p>
+                    <p className="text-xs font-semibold text-gray-900 truncate">{job.title}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 truncate">{job.department} · {job.status}</p>
                   </div>
                 ))}
+                <button onClick={() => navigate("/jobs")} className="w-full text-center text-xs text-indigo-500 hover:text-indigo-700 py-2 font-medium">
+                  View all jobs →
+                </button>
               </div>
             ) : (
-              <div className="text-center text-gray-500 py-8">
-                <Briefcase className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2">No recent jobs</p>
+              <div className="text-center py-8">
+                <Briefcase className="mx-auto h-10 w-10 text-gray-100 mb-2" />
+                <p className="text-xs text-gray-400">No jobs yet</p>
+                <button onClick={() => navigate("/jobs")} className="mt-2 text-xs text-indigo-500 hover:text-indigo-700 font-medium">Create job →</button>
               </div>
             )}
           </div>
         </div>
 
         {/* Recent Candidates */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Candidates</h3>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">Recent Candidates</h3>
+            <Users className="h-4 w-4 text-gray-300" />
           </div>
           <div className="p-4">
-            {recentCandidates.length > 0 ? (
-              <div className="space-y-3">
-                {recentCandidates.map((candidate) => (
+            {(candidates || []).length > 0 ? (
+              <div className="space-y-2">
+                {(candidates || []).slice(0, 5).map((c) => (
                   <div
-                    key={candidate.id}
-                    className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/candidates/${candidate.id}`)}
+                    key={c.id}
+                    className="flex items-center gap-3 p-2 border border-gray-50 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/candidates/${c.id}`)}
                   >
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                        <span className="text-xs font-medium text-indigo-600">
-                          {candidate.full_name?.charAt(0)?.toUpperCase() || "?"}
-                        </span>
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-900">{candidate.full_name}</p>
-                        <p className="text-xs text-gray-500">{candidate.email}</p>
-                      </div>
+                    <div className="h-7 w-7 bg-indigo-50 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-semibold text-indigo-600">
+                        {c.full_name?.charAt(0)?.toUpperCase() || "?"}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{c.full_name}</p>
+                      <p className="text-xs text-gray-400 truncate">{c.email}</p>
                     </div>
                   </div>
                 ))}
+                <button onClick={() => navigate("/candidates")} className="w-full text-center text-xs text-indigo-500 hover:text-indigo-700 py-2 font-medium">
+                  View all candidates →
+                </button>
               </div>
             ) : (
-              <div className="text-center text-gray-500 py-8">
-                <Users className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2">No recent candidates</p>
+              <div className="text-center py-8">
+                <Users className="mx-auto h-10 w-10 text-gray-100 mb-2" />
+                <p className="text-xs text-gray-400">No candidates yet</p>
+                <button onClick={() => navigate("/candidates")} className="mt-2 text-xs text-indigo-500 hover:text-indigo-700 font-medium">View candidates →</button>
               </div>
             )}
           </div>
         </div>
+
       </div>
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 }

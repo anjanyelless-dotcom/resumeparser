@@ -9,6 +9,7 @@ import {
   getSubmissionsForMyClients,
   updateSubmissionClientOutcome,
   getSubmissionById,
+  forwardToClient,
 } from "../controllers/submission.controller";
 import { authenticateToken, requirePermission } from "../middleware/auth.middleware";
 
@@ -425,7 +426,7 @@ router.patch("/:id/status", requirePermission("submissions", "edit"), updateSubm
 
 /**
  * @swagger
- * /api/submissions/{id}/review:
+ * /api/submissions/pending-review:
  *   post:
  *     summary: Review a submission
  *     tags: [Submissions]
@@ -567,5 +568,16 @@ router.post("/:id/review", requirePermission("submissions", "review"), reviewSub
  *         description: Internal server error
  */
 router.patch("/:id/client-outcome", requirePermission("submissions", "view_own_clients"), updateSubmissionClientOutcome);
+
+/**
+ * @swagger
+ * /api/submissions/{id}/forward-client:
+ *   post:
+ *     summary: Forward a candidate to the client
+ *     tags: [Submissions]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/:id/forward-client", requirePermission("submissions", "review"), forwardToClient);
 
 export default router;

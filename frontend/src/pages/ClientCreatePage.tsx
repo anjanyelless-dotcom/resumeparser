@@ -21,8 +21,13 @@ export default function ClientCreatePage() {
     setLoading(true);
 
     try {
-      await createClient(formData);
-      navigate("/admin/clients");
+      // Filter out empty strings to avoid express-validator errors on optional fields
+      const cleanedData = Object.fromEntries(
+        Object.entries(formData).filter(([_, v]) => v.trim() !== "")
+      );
+      
+      await createClient(cleanedData);
+      navigate("/clients");
     } catch (error) {
       // Error is already handled by the store
     } finally {
@@ -36,7 +41,7 @@ export default function ClientCreatePage() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate("/admin/clients")}
+            onClick={() => navigate("/clients")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="h-4 w-4" />

@@ -7,6 +7,7 @@ import {
   MessageSquare,
   BarChart3,
   Settings,
+  FileText,
 } from 'lucide-react';
 
 export type UserRole = 'admin' | 'recruiter' | 'team_lead' | 'client_manager' | 'bdm' | 'viewer';
@@ -52,7 +53,20 @@ export const sidebarMenuConfig: MenuItem[] = [
     children: [
       { id: 'jobs-all', label: 'All Jobs', path: '/jobs' },
       { id: 'jobs-create', label: 'Create Job', path: '/jobs/create' },
+      { id: 'jobs-approval', label: 'Job Approval', path: '/jobs?status=pending_approval', roles: ['admin', 'team_lead'] },
       { id: 'jobs-oversight', label: 'Job Oversight', path: '/job-oversight', roles: ['admin', 'team_lead'] },
+    ],
+  },
+  {
+    id: 'requirements',
+    label: 'Requirements',
+    icon: FileText,
+    children: [
+      { id: 'requirements-recruiter', label: 'My Requirements', path: '/recruiter/requirements', roles: ['recruiter'] },
+      { id: 'requirements-team-lead', label: 'Team Requirements', path: '/team-lead/requirements', roles: ['team_lead'] },
+      { id: 'requirements-approval', label: 'Requirement Approval', path: '/jobs?status=pending_approval', roles: ['admin', 'team_lead'] },
+      { id: 'requirements-client-manager', label: 'Client Requirements', path: '/client-manager/requirements', roles: ['client_manager'] },
+      { id: 'requirements-bdm', label: 'BDM Requirements', path: '/bdm/requirements', roles: ['bdm'] },
     ],
   },
   {

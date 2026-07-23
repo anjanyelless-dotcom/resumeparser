@@ -80,8 +80,31 @@ export default function CandidateFilterSearch() {
   const [externalCandidates, setExternalCandidates] = useState<ExternalCandidatesData | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [emptySearchAttempted, setEmptySearchAttempted] = useState(false);
+
+  const isFiltersEmpty = (criteria: FilterCriteria) => {
+    return !criteria.role && 
+           (!criteria.skills || criteria.skills.length === 0) &&
+           criteria.minExperience === undefined &&
+           criteria.maxExperience === undefined &&
+           (!criteria.locations || criteria.locations.length === 0) &&
+           (!criteria.education || criteria.education.length === 0) &&
+           (!criteria.noticePeriod || criteria.noticePeriod.length === 0) &&
+           (!criteria.currentCompany || criteria.currentCompany.length === 0) &&
+           (!criteria.employmentType || criteria.employmentType.length === 0) &&
+           !criteria.manualLocation &&
+           !criteria.manualCompany &&
+           !criteria.manualEducation;
+  };
 
   const handleSearch = async (page: number = 1) => {
+    if (isFiltersEmpty(filters)) {
+      setEmptySearchAttempted(true);
+      setSearched(false);
+      return;
+    }
+    
+    setEmptySearchAttempted(false);
     try {
       setLoading(true);
       const response = await api.post<SearchResponse>("/candidates/search/filters", {
@@ -205,6 +228,16 @@ export default function CandidateFilterSearch() {
               searchRole={filters.role}
               searchSkills={filters.skills}
             />
+          ) : emptySearchAttempted ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-white p-12 text-center">
+              <Search className="h-16 w-16 text-slate-300" />
+              <h3 className="mt-4 text-lg font-bold text-slate-900">
+                No Candidates to Display
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Select one or more search filters and click "Search Candidates" to find matching candidates.
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-white p-12 text-center">
               <Search className="h-16 w-16 text-slate-300" />

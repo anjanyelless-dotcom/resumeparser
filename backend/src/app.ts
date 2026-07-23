@@ -5,7 +5,6 @@ import authRoutes from "./routes/auth.routes";
 import candidateRoutes from "./routes/candidate.routes";
 import jobRoutes from "./routes/job.routes";
 import uploadRoutes from "./routes/upload.routes";
-import bulkUploadRoutes from "./routes/bulk-upload.routes";
 import resumeRoutes from "./routes/resume.routes";
 import matchingRoutes from "./routes/matching.routes";
 import labelingRoutes from "./routes/labeling.routes";
@@ -15,7 +14,11 @@ import permissionsRoutes from "./routes/permissions.routes";
 import clientRoutes from "./routes/client.routes";
 import auditRoutes from "./routes/audit.routes";
 import submissionRoutes from "./routes/submission.routes";
+
 import interviewRoutes from "./routes/interview.routes";
+import offerRoutes from "./routes/offer.routes";
+import joiningRoutes from "./routes/joining.routes";
+import placementRoutes from "./routes/placement.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import activityRoutes from "./routes/activity.routes";
 import userRoutes from "./routes/user.routes";
@@ -24,6 +27,7 @@ import communicationRoutes from "./routes/communication.routes";
 import companyRoutes from "./routes/company.routes";
 import skillsRoutes from "./routes/skills.routes";
 import rolesRoutes from "./routes/roles.routes";
+import rbacRoutes from "./routes/rbac.routes";
 import { getMyAssignments } from "./controllers/job.controller";
 import { authenticateToken, requirePermission } from "./middleware/auth.middleware";
 
@@ -38,7 +42,6 @@ const corsOptions = {
       "http://localhost:5173",
     ] : []),
     ...(process.env.ALLOWED_ORIGINS?.split(',') || [
-      "https://resumeparser.dishha.com",
       "https://lakshya-llm-resume-parser.vercel.app",
       "https://anjanyelle-lakshyaresumeparsers11.vercel.app",
       "https://lakshya-resume-parsers.vercel.app",
@@ -72,7 +75,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/candidates", candidateRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/upload", uploadRoutes);
-app.use("/api/upload", bulkUploadRoutes);
 app.use("/api/resume", resumeRoutes);
 app.use("/api/matching", matchingRoutes);
 app.use("/api/labeling", labelingRoutes);
@@ -83,7 +85,11 @@ app.use("/api/permissions", permissionsRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/audit-logs", auditRoutes);
 app.use("/api/submissions", submissionRoutes);
+
 app.use("/api/interviews", interviewRoutes);
+app.use("/api/offers", offerRoutes);
+app.use("/api/joining", joiningRoutes);
+app.use("/api/placements", placementRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/users", userRoutes);
@@ -92,9 +98,10 @@ app.use("/api/companies", companyRoutes);
 app.use("/api/communications", communicationRoutes);
 app.use("/api/skills", skillsRoutes);
 app.use("/api/roles", rolesRoutes);
+app.use("/api/admin/rbac", rbacRoutes);
 
 // Recruiter requirements route (alias for my-assignments)
-app.get("/api/recruiter/requirements", authenticateToken, requirePermission("requirements", "view_assigned"), getMyAssignments);
+app.get("/api/recruiter/requirements", authenticateToken, requirePermission("requirements", "view"), getMyAssignments);
 
 // 404 handler
 app.use("*", (req: Request, res: Response) => {

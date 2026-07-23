@@ -1,8 +1,10 @@
 import { Router } from "express";
 import {
   getAllUsers,
+  getTeamLeads,
   getMyTeam,
   updateUserRole,
+  updateUserTeamLead,
   activateUser,
   deactivateUser,
   createUser,
@@ -46,6 +48,20 @@ router.use(authenticateToken);
  *         description: Internal server error
  */
 router.get("/", requirePermission("users", "view"), getAllUsers);
+
+/**
+ * @swagger
+ * /api/users/team-leads:
+ *   get:
+ *     summary: Get all team leads
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Team leads retrieved successfully
+ */
+router.get("/team-leads", requirePermission("users", "view"), getTeamLeads);
 
 /**
  * @swagger
@@ -122,6 +138,47 @@ router.post("/", requirePermission("users", "edit"), createUser);
  *         description: Internal server error
  */
 router.put("/:id/role", requirePermission("users", "edit"), updateUserRole);
+
+/**
+ * @swagger
+ * /api/users/{id}/team-lead:
+ *   put:
+ *     summary: Update user team lead
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - team_lead_id
+ *             properties:
+ *               team_lead_id:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: User team lead updated successfully
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put("/:id/team-lead", requirePermission("users", "edit"), updateUserTeamLead);
 
 /**
  * @swagger

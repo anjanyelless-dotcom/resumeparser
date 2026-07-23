@@ -34,6 +34,16 @@ const roleConfig: RoleBasedRedirectConfig = {
     defaultPath: '/dashboard',
     restrictedPaths: []
   },
+  super_admin: {
+    allowedPaths: ['/*'], // Super Admin can access everything
+    defaultPath: '/dashboard',
+    restrictedPaths: []
+  },
+  manager: {
+    allowedPaths: ['/*'], // Manager can access everything for now
+    defaultPath: '/dashboard',
+    restrictedPaths: ['/settings', '/admin']
+  },
   recruiter: {
     allowedPaths: [
       '/dashboard',
