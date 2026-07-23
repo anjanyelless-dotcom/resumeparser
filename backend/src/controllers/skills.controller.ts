@@ -15,7 +15,8 @@ const loadSkills = (): Skill[] => {
   if (skillsCache) return skillsCache;
 
   try {
-    const skillsPath = path.join(__dirname, '../../../ai-service/unified_skills.json');
+    // Use absolute path that works in both development and production
+    const skillsPath = path.join(process.cwd(), '../../ai-service/unified_skills.json');
     const skillsData = fs.readFileSync(skillsPath, 'utf-8');
     const skillsJson = JSON.parse(skillsData);
 
