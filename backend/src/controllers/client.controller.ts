@@ -379,11 +379,10 @@ export const getAllClients = async (
         SELECT c.id, c.company_name, c.industry, c.address, c.city, c.country, c.owner_user_id, 
                c.pipeline_stage, c.status, c.is_archived, c.tenant_id, c.created_at,
                c.next_follow_up, c.last_activity,
-               cc.contact_name as primary_contact_name,
+               cc.first_name || ' ' || cc.last_name as primary_contact_name,
                cc.email as primary_contact_email,
                cc.phone as primary_contact_phone,
-               (SELECT COUNT(*) FROM job_descriptions jd WHERE jd.client_id = c.id) as total_requirements,
-               (SELECT COUNT(*) FROM placements p WHERE p.client_id = c.id) as total_placements
+               (SELECT COUNT(*) FROM job_descriptions jd WHERE jd.client_id = c.id) as total_requirements
         FROM clients c
         LEFT JOIN client_contacts cc ON c.id = cc.client_id AND cc.is_primary = true
         ${whereClause}
