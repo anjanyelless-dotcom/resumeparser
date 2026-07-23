@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useCandidateStore } from "../store/useCandidateStore";
 import toast from "react-hot-toast";
+import { MapPin, Calendar, Clock, Briefcase } from "lucide-react";
+import { calculateTotalExperience } from "../utils/experienceCalculator";
 
 type TabType = "overview" | "skills" | "experience" | "education";
 
 export default function CandidateDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, jobId } = useParams<{ id: string; jobId?: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -37,7 +39,8 @@ export default function CandidateDetailPage() {
       await fetchCandidate(candidateId);
     } catch (error) {
       toast.error("Failed to load candidate");
-      navigate("/candidates");
+      const backRoute = jobId ? `/recruiter/workspace/${jobId}/candidates` : "/candidates";
+      navigate(backRoute);
     }
   };
 
@@ -97,8 +100,28 @@ export default function CandidateDetailPage() {
 
   const groupedSkills = groupSkillsByCategory(currentCandidate.skills || []);
 
+  const experienceData = currentCandidate?.work_history
+    ? calculateTotalExperience(currentCandidate.work_history)
+    : null;
+
   return (
     <div className="p-6">
+      {/* Back Navigation */}
+      <div className="mb-4">
+        <button
+          onClick={() => {
+            const backRoute = jobId ? `/recruiter/workspace/${jobId}/candidates` : "/candidates";
+            navigate(backRoute);
+          }}
+          className="flex items-center text-gray-500 hover:text-indigo-600 transition-colors"
+        >
+          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Candidates
+        </button>
+      </div>
+
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
         <div className="flex items-start justify-between">
@@ -148,6 +171,16 @@ export default function CandidateDetailPage() {
                     GitHub Profile
                   </a>
                 )}
+                {(currentCandidate as any).portfolio_url && (
+                  <a
+                    href={(currentCandidate as any).portfolio_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 hover:text-indigo-700 text-sm"
+                  >
+                    Portfolio
+                  </a>
+                )}
               </div>
             </div>
           </div>
@@ -162,6 +195,14 @@ export default function CandidateDetailPage() {
               )}
               %
             </span>
+            {(currentCandidate as any).total_experience_years != null &&
+              (currentCandidate as any).total_experience_years > 0 && (
+              <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+                {(currentCandidate as any).total_experience_years === 1
+                  ? "1 Year Experience"
+                  : `${(currentCandidate as any).total_experience_years} Years Experience`}
+              </span>
+            )}
             <p className="text-xs text-gray-500 mt-1">
               Updated {formatDate(currentCandidate.updated_at)}
             </p>
@@ -197,6 +238,24 @@ export default function CandidateDetailPage() {
               {/* Overview Tab */}
               {activeTab === "overview" && (
                 <div className="space-y-6">
+                  {(experienceData?.total.formatted_string !== "0 Days" || currentCandidate.total_years_exp || currentCandidate.years_experience) && (
+                    <div className="bg-green-50 rounded-xl p-4 border border-green-200 shadow-sm flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <span className="text-xl">🏆</span>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold text-green-700 uppercase tracking-wider">Total Experience</p>
+                          <p className="text-xl font-bold text-gray-900">
+                            {experienceData?.total.formatted_string !== "0 Days" 
+                              ? experienceData?.total.formatted_string 
+                              : (currentCandidate.total_years_exp?.formatted_string 
+                                || `${currentCandidate.years_experience || (currentCandidate as any).total_experience_years || 0} Years`)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-3">
                       Summary
@@ -231,6 +290,46 @@ export default function CandidateDetailPage() {
                           </p>
                         </div>
                       )}
+                      {currentCandidate.linkedin_url && (
+                        <div>
+                          <p className="text-sm text-gray-600">LinkedIn</p>
+                          <a
+                            href={currentCandidate.linkedin_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-indigo-600 hover:text-indigo-700 break-all"
+                          >
+                            {currentCandidate.linkedin_url}
+                          </a>
+                        </div>
+                      )}
+                      {currentCandidate.github_url && (
+                        <div>
+                          <p className="text-sm text-gray-600">GitHub</p>
+                          <a
+                            href={currentCandidate.github_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-indigo-600 hover:text-indigo-700 break-all"
+                          >
+                            {currentCandidate.github_url}
+                          </a>
+                        </div>
+                      )}
+                      {(currentCandidate as any).portfolio_url && (
+                        <div>
+                          <p className="text-sm text-gray-600">Portfolio</p>
+                          <a
+                            href={(currentCandidate as any).portfolio_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-indigo-600 hover:text-indigo-700 break-all"
+                          >
+                            {(currentCandidate as any).portfolio_url}
+                          </a>
+                        </div>
+                      )}
+
                       <div>
                         <p className="text-sm text-gray-600">Added</p>
                         <p className="font-medium">
@@ -301,54 +400,97 @@ export default function CandidateDetailPage() {
               {/* Experience Tab */}
               {activeTab === "experience" && (
                 <div className="space-y-6">
-                  {currentCandidate.work_experience &&
-                  currentCandidate.work_experience.length > 0 ? (
+                  {currentCandidate.work_history &&
+                  currentCandidate.work_history.length > 0 ? (
                     <div className="relative">
-                      {/* Timeline */}
-                      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                      {/* Timeline Line */}
+                      <div className="absolute left-4 top-2 bottom-0 w-px bg-gray-200"></div>
 
-                      {currentCandidate.work_experience.map((exp) => (
-                        <div
-                          key={exp.id}
-                          className="relative flex items-start mb-8"
-                        >
-                          {/* Timeline dot */}
-                          <div className="absolute left-2 w-4 h-4 bg-indigo-600 rounded-full border-4 border-white"></div>
+                      <div className="space-y-6 relative">
+                        {experienceData?.processed.map((exp: any) => (
+                          <div
+                            key={exp.id || Math.random()}
+                            className="relative flex items-start"
+                          >
+                            {/* Timeline dot */}
+                            <div className="absolute left-[11px] w-[11px] h-[11px] bg-purple-600 rounded-full ring-[6px] ring-white mt-1.5 z-10"></div>
 
-                          {/* Content */}
-                          <div className="ml-10 flex-1">
-                            <div className="bg-white border border-gray-200 rounded-lg p-4">
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  <h4 className="text-lg font-medium text-gray-900">
-                                    {exp.job_title}
-                                  </h4>
-                                  <p className="text-gray-600">
-                                    {exp.company_name}
-                                  </p>
-                                  {exp.location && (
-                                    <p className="text-sm text-gray-500">
-                                      {exp.location}
+                            {/* Content */}
+                            <div className="ml-10 flex-1">
+                              <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                  <div className="flex-1">
+                                    <h4 className="text-lg font-semibold text-gray-900 leading-tight">
+                                      {exp.job_title}
+                                    </h4>
+                                    <p className="text-gray-600 mt-1 mb-2 font-medium">
+                                      {exp.company_name}
                                     </p>
-                                  )}
+                                    {exp.location && (
+                                      <div className="flex items-center text-sm text-gray-500 gap-1.5 mt-1">
+                                        <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                                        <span>{exp.location}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="md:text-right shrink-0">
+                                    <div className="flex items-center md:justify-end gap-2 text-sm text-gray-500 mb-2">
+                                      <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+                                      <span>
+                                        {formatDateRange(
+                                          exp.start_date || "",
+                                          exp.end_date || undefined,
+                                          exp.is_current || false,
+                                        )}
+                                      </span>
+                                    </div>
+                                    {exp.duration_string && exp.duration_string !== "0 Months" && (
+                                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-semibold md:ml-auto w-fit">
+                                        <Clock className="w-4 h-4 shrink-0" />
+                                        <span>{exp.duration_string}</span>
+                                        <span className="text-purple-400 font-medium ml-1 text-xs uppercase tracking-wide">(Total)</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                <span className="text-sm text-gray-500">
-                                  {formatDateRange(
-                                    exp.start_date,
-                                    exp.end_date,
-                                    exp.is_current,
-                                  )}
-                                </span>
+                                {exp.description && (
+                                  <p className="mt-4 text-sm text-gray-600 leading-relaxed bg-gray-50/50 p-4 rounded-md border border-gray-100">
+                                    {exp.description}
+                                  </p>
+                                )}
                               </div>
-                              {exp.description && (
-                                <p className="mt-3 text-gray-600">
-                                  {exp.description}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Total Experience Summary at the bottom */}
+                      {experienceData && experienceData.processed.length > 0 && (
+                        <div className="mt-8 ml-10">
+                          <div className="bg-[#f8f6fc] rounded-xl p-5 border border-purple-100 shadow-sm flex flex-col md:flex-row items-center gap-6 justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-[#e9e3f6] rounded-full flex items-center justify-center shrink-0 border border-purple-100 shadow-sm">
+                                <Briefcase className="w-6 h-6 text-purple-700" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 mb-0.5">Total Experience</p>
+                                <p className="text-xl font-bold text-purple-800 tracking-tight">
+                                  {experienceData.total.formatted_string}
                                 </p>
-                              )}
+                              </div>
+                            </div>
+                            <div className="text-center md:text-right">
+                              <p className="text-sm text-gray-600 mb-1">
+                                Calculated from {experienceData.processed.length} experience entries
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                (Includes overlapping period calculation)
+                              </p>
                             </div>
                           </div>
                         </div>
-                      ))}
+                      )}
+
                     </div>
                   ) : (
                     <p className="text-gray-500">

@@ -1,0 +1,4 @@
+error: duplicate key value violates unique constraint "role_permissions_role_id_module_id_action_key"
+    at C:\Lalataksha V Company\Main-branch\Lakshya-LLM-Resume-Parser\backend\src\node_modules\pg\lib\client.js:652:17
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at updateRoleConfiguration (C:\Lalataksha V Company\Main-branch\Lakshya-LLM-Resume-Parser\backend\src\controllers\rbac.controller.ts:193:9)

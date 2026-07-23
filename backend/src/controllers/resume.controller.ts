@@ -61,7 +61,7 @@ export const previewSections = async (
     formData.append("force_ocr", forceOcr ? "true" : "false");
 
     // 3. Forward to Python AI service
-    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
+    const aiServiceUrl = process.env.AI_SERVICE_URL;
     const endpoint = `${aiServiceUrl}/preview-sections`;
 
     console.log(`🔄 Forwarding to Python AI service: ${endpoint}`);

@@ -65,7 +65,11 @@ async function main() {
       try {
         // Execute migration
         await client.query(sql);
-        await client.query('INSERT INTO schema_migrations (version) VALUES ($1)', [file]);
+        
+        // Reset search_path to public in case the migration script cleared it (e.g. pg_dump sets it to '')
+        await client.query("SET search_path TO public;");
+        
+        await client.query('INSERT INTO public.schema_migrations (version) VALUES ($1)', [file]);
         console.log(`Successfully applied: ${file}`);
         appliedCount++;
       } catch (err) {

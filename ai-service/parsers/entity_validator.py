@@ -39,14 +39,14 @@ class EntityValidator:
         
         Args:
             companies_csv: Path to global_companies.csv
-            roles_csv: Path to it_job_roles.csv
+            roles_csv: Path to unified_roles.csv
         """
         self.logger = logging.getLogger(__name__)
         
         # Default paths
         base_dir = Path(__file__).parent.parent
         self.companies_csv = companies_csv or str(base_dir / "global_companies.csv")
-        self.roles_csv = roles_csv or str(base_dir / "it_job_roles.csv")
+        self.roles_csv = roles_csv or str(base_dir / "unified_roles.csv")
         
         # Load databases
         self.valid_companies = set()
@@ -393,9 +393,9 @@ class EntityValidator:
         if role in self.valid_roles:
             return True, role, 1.0, "exact_match"
         
-        # Validation Stage 2: Fuzzy match
+        # Validation Stage 2: Fuzzy match (raised threshold to reduce false positives)
         if self.role_variations:
-            matched, confidence = self._fuzzy_match(role, self.role_variations, threshold=0.80)
+            matched, confidence = self._fuzzy_match(role, self.role_variations, threshold=0.90)
             if matched:
                 self.logger.info(f"🔧 Fuzzy matched role: '{role}' → '{matched}' (confidence: {confidence:.2f})")
                 return True, matched, confidence, "fuzzy_match"
@@ -478,7 +478,15 @@ class EntityValidator:
             validated_exp['company_name'] = corrected_company
             validated_exp['company'] = corrected_company
         else:
-            metadata['issues'].append(f"Invalid company: '{company}' ({company_reason})")
+            # Keep original value if it is non-empty, just mark the issue
+            if company and company.strip():
+                metadata['issues'].append(f"Invalid company: '{company}' ({company_reason})")
+                # Preserve the original company name so the entry isn't silently blanked
+                validated_exp['company_name'] = company.strip()
+                validated_exp['company'] = company.strip()
+                company_conf = 0.5  # partial confidence for kept-but-unvalidated
+            else:
+                metadata['issues'].append(f"Invalid company: '{company}' ({company_reason})")
         
         # Validate role
         role = experience.get('job_title', experience.get('role', ''))
@@ -496,7 +504,15 @@ class EntityValidator:
             validated_exp['job_title'] = corrected_role
             validated_exp['role'] = corrected_role
         else:
-            metadata['issues'].append(f"Invalid role: '{role}' ({role_reason})")
+            # Keep original value if it is non-empty, just mark the issue
+            if role and role.strip():
+                metadata['issues'].append(f"Invalid role: '{role}' ({role_reason})")
+                # Preserve the original role so the entry isn't silently blanked
+                validated_exp['job_title'] = role.strip()
+                validated_exp['role'] = role.strip()
+                role_conf = 0.5  # partial confidence for kept-but-unvalidated
+            else:
+                metadata['issues'].append(f"Invalid role: '{role}' ({role_reason})")
         
         # Validate client
         client = experience.get('client', '')
@@ -524,8 +540,17 @@ class EntityValidator:
         confidences = [company_conf, role_conf]
         metadata['overall_confidence'] = sum(confidences) / len(confidences) if confidences else 0.0
         
-        # Determine if experience is valid (both company and role must be valid)
-        is_valid = is_valid_company and is_valid_role
+        # Determine if experience is valid:
+        # Only reject if BOTH company AND role are completely empty (truly garbage entry)
+        company_is_empty = not company or not company.strip()
+        role_is_empty = not role or not role.strip()
+        
+        if company_is_empty and role_is_empty:
+            # Both empty → truly garbage entry, reject it
+            is_valid = False
+        else:
+            # At least one field has content → keep the entry
+            is_valid = True
         
         return is_valid, validated_exp, metadata
     
@@ -547,7 +572,13 @@ class EntityValidator:
         for exp in experiences:
             is_valid, validated_exp, metadata = self.validate_work_experience(exp)
             
-            if is_valid and metadata['overall_confidence'] >= min_confidence:
+            company = exp.get('company_name', exp.get('company', ''))
+            role = exp.get('job_title', exp.get('role', ''))
+            has_content = (company and company.strip()) or (role and role.strip())
+            
+            # Keep the entry if it's marked valid OR if it has meaningful content
+            # (only hard-reject entries where both company and role are completely empty)
+            if is_valid or has_content:
                 # Add validation metadata to experience
                 validated_exp['validation'] = metadata
                 valid_experiences.append(validated_exp)
@@ -556,7 +587,7 @@ class EntityValidator:
                 rejected_exp = {
                     'experience': exp,
                     'validation': metadata,
-                    'reason': 'low_confidence' if metadata['overall_confidence'] < min_confidence else 'invalid_entities'
+                    'reason': 'empty_entry'
                 }
                 rejected_experiences.append(rejected_exp)
                 self.logger.warning(f"❌ Rejected experience: {exp.get('job_title')} at {exp.get('company_name')} - {metadata.get('issues', [])}")

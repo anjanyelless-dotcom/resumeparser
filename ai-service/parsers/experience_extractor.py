@@ -562,6 +562,14 @@ def split_job_blocks(experience_text: str) -> list:
         'http', 'www', '@',
     ]
 
+    # ── Signal 6: "Title @ Company  City  Year" format ────────────────────────
+    # Matches lines like: "Senior Manager @ Infosys  Mumbai  2019  Present"
+    # or "Jr Developer @ Amazon  Bangalore  2014 - 2016"
+    AT_FORMAT_RE = re.compile(
+        r'^[A-Za-z][\w\s,./()-]{2,60}\s+@\s+[A-Za-z][\w\s,./()-]{1,60}',
+        re.IGNORECASE
+    )
+
     def _is_bullet_line(s):
         return bool(re.match(r'^[•\-\*\+►▸▶→]\s*', s))
 
@@ -636,8 +644,17 @@ def split_job_blocks(experience_text: str) -> list:
             i += 1
             continue
 
+        # ── Signal 6: "Title @ Company  City  Year" format ─────────────────
+        # e.g. "Senior Manager @ Infosys  Mumbai  2019  Present"
+        # Must match at start of line and contain a year / 'Present' somewhere.
+        if AT_FORMAT_RE.match(line) and (
+            DATE_LINE_PATTERN.search(line)
+            or re.search(r'\bpresent\b', line, re.IGNORECASE)
+        ):
+            is_new_job = True
+
         # ── Signal 1: Explicit header label (Client:, Company:, …) ───────────
-        if COMPANY_HEADER_RE.match(line):
+        elif COMPANY_HEADER_RE.match(line):
             is_new_job = True
 
         # ── Signal 3: Standalone date line not yet in current block ───────────

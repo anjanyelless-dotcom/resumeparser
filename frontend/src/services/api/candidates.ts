@@ -2,14 +2,14 @@ import { apiClient } from "./client";
 import type { Candidate, ParsingJob } from "../../types/candidate";
 
 export const fetchCandidates = async (signal?: AbortSignal) => {
-  const response = await apiClient.get<Candidate[]>("/api/candidates", {
+  const response = await apiClient.get<Candidate[]>("/candidates", {
     signal,
   });
   return response.data;
 };
 
 export const fetchCandidate = async (id: string) => {
-  const response = await apiClient.get<Candidate>(`/api/candidates/${id}`);
+  const response = await apiClient.get<Candidate>(`/candidates/${id}`);
   return response.data;
 };
 
@@ -23,7 +23,7 @@ export const fetchCandidateReview = async (id: string) => {
       discrepancies: string[];
     };
     suggested_corrections?: Record<string, string>;
-  }>(`/api/candidates/${id}/review`);
+  }>(`/candidates/${id}/review`);
   return response.data;
 };
 
@@ -37,7 +37,7 @@ export const submitCorrections = async (
   reviewNotes?: string,
 ) => {
   const response = await apiClient.put<Candidate>(
-    `/api/candidates/${id}/corrections`,
+    `/candidates/${id}/corrections`,
     {
       corrections,
       review_notes: reviewNotes,
@@ -48,30 +48,30 @@ export const submitCorrections = async (
 
 export const approveCandidate = async (id: string) => {
   const response = await apiClient.post<Candidate>(
-    `/api/candidates/${id}/approve`,
+    `/candidates/${id}/approve`,
   );
   return response.data;
 };
 
 export const reprocessCandidate = async (id: string) => {
-  const response = await apiClient.post(`/api/candidates/${id}/reprocess`);
+  const response = await apiClient.post(`/candidates/${id}/reprocess`);
   return response.data as { job_id: string; status: string };
 };
 
 export const downloadResume = async (id: string) => {
   const response = await apiClient.get<{ download_url: string }>(
-    `/api/candidates/${id}/resume`,
+    `/candidates/${id}/resume`,
   );
   return response.data.download_url;
 };
 
 export const exportCandidateJson = async (id: string) => {
-  const response = await apiClient.get(`/api/gdpr/export/${id}`);
+  const response = await apiClient.get(`/gdpr/export/${id}`);
   return response.data as Record<string, unknown>;
 };
 
 export const deleteCandidate = async (id: string) => {
-  await apiClient.delete(`/api/candidates/${id}`);
+  await apiClient.delete(`/candidates/${id}`);
 };
 
 // --- Work History CRUD ---
@@ -92,7 +92,7 @@ export const createWorkHistory = async (
   payload: WorkHistoryPayload,
 ) => {
   const response = await apiClient.post<Candidate>(
-    `/api/candidates/${candidateId}/work-history`,
+    `/candidates/${candidateId}/work-history`,
     payload,
   );
   return response.data;
@@ -104,7 +104,7 @@ export const updateWorkHistory = async (
   payload: WorkHistoryPayload,
 ) => {
   const response = await apiClient.put<Candidate>(
-    `/api/candidates/${candidateId}/work-history/${entryId}`,
+    `/candidates/${candidateId}/work-history/${entryId}`,
     payload,
   );
   return response.data;
@@ -115,7 +115,7 @@ export const deleteWorkHistory = async (
   entryId: string,
 ) => {
   const response = await apiClient.delete<Candidate>(
-    `/api/candidates/${candidateId}/work-history/${entryId}`,
+    `/candidates/${candidateId}/work-history/${entryId}`,
   );
   return response.data;
 };
@@ -136,7 +136,7 @@ export const createEducation = async (
   payload: EducationPayload,
 ) => {
   const response = await apiClient.post<Candidate>(
-    `/api/candidates/${candidateId}/education`,
+    `/candidates/${candidateId}/education`,
     payload,
   );
   return response.data;
@@ -148,7 +148,7 @@ export const updateEducation = async (
   payload: EducationPayload,
 ) => {
   const response = await apiClient.put<Candidate>(
-    `/api/candidates/${candidateId}/education/${entryId}`,
+    `/candidates/${candidateId}/education/${entryId}`,
     payload,
   );
   return response.data;
@@ -156,7 +156,7 @@ export const updateEducation = async (
 
 export const deleteEducation = async (candidateId: string, entryId: string) => {
   const response = await apiClient.delete<Candidate>(
-    `/api/candidates/${candidateId}/education/${entryId}`,
+    `/candidates/${candidateId}/education/${entryId}`,
   );
   return response.data;
 };
@@ -175,7 +175,7 @@ export const createCertification = async (
   payload: CertificationPayload,
 ) => {
   const response = await apiClient.post<Candidate>(
-    `/api/candidates/${candidateId}/certifications`,
+    `/candidates/${candidateId}/certifications`,
     payload,
   );
   return response.data;
@@ -187,7 +187,7 @@ export const updateCertification = async (
   payload: CertificationPayload,
 ) => {
   const response = await apiClient.put<Candidate>(
-    `/api/candidates/${candidateId}/certifications/${entryId}`,
+    `/candidates/${candidateId}/certifications/${entryId}`,
     payload,
   );
   return response.data;
@@ -198,7 +198,26 @@ export const deleteCertification = async (
   entryId: string,
 ) => {
   const response = await apiClient.delete<Candidate>(
-    `/api/candidates/${candidateId}/certifications/${entryId}`,
+    `/candidates/${candidateId}/certifications/${entryId}`,
   );
   return response.data;
 };
+
+// --- Session Restoration and Application Progress ---
+
+/**
+ * Get candidate by email (for session restoration)
+ */
+export const getCandidateByEmail = async (email: string) => {
+  try {
+    const response = await apiClient.get(`/candidates?search=${encodeURIComponent(email)}&limit=1`);
+    const candidates = response.data?.candidates || [];
+    return candidates.length > 0 ? candidates[0] : null;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+};
+

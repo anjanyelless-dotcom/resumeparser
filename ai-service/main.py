@@ -6,20 +6,15 @@ from pydantic import BaseModel, field_validator, model_validator
 import logging
 import time
 import os
+import torch
 from typing import Optional, Dict, Any, List
 from collections import defaultdict
 from dotenv import load_dotenv
 
-# Optional torch import for NER model (not needed for skills taxonomy)
-try:
-    import torch
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
-    logging.warning("torch not available - NER model features will be disabled")
-
 # Load environment variables from .env file
 load_dotenv()
+
+from parsers.master_parser import MasterParser
 
 # Configure logging
 logging.basicConfig(
@@ -77,9 +72,14 @@ async def log_requests(request: Request, call_next):
     
     return response
 
-# Global master parser instance (will be initialized lazily if needed)
-master_parser = None
-MASTER_PARSER_AVAILABLE = False
+# Global master parser instance (will be initialized at startup)
+master_parser: Optional[MasterParser] = None
+
+# Cached lightweight parser instances (initialized once at startup)
+_cached_text_extractor: Optional[Any] = None
+_cached_section_splitter: Optional[Any] = None
+_cached_section_validator: Optional[Any] = None
+_cached_deberta_parser: Optional[Any] = None
 
 # Import matching engine
 try:
@@ -155,6 +155,8 @@ class ParseResponse(BaseModel):
     model_results: Optional[Dict[str, Any]] = None
     raw_text: Optional[str] = None
     raw_resume_text: Optional[str] = None
+    domain: Optional[Dict[str, Any]] = None
+    licenses: List[str] = []
     # Validators to ensure None values are converted to empty lists
     @field_validator('websites', 'skills', 'work_experience', 'work_history', 'education', 'job_titles', 'companies', 'locations', 'dates', mode='before')
     @classmethod
@@ -387,6 +389,36 @@ async def parse_resume(request: ParseRequest):
             force_ocr=request.force_ocr or False
         )
         
+        # TODO: Workaround - domain/license extraction added here as a workaround
+        # The master_parser._run_rule_parsing method was not being called in the active code path,
+        # so domain and licenses were not being extracted. Root cause not yet identified (2026-07-08).
+        # This workaround extracts domain and licenses directly in the endpoint.
+        # See master_parser.py lines 1087-1120 for the unreachable domain/license extraction code.
+        
+        # Add domain and license extraction if not present
+        if 'domain' not in result or not result['domain']:
+            if master_parser.rule_parser and hasattr(master_parser.rule_parser, 'detect_domain'):
+                skills = result.get('skills', [])
+                if skills:
+                    domain_info = master_parser.rule_parser.detect_domain(skills)
+                    result['domain'] = domain_info
+                    logger.info(f"Added domain detection: {domain_info['primary_domain']} (confidence: {domain_info['confidence']:.2f})")
+        
+        if 'licenses' not in result or not result['licenses']:
+            if master_parser.rule_parser and hasattr(master_parser.rule_parser, 'extract_licenses'):
+                # Extract text from file for license extraction
+                try:
+                    if master_parser.text_extractor:
+                        extraction_result = master_parser.text_extractor.extract(request.file_path)
+                        text = extraction_result.get('text', '')
+                        if text:
+                            licenses = master_parser.rule_parser.extract_licenses(text)
+                            result['licenses'] = licenses
+                            if licenses:
+                                logger.info(f"Added license extraction: {licenses}")
+                except Exception as e:
+                    logger.warning(f"Failed to extract licenses: {e}")
+        
         # Update metrics
         parse_time = (time.time() - start_time) * 1000
         parse_metrics['total_parses'] += 1
@@ -601,7 +633,7 @@ async def get_metrics():
             model_name = model_info.get('model_name', 'Unknown')
             model_type = model_info.get('model_type', 'Unknown')
             supported_entities = model_info.get('supported_entities', [])
-            device = "GPU" if TORCH_AVAILABLE and torch.cuda.is_available() else "CPU"
+            device = "GPU" if torch.cuda.is_available() else "CPU"
         else:
             model_name = "Unknown"
             model_type = "Unknown"
@@ -1015,9 +1047,10 @@ async def parse_sections(request: ParseSectionsRequest):
         if request.projects_text and request.projects_text.strip():
             projects = [p.strip() for p in request.projects_text.split('\n\n') if p.strip()]
         
-        # Try to use DeBERTa model first
+        # Try to use DeBERTa model first (use cached instance to avoid reload)
         try:
-            deberta_parser = DeBERTaNerParser()
+            global _cached_deberta_parser
+            deberta_parser = _cached_deberta_parser or DeBERTaNerParser()
             if deberta_parser.is_loaded and deberta_parser.deberta_available:
                 logger.info("Using DeBERTa NER model for parsing sections")
                 
@@ -1400,12 +1433,12 @@ async def parse_sections(request: ParseSectionsRequest):
         )
 
 @app.post("/preview-sections", response_model=SectionPreviewResponse)
-async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(False)):
+async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(False), is_image: bool = Form(False)):
     """
     Preview resume sections without running DeBERTa entity extraction.
     
     This endpoint runs only:
-    1. Text extraction (from PDF/DOCX/TXT)
+    1. Text extraction (from PDF/DOCX/TXT/IMAGE)
     2. Section splitting (using regex + font metadata)
     3. Section validation (using spaCy NLP)
     
@@ -1427,10 +1460,11 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
             shutil.copyfileobj(file.file, temp_file)
             temp_file_path = temp_file.name
         
-        logger.info(f"Processing file for section preview: {file.filename} (force_ocr={force_ocr})")
+        logger.info(f"Processing file for section preview: {file.filename} (force_ocr={force_ocr}, is_image={is_image})")
         
-        # STEP 1: Text Extraction
-        extractor = TextExtractor()
+        # STEP 1: Text Extraction (use cached extractor if available)
+        global _cached_text_extractor
+        extractor = _cached_text_extractor or TextExtractor()
         file_ext = file.filename.lower().split('.')[-1]
         
         extraction_method = "unknown"
@@ -1450,28 +1484,34 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
                     baseline_font_size = extractor.calculate_baseline_font_size(font_metadata)
                 except:
                     pass
-            else:
-                font_metadata = {}
-                baseline_font_size = 11.0
-                
-        elif file_ext == 'docx':
-            text, font_metadata = extractor.extract_with_font_metadata(temp_file_path)
-            baseline_font_size = extractor.calculate_baseline_font_size(font_metadata)
+        elif file_ext in ['docx', 'doc']:
+            text = extractor.extract_from_docx(temp_file_path)
             extraction_method = "python-docx"
-            
-        else:
-            text, font_metadata = extractor.extract_with_font_metadata(temp_file_path)
-            baseline_font_size = extractor.calculate_baseline_font_size(font_metadata)
+        elif file_ext == 'txt':
+            text = extractor.extract_from_txt(temp_file_path)
             extraction_method = "direct"
+        elif file_ext in ['jpg', 'jpeg', 'png', 'webp']:
+            # Image OCR extraction
+            result = extractor.extract_from_image(temp_file_path)
+            extraction_method = result.get('method_used', 'unknown')
+            text = result['text']
+            ocr_confidence = result.get('ocr_confidence')
+            if ocr_confidence is not None:
+                logger.info(f"🖼️  Image OCR completed: {extraction_method}, conf: {ocr_confidence:.1f}%")
+            else:
+                logger.info(f"🖼️  Image OCR completed: {extraction_method}")
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_ext}")
         
         logger.info(f"Text extracted: {len(text)} chars using {extraction_method}")
         
-        # STEP 2: Section Splitting
-        splitter = SectionSplitter()
+        # STEP 2: Section Splitting (use cached splitter if available)
+        global _cached_section_splitter
+        splitter = _cached_section_splitter or SectionSplitter()
         all_sections = splitter.split_sections(text, font_metadata, baseline_font_size)
         logger.info(f"Sections detected: {len(all_sections)}")
         
-        # STEP 3: Section Validation
+        # STEP 3: Section Validation (use cached validator if available)
         validation_metadata = {
             'spacy_available': False,
             'validation_ran': False,
@@ -1483,7 +1523,8 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
         }
         
         try:
-            validator = SectionValidator()
+            global _cached_section_validator
+            validator = _cached_section_validator or SectionValidator()
             corrected_sections, validation_metadata = validator.validate_and_correct(all_sections)
             logger.info(f"Sections after validation: {len(corrected_sections)}")
         except ImportError as e:
@@ -1560,6 +1601,27 @@ async def startup_event():
         logger.info("Loading MasterParser...")
         master_parser = MasterParser()
         logger.info("✅ MasterParser loaded successfully")
+
+        # Pre-load lightweight parsers so each request doesn't re-initialize them
+        global _cached_text_extractor, _cached_section_splitter, _cached_section_validator, _cached_deberta_parser
+        logger.info("Pre-loading section and extraction parsers...")
+        from parsers.text_extractor import TextExtractor
+        from parsers.section_splitter import SectionSplitter
+        from parsers.section_validator import SectionValidator
+        from parsers.deberta_ner_parser import DeBERTaNerParser
+        _cached_text_extractor = TextExtractor()
+        _cached_section_splitter = SectionSplitter()
+        try:
+            _cached_section_validator = SectionValidator()
+        except Exception as e:
+            logger.warning(f"SectionValidator not available: {e}")
+            _cached_section_validator = None
+        try:
+            _cached_deberta_parser = DeBERTaNerParser()
+        except Exception as e:
+            logger.warning(f"DeBERTaNerParser not available: {e}")
+            _cached_deberta_parser = None
+        logger.info("✅ Lightweight parsers pre-loaded")
         
         logger.info("🎉 All models loaded — service ready!")
         
@@ -1641,64 +1703,6 @@ async def extract_skills(request: Request):
     except Exception as e:
         logger.error(f"Error extracting skills: {e}")
         raise HTTPException(status_code=500, detail=f"Skill extraction failed: {str(e)}")
-
-# Skills Taxonomy Management Endpoints (work without NER model)
-try:
-    from database_skills_loader import get_database_skills_loader
-    SKILLS_LOADER_AVAILABLE = True
-except ImportError as e:
-    SKILLS_LOADER_AVAILABLE = False
-    logger.warning(f"Database skills loader not available: {e}")
-
-@app.post("/admin/skills/reload")
-async def reload_skills_cache():
-    """
-    Reload the skills taxonomy cache from database.
-    This endpoint triggers a fresh load of skills from the database.
-    Called by the backend after bulk skill insertions.
-    """
-    if not SKILLS_LOADER_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="Skills database loader not available"
-        )
-    
-    try:
-        loader = get_database_skills_loader()
-        loader.refresh_cache()
-        return {
-            "status": "success",
-            "message": "Skills cache reloaded successfully",
-            "cache_info": loader.get_cache_info()
-        }
-    except Exception as e:
-        logger.error(f"Failed to reload skills cache: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to reload skills cache: {str(e)}"
-        )
-
-@app.get("/admin/skills/cache-info")
-async def get_skills_cache_info():
-    """
-    Get information about the current skills taxonomy cache.
-    Returns cache statistics including total skills, domains, and last refresh time.
-    """
-    if not SKILLS_LOADER_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="Skills database loader not available"
-        )
-    
-    try:
-        loader = get_database_skills_loader()
-        return loader.get_cache_info()
-    except Exception as e:
-        logger.error(f"Failed to get skills cache info: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get cache info: {str(e)}"
-        )
 
 @app.on_event("shutdown")
 async def shutdown_event():

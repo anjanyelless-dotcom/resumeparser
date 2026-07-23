@@ -21,13 +21,18 @@ const fileFilter = (
     "application/pdf", // PDF files
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // DOCX files
     "text/plain", // TXT files
+    // Image formats for OCR
+    "image/jpeg", // JPG/JPEG
+    "image/jpg", // JPG
+    "image/png", // PNG
+    "image/webp", // WEBP
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     const error = new Error(
-      `Invalid file type: ${file.mimetype}. Only PDF, DOCX, and TXT files are allowed.`,
+      `Invalid file type: ${file.mimetype}. Only PDF, DOCX, TXT, JPG, JPEG, PNG, and WEBP files are allowed.`,
     );
     cb(error as any);
   }
@@ -115,7 +120,7 @@ export const handleUploadError = (
       error: "Invalid file type",
       message: err.message,
       code: "INVALID_FILE_TYPE",
-      allowedTypes: ["PDF", "DOCX", "TXT"],
+      allowedTypes: ["PDF", "DOCX", "TXT", "JPG", "JPEG", "PNG", "WEBP"],
     });
     return;
   }
@@ -142,6 +147,13 @@ export const getFileType = (mimetype: string): string => {
       return "docx";
     case "text/plain":
       return "txt";
+    case "image/jpeg":
+    case "image/jpg":
+      return "jpg";
+    case "image/png":
+      return "png";
+    case "image/webp":
+      return "webp";
     default:
       return "unknown";
   }
@@ -164,6 +176,10 @@ export const validateUploadedFile = (file: Express.Multer.File) => {
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "text/plain",
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
   ];
 
   if (!allowedMimeTypes.includes(file.mimetype)) {

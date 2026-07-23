@@ -9,6 +9,10 @@
  *   Education          5%
  *   Certification      5%
  *
+ * Optional additional signals (small impact):
+ *   Location Match     (if locationKeywords provided)
+ *   Employment Type    (if employmentType provided)
+ *
  * NO external AI APIs — pure TypeScript string matching with synonym awareness.
  */
 
@@ -338,6 +342,31 @@ function scoreCertification(jd: ExtractedJD, candidate: CandidateData, blob: str
   return Math.min(Math.round((matches / jd.certificationKeywords.length) * 100), 100);
 }
 
+function scoreLocation(jd: ExtractedJD, candidate: CandidateData): number {
+  // Optional: only score if locationKeywords are provided
+  if (!jd.locationKeywords || jd.locationKeywords.length === 0) return 100; // No location requirement
+
+  if (!candidate.location) return 0; // Candidate has no location
+
+  const candidateLocation = candidate.location.toLowerCase();
+  
+  // Check if candidate location matches any of the JD location keywords
+  const matches = jd.locationKeywords.some(loc => 
+    candidateLocation.includes(loc.toLowerCase()) || loc.toLowerCase().includes(candidateLocation)
+  );
+
+  return matches ? 100 : 0;
+}
+
+function scoreEmploymentType(jd: ExtractedJD, candidate: CandidateData): number {
+  // Optional: only score if employmentType is provided
+  if (!jd.employmentType) return 100; // No employment type requirement
+
+  // For now, return 100 since we don't have employment_type in candidate data yet
+  // This will be enhanced when candidate data includes employment_type
+  return 100;
+}
+
 function getMatchLabel(score: number): ATSScore["match_label"] {
   if (score >= 90) return "Strong Match";
   if (score >= 75) return "Good Match";
@@ -382,8 +411,13 @@ export function scoreCandidate(jd: ExtractedJD, candidate: CandidateData): ATSSc
   const educationScore = scoreEducation(jd, candidate, blob);
   const certificationScore = scoreCertification(jd, candidate, blob);
 
-  // Weighted overall score
-  const overall = Math.round(
+  // Optional additional signals (small impact)
+  const locationScore = scoreLocation(jd, candidate);
+  const employmentTypeScore = scoreEmploymentType(jd, candidate);
+
+  // Weighted overall score (6 main dimensions + optional signals)
+  // Location and employment type add small bonuses if provided
+  let overall = Math.round(
     skillScore * 0.50 +
     experienceScore * 0.20 +
     roleScore * 0.10 +
@@ -391,6 +425,16 @@ export function scoreCandidate(jd: ExtractedJD, candidate: CandidateData): ATSSc
     educationScore * 0.05 +
     certificationScore * 0.05
   );
+
+  // Add small bonus for location match (if locationKeywords provided)
+  if (jd.locationKeywords && jd.locationKeywords.length > 0) {
+    overall = Math.round(overall * 0.95 + locationScore * 0.05);
+  }
+
+  // Add small bonus for employment type match (if employmentType provided)
+  if (jd.employmentType) {
+    overall = Math.round(overall * 0.95 + employmentTypeScore * 0.05);
+  }
 
   const expYears =
     candidate.years_of_experience ||
@@ -422,23 +466,8 @@ export function scoreCandidate(jd: ExtractedJD, candidate: CandidateData): ATSSc
  * Score ALL candidates and return them sorted by overall_score descending.
  */
 export function rankCandidates(jd: ExtractedJD, candidates: CandidateData[]): ATSScore[] {
-  // 1. Filter candidates strictly by JD experience requirements
-  let validCandidates = candidates;
-  if (jd.experienceMin !== null && jd.experienceMin !== undefined) {
-    validCandidates = validCandidates.filter((c) => {
-      const expYears = c.years_of_experience || computeExperienceYears(c.work_history || []);
-      
-      // Candidate must have at least the minimum required
-      if (expYears < jd.experienceMin!) return false;
-      
-      // If a maximum is specified, candidate must not exceed it
-      if (jd.experienceMax !== null && jd.experienceMax !== undefined && expYears > jd.experienceMax) return false;
-      
-      return true;
-    });
-  }
-
-  // 2. Score and rank remaining valid candidates
-  const scored = validCandidates.map((c) => scoreCandidate(jd, c));
+  // Score all candidates and rank them. Experience penalties are applied in the experience_score,
+  // we do not strictly exclude candidates because it causes '0 matching results' for tight filters.
+  const scored = candidates.map((c) => scoreCandidate(jd, c));
   return scored.sort((a, b) => b.overall_score - a.overall_score);
 }

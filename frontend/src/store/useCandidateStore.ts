@@ -10,11 +10,15 @@ interface Candidate {
   location?: string;
   linkedin_url?: string;
   github_url?: string;
+  portfolio_url?: string;
   summary?: string;
   raw_resume_text?: string;
   created_at: string;
   updated_at: string;
   match_score?: number;
+  total_experience_years?: number;
+  total_years_exp?: any;
+  years_experience?: number;
   skills?: Array<{
     id: string;
     skill_name: string;
@@ -23,7 +27,7 @@ interface Candidate {
     years_experience?: number;
     confidence_score?: number;
   }>;
-  work_experience?: Array<{
+  work_history?: Array<{
     id: string;
     job_title: string;
     company_name: string;
@@ -32,6 +36,7 @@ interface Candidate {
     is_current: boolean;
     description?: string;
     location?: string;
+    duration_string?: string | null;
   }>;
   education?: Array<{
     id: string;
@@ -68,7 +73,7 @@ interface CandidateState {
 }
 
 interface CandidateActions {
-  fetchCandidates: (page?: number, limit?: number, search?: string, company?: string, jobTitle?: string, certification?: string, salaryMin?: number | null, salaryMax?: number | null) => Promise<void>;
+  fetchCandidates: (page?: number, limit?: number, search?: string, company?: string, jobTitle?: string, certification?: string, salaryMin?: number | null, salaryMax?: number | null, myCandidates?: boolean, jobId?: string) => Promise<void>;
   fetchCandidate: (id: string) => Promise<void>;
   uploadResume: (file: File, llmProvider?: string, candidateId?: string) => Promise<Candidate>;
   deleteCandidate: (id: string) => Promise<void>;
@@ -90,45 +95,48 @@ export const useCandidateStore = create<CandidateState & CandidateActions>(
     pagination: null,
 
     // Actions
-    fetchCandidates: async (page = 1, limit = 20, search = "", company = "", jobTitle = "", certification = "", salaryMin = null, salaryMax = null) => {
+    fetchCandidates: async (page = 1, limit = 20, search = "", company = "", jobTitle = "", certification = "", salaryMin = null, salaryMax = null, myCandidates = false, jobId?: string) => {
       set({ isLoading: true, error: null });
       try {
         const params = new URLSearchParams();
         params.append("page", page.toString());
-        params.append("limit", limit.toString());
+        // Cap limit at 100 for production compatibility
+        const safeLimit = Math.min(limit, 100);
+        params.append("limit", safeLimit.toString());
         if (search) {
           params.append("search", search);
         }
-        if (company) {
-          params.append("company", company);
-        }
-        if (jobTitle) {
-          params.append("job_title", jobTitle);
-        }
-        if (certification) {
-          params.append("certification", certification);
-        }
-        if (salaryMin !== null) {
-          params.append("salary_min", salaryMin.toString());
-        }
-        if (salaryMax !== null) {
-          params.append("salary_max", salaryMax.toString());
-        }
-        
+        if (company) params.append("company", company);
+        if (jobTitle) params.append("job_title", jobTitle);
+        if (certification) params.append("certification", certification);
+        if (salaryMin !== null) params.append("salary_min", salaryMin.toString());
+        if (salaryMax !== null) params.append("salary_max", salaryMax.toString());
+        if (myCandidates) params.append("myCandidates", "true");
+        if (jobId) params.append("jobId", jobId);
+
         const response = await api.get(`/candidates?${params.toString()}`);
         console.log("📊 API Response:", response.data);
         console.log("📄 Pagination data:", response.data.pagination);
         console.log("👥 Candidates count:", response.data.candidates?.length || 0);
-        
-        set({ 
-          candidates: response.data.candidates || [], 
+
+        set({
+          candidates: response.data.candidates || [],
           pagination: response.data.pagination || null,
-          isLoading: false 
+          isLoading: false
         });
       } catch (error: any) {
         const errorMessage =
           error.response?.data?.message || "Failed to fetch candidates";
         console.error("❌ Fetch candidates error:", error);
+        
+        // Handle authentication errors
+        if (error.response?.status === 401 || error.response?.status === 400) {
+          if (error.response?.data?.error === "Access token required" || error.response?.data?.error === "Invalid or expired token") {
+            // Clear auth and let the auth interceptor handle redirect
+            errorMessage;
+          }
+        }
+        
         set({ error: errorMessage, isLoading: false, candidates: [], pagination: null });
         toast.error(errorMessage);
       }

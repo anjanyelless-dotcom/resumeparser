@@ -2,7 +2,7 @@ export const parseToDateInput = (rawDateStr: string | null | undefined): string 
   if (!rawDateStr) return "";
   
   // Clean up punctuation (like "[2021" or "2021]")
-  const dateStr = rawDateStr.replace(/[^\w\s\/-]/g, '').trim();
+  const dateStr = rawDateStr.replace(/[^\w\s/-]/g, '').trim();
 
   // If already YYYY-MM-DD, return as is
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
@@ -20,7 +20,7 @@ export const parseToDateInput = (rawDateStr: string | null | undefined): string 
       // Return YYYY-MM-DD
       return date.toISOString().split('T')[0];
     }
-  } catch (e) {
+  } catch {
     // Ignore error and fall through
   }
 

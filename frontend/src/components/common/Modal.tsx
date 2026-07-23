@@ -19,8 +19,14 @@ export default function Modal({ open, title, onClose, children }: ModalProps) {
       }
     };
 
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = "hidden";
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+    };
   }, [open, onClose]);
 
   if (!open) return null;

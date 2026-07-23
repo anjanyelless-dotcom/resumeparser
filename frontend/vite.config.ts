@@ -7,9 +7,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/parse-sections': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_AI_SERVICE_URL || 'http://localhost:8000',
         changeOrigin: true,
       },
     },
+    open: '/login',
   },
 });

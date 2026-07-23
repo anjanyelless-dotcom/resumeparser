@@ -1538,3 +1538,120 @@ class SimpleRuleParser:
             'years_of_experience': self.extract_years_of_experience(text),
             'skills': self.extract_skills(text)
         }
+    
+    def detect_domain(self, matched_skills: List[str], matched_role_domain: str = None) -> Dict[str, Any]:
+        """
+        Detect the primary domain based on matched skills.
+        
+        Args:
+            matched_skills: List of skills extracted from resume
+            matched_role_domain: Domain from role validation (if available)
+            
+        Returns:
+            Dictionary with primary_domain, confidence, skill_domain, and role_domain
+        """
+        # Simple domain detection based on skill keywords
+        domain_keywords = {
+            'IT': ['python', 'java', 'javascript', 'react', 'angular', 'aws', 'azure', 'docker', 'kubernetes', 'sql', 'nosql', 'html', 'css', 'node.js', 'git', 'agile', 'scrum'],
+            'Healthcare': ['nursing', 'medical', 'healthcare', 'clinical', 'patient', 'hospital', 'pharmacy', 'medicine'],
+            'Finance': ['accounting', 'finance', 'financial', 'banking', 'investment', 'trading', 'audit', 'tax'],
+            'HR': ['recruiting', 'hiring', 'talent', 'hr', 'human resources', 'compensation', 'benefits', 'performance'],
+            'Education': ['teaching', 'education', 'learning', 'curriculum', 'instruction', 'training', 'academic'],
+            'Sales': ['sales', 'marketing', 'business development', 'revenue', 'customer acquisition', 'leads'],
+            'Legal': ['legal', 'law', 'attorney', 'counsel', 'compliance', 'regulatory', 'contract'],
+            'Engineering': ['engineering', 'mechanical', 'electrical', 'civil', 'chemical', 'industrial']
+        }
+        
+        # Count skills per domain
+        domain_counts = {}
+        for skill in matched_skills:
+            skill_lower = skill.lower()
+            for domain, keywords in domain_keywords.items():
+                for keyword in keywords:
+                    if keyword.lower() in skill_lower or skill_lower in keyword.lower():
+                        domain_counts[domain] = domain_counts.get(domain, 0) + 1
+                        break
+        
+        # Find domain with highest count
+        if not domain_counts:
+            return {
+                "primary_domain": "IT",
+                "confidence": 0.5,
+                "skill_domain": "IT",
+                "role_domain": matched_role_domain,
+                "domain_counts": {}
+            }
+        
+        top_domain = max(domain_counts, key=domain_counts.get)
+        confidence = min(0.95, 0.5 + (domain_counts[top_domain] / len(matched_skills)))
+        
+        return {
+            "primary_domain": top_domain,
+            "confidence": confidence,
+            "skill_domain": top_domain,
+            "role_domain": matched_role_domain,
+            "domain_counts": domain_counts
+        }
+    
+    def extract_licenses(self, text: str) -> List[str]:
+        """
+        Extract licenses and certifications from text using licenses.py patterns with context guards.
+        
+        Args:
+            text: Resume text
+            
+        Returns:
+            List of license/certification names
+        """
+        # Import the license patterns from licenses.py
+        try:
+            from licenses import LICENSE_PATTERNS, CONTEXT_KEYWORDS, HIGH_RISK_PATTERNS
+        except ImportError:
+            # Fallback to simple patterns if licenses.py not available
+            license_patterns = [
+                r'\b(?:PMP|CPA|CFA|CISA|CISSP|CEH|AWS|Azure|GCP|Google|Microsoft|Oracle|Cisco)\b',
+                r'\b(?:SPHR|GPHR|SHRM|PHR|aPHR)\b',
+                r'\b(?:Six\s+Sigma)\b',
+                r'\b(?:ITIL|PRINCE2|PMP|CAPM)\b',
+            ]
+            licenses = []
+            for pattern in license_patterns:
+                matches = re.findall(pattern, text, re.IGNORECASE)
+                for match in matches:
+                    license_text = match.strip()
+                    if len(license_text) > 2 and license_text not in licenses:
+                        licenses.append(license_text)
+            return licenses
+        
+        licenses = []
+        
+        for license_name, pattern in LICENSE_PATTERNS.items():
+            try:
+                matches = re.finditer(pattern, text, re.IGNORECASE)
+                for match in matches:
+                    # For high-risk patterns, check for context keywords
+                    if license_name in HIGH_RISK_PATTERNS:
+                        # Extract surrounding text (50 chars before and after)
+                        start = max(0, match.start() - 50)
+                        end = min(len(text), match.end() + 50)
+                        context = text[start:end].lower()
+                        
+                        # Check if context keywords are present
+                        has_context = any(keyword in context for keyword in CONTEXT_KEYWORDS)
+                        
+                        # Additional guard for state abbreviations
+                        if license_name in {"PA", "CA"}:
+                            if match.start() > 0 and text[match.start()-1] == ',':
+                                continue
+                            if match.end() < len(text) and text[match.end()] == ',':
+                                continue
+                        
+                        # Only include if context is present for high-risk patterns
+                        if not has_context:
+                            continue
+                    
+                    licenses.append(license_name)
+            except re.error:
+                continue
+        
+        return licenses

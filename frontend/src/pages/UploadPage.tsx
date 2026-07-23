@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { Briefcase, Calendar, XCircle } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate } from "react-router-dom";
 import {
@@ -15,6 +16,10 @@ import ParsedResultCard from "../components/upload/ParsedResultCard";
 import ModelResultsView from "../components/upload/ModelResultsView";
 import { parseToDateInput } from "../utils/date";
 import { validateEmail } from "../utils/validation";
+import DuplicateCandidateModal from "../components/upload/DuplicateCandidateModal";
+import { calculateTotalExperience } from "../utils/experienceCalculator";
+import BulkUploadSummary from "../components/upload/BulkUploadSummary";
+import { useUploadStore } from "../store/uploadStore";
 
 interface LLMModel {
   id: string;
@@ -27,13 +32,19 @@ interface LLMModel {
 interface UploadFile {
   file: File;
   id: string;
-  status: "pending" | "uploading" | "parsing" | "completed" | "error" | "saved";
+  status: "queued" | "pending" | "uploading" | "previewing" | "parsing" | "saving" | "completed" | "saved" | "success" | "error" | "failed" | "duplicate";
   progress: number;
   message: string;
   candidateId?: string;
   result?: any;
   error?: string;
   sections?: SectionData;
+  duplicateError?: {
+    message: string;
+    field: string;
+    existingCandidateId: string;
+    existingCandidateName: string;
+  } | null;
 }
 
 interface SectionData {
@@ -69,7 +80,8 @@ interface SectionData {
 
 interface ParsedSectionsResponse {
   status: string;
-  work_experience: Array<any>;
+  work_history?: Array<any>;
+  work_experience?: Array<any>;
   education: Array<any>;
   skills: Array<string>;
   summary: string | null;
@@ -190,6 +202,7 @@ export default function UploadPage() {
   const navigate = useNavigate();
   const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
   const [isBulkMode, setIsBulkMode] = useState(false);
+  const [isAIBulkMode, setIsAIBulkMode] = useState(false);
   const [currentUpload, setCurrentUpload] = useState<UploadFile | null>(null);
   const [viewingBulkFileId, setViewingBulkFileId] = useState<string | null>(null);
   const [selectedLLM, setSelectedLLM] = useState<string>("own-model");
@@ -203,8 +216,11 @@ export default function UploadPage() {
   const [parsedName, setParsedName] = useState("");
   const [parsedEmail, setParsedEmail] = useState("");
   const [parsedPhone, setParsedPhone] = useState("");
+  const [parsedLinkedin, setParsedLinkedin] = useState("");
+  const [parsedPortfolio, setParsedPortfolio] = useState("");
   const [rawResumeText, setRawResumeText] = useState(""); // Full raw text from preview-sections
   const [extractedSkillsFromText, setExtractedSkillsFromText] = useState<any>(null); // Skills extracted from resume text
+  const [duplicateErrorModal, setDuplicateErrorModal] = useState<{ message: string; field: string; existingCandidateId: string; existingCandidateName: string } | null>(null);
 
   // Skills editing states
   const [newSkillText, setNewSkillText] = useState("");
@@ -239,6 +255,16 @@ export default function UploadPage() {
   const [editingEduIdx, setEditingEduIdx] = useState<number | null>(null);
   const [editEduData, setEditEduData] = useState<any>(null);
   const [isAddingEdu, setIsAddingEdu] = useState(false);
+
+  // Bulk upload summary from store
+  const { uploadComplete, summary, resetSummary, uploadAll, addFiles, queue, clearQueue } = useUploadStore();
+  const [duplicateModal, setDuplicateModal] = useState<{
+    fileName: string;
+    message: string;
+    field: string;
+    existingCandidateId: string;
+    existingCandidateName: string;
+  } | null>(null);
   const [newEduData, setNewEduData] = useState<any>({
     degree: "",
     institution: "",
@@ -261,10 +287,10 @@ export default function UploadPage() {
 
   // Contact editing states
   const [isEditingContact, setIsEditingContact] = useState(false);
-  const [tempContact, setTempContact] = useState({ name: "", email: "", phone: "" });
+  const [tempContact, setTempContact] = useState({ name: "", email: "", phone: "", linkedin: "", portfolio: "" });
 
   // Error states for inline validation
-  const [contactErrors, setContactErrors] = useState<{ name?: string, email?: string, phone?: string }>({});
+  const [contactErrors, setContactErrors] = useState<{ name?: string, email?: string, phone?: string, linkedin?: string, portfolio?: string }>({});
   const [workErrors, setWorkErrors] = useState<any>({});
   const [newWorkErrors, setNewWorkErrors] = useState<any>({});
   const [eduErrors, setEduErrors] = useState<any>({});
@@ -277,7 +303,7 @@ export default function UploadPage() {
 
   // Contact Handlers
   const handleStartEditContact = () => {
-    setTempContact({ name: parsedName, email: parsedEmail, phone: parsedPhone });
+    setTempContact({ name: parsedName, email: parsedEmail, phone: parsedPhone, linkedin: parsedLinkedin, portfolio: parsedPortfolio });
     setContactErrors({});
     setIsEditingContact(true);
   };
@@ -313,6 +339,8 @@ export default function UploadPage() {
     setParsedName(tempContact.name);
     setParsedEmail(tempContact.email);
     setParsedPhone(tempContact.phone);
+    setParsedLinkedin(tempContact.linkedin || "");
+    setParsedPortfolio(tempContact.portfolio || "");
     setIsEditingContact(false);
   };
 
@@ -320,6 +348,8 @@ export default function UploadPage() {
     setParsedName("");
     setParsedEmail("");
     setParsedPhone("");
+    setParsedLinkedin("");
+    setParsedPortfolio("");
     setContactErrors({});
     setIsEditingContact(false);
   };
@@ -387,7 +417,7 @@ export default function UploadPage() {
     }
 
     if (parsedSections) {
-      const isDuplicate = parsedSections.work_experience.some((exp, i) =>
+      const isDuplicate = (parsedSections.work_experience || []).some((exp, i) =>
         i !== idx &&
         exp.job_title?.trim() === editWorkData.job_title?.trim() &&
         exp.company_name?.trim() === editWorkData.company_name?.trim() &&
@@ -403,7 +433,7 @@ export default function UploadPage() {
 
     setWorkErrors({});
     if (parsedSections) {
-      const updated = [...parsedSections.work_experience];
+      const updated = [...(parsedSections.work_experience || [])];
       updated[idx] = editWorkData;
       setParsedSections({
         ...parsedSections,
@@ -416,7 +446,7 @@ export default function UploadPage() {
 
   const handleDeleteWork = (idx: number) => {
     if (parsedSections) {
-      const updated = parsedSections.work_experience.filter((_, i) => i !== idx);
+      const updated = (parsedSections.work_experience || []).filter((_, i) => i !== idx);
       setParsedSections({
         ...parsedSections,
         work_experience: updated
@@ -452,7 +482,7 @@ export default function UploadPage() {
     }
 
     if (parsedSections) {
-      const isDuplicate = parsedSections.work_experience.some((exp) =>
+      const isDuplicate = (parsedSections.work_experience || []).some((exp) =>
         exp.job_title?.trim() === newWorkData.job_title?.trim() &&
         exp.company_name?.trim() === newWorkData.company_name?.trim() &&
         exp.start_date === newWorkData.start_date
@@ -469,7 +499,7 @@ export default function UploadPage() {
     if (parsedSections) {
       setParsedSections({
         ...parsedSections,
-        work_experience: [...parsedSections.work_experience, newWorkData]
+        work_experience: [...(parsedSections.work_experience || []), newWorkData]
       });
       setIsAddingWork(false);
       setNewWorkData({
@@ -733,6 +763,12 @@ export default function UploadPage() {
       setParsedName(parsedSections.contact?.name || "");
       setParsedEmail(parsedSections.contact?.email || "");
       setParsedPhone(parsedSections.contact?.phone || "");
+      setParsedLinkedin(parsedSections.contact?.linkedin || "");
+      setParsedPortfolio(
+        (parsedSections.contact as any)?.portfolio_url ||
+        (parsedSections.contact as any)?.portfolio ||
+        (parsedSections.contact as any)?.website || ""
+      );
     }
   }, [parsedSections]);
 
@@ -855,21 +891,26 @@ export default function UploadPage() {
       }));
 
       if (isBulkMode) {
+        // Add files to uploadStore queue for bulk upload
+        addFiles(acceptedFiles);
+        // Also add to local state for UI display
         setUploadFiles((prev) => [...prev, ...newFiles]);
       } else {
         setUploadFiles(newFiles.slice(0, 1)); // Single file mode
       }
     },
-    [isBulkMode],
+    [isBulkMode, addFiles],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       "application/pdf": [".pdf"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        [".docx"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
       "text/plain": [".txt"],
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
     },
     maxSize: 10 * 1024 * 1024, // 10MB
     multiple: isBulkMode,
@@ -981,109 +1022,22 @@ export default function UploadPage() {
     }
   };
 
-  const handleDirectUpload = async (uploadFile: UploadFile) => {
-    try {
-      setUploadFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadFile.id
-            ? {
-              ...f,
-              status: "uploading",
-              message: "Extracting...",
-              progress: 20,
-            }
-            : f,
-        ),
-      );
-
-      const formData = new FormData();
-      formData.append("resume", uploadFile.file);
-      formData.append("llm_provider", selectedLLM);
-      formData.append("force_ocr", forceOcr ? "true" : "false");
-
-      const extractResponse = await api.post(
-        `/upload/preview-sections`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      const rawText = extractResponse.data.raw_text || "";
-      const rawSections = extractResponse.data.sections || {};
-      const extracted = {
-        experience: rawSections.experience || { text: "", char_count: 0 },
-        education: rawSections.education || { text: "", char_count: 0 },
-        skills: rawSections.skills || { text: "", char_count: 0 },
-        summary: rawSections.summary || { text: "", char_count: 0 },
-        certifications: rawSections.certifications || { text: "", char_count: 0 },
-        projects: rawSections.projects || { text: "", char_count: 0 },
-        contact: rawSections.contact || { text: "", char_count: 0 },
-      };
-
-      setUploadFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadFile.id
-            ? {
-              ...f,
-              message: "Parsing with AI...",
-              progress: 60,
-            }
-            : f,
-        ),
-      );
-
-      const parseResponse = await api.post(`/upload/parse-sections`, {
-        model: selectedLLM,
-        experience_text: extracted.experience?.text || "",
-        education_text: extracted.education?.text || "",
-        skills_text: extracted.skills?.text || "",
-        summary_text: extracted.summary?.text || "",
-        certifications_text: extracted.certifications?.text || "",
-        projects_text: extracted.projects?.text || "",
-        contact_text: extracted.contact?.text || "",
-        raw_text: rawText,
-      });
-
-      const parsedData = parseResponse.data;
-
-      setUploadFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadFile.id
-            ? {
-              ...f,
-              status: "completed",
-              message: "Ready for review!",
-              progress: 100,
-              result: parsedData,
-            }
-            : f
-        )
-      );
-
-      toast.success(`${uploadFile.file.name} parsed successfully!`);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || "Upload failed";
-      setUploadFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadFile.id
-            ? { ...f, status: "error", message: "Failed", error: errorMessage }
-            : f
-        )
-      );
-      toast.error(`Failed to upload ${uploadFile.file.name}: ${errorMessage}`);
-    }
-  };
-
   const handleViewBulkFile = (fileId: string) => {
     const file = uploadFiles.find(f => f.id === fileId);
     if (file && file.result) {
-      setParsedSections(file.result);
+      setParsedSections({
+        ...file.result,
+        work_experience: file.result.work_history || file.result.work_experience || [],
+      });
       setParsedName(file.result.contact?.name || "");
       setParsedEmail(file.result.contact?.email || "");
       setParsedPhone(file.result.contact?.phone || "");
+      setParsedLinkedin(file.result.contact?.linkedin || "");
+      setParsedPortfolio(
+        file.result.contact?.portfolio_url ||
+        file.result.contact?.portfolio ||
+        file.result.contact?.website || ""
+      );
       setViewingBulkFileId(fileId);
 
       // Reset editing states
@@ -1101,13 +1055,8 @@ export default function UploadPage() {
   };
 
   const handleBulkUpload = async () => {
-    const pendingFiles = uploadFiles.filter((f) => f.status === "pending");
-
-    for (const file of pendingFiles) {
-      await handleDirectUpload(file);
-      // Add small delay between uploads to avoid overwhelming the server
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
+    resetSummary();
+    await uploadAll(isAIBulkMode ? "gpt-4o-mini" : "own-model");
   };
 
   const parseExtractedSections = async () => {
@@ -1136,7 +1085,11 @@ export default function UploadPage() {
         }
       );
 
-      setParsedSections(response.data);
+      const parsedData = {
+        ...response.data,
+        work_experience: response.data.work_history || response.data.work_experience || [],
+      };
+      setParsedSections(parsedData);
       toast.success("Sections parsed successfully!");
     } catch (error: any) {
       console.error("Error parsing sections:", error);
@@ -1149,10 +1102,10 @@ export default function UploadPage() {
       }
     } finally {
       setIsParsingModel(false);
-    }
+    } 
   };
 
-  const saveCandidateProfile = async () => {
+  const saveCandidateProfile = async (forceSave: boolean = false) => {
     if (!parsedSections) {
       toast.error("No parsed data to save");
       return;
@@ -1185,6 +1138,14 @@ export default function UploadPage() {
         education: parsedSections.education,
         certifications: parsedSections.certifications,
         projects: parsedSections.projects,
+        // Contact info from parsed sections
+        linkedin_url: parsedLinkedin || parsedSections.contact?.linkedin || undefined,
+        github_url: parsedSections.contact?.github || undefined,
+        portfolio_url: parsedPortfolio ||
+                       (parsedSections.contact as any)?.portfolio_url ||
+                       (parsedSections.contact as any)?.portfolio ||
+                       (parsedSections.contact as any)?.website || undefined,
+        forceSave: forceSave,
       };
 
       const response = await api.post(
@@ -1206,7 +1167,29 @@ export default function UploadPage() {
       }
     } catch (error: any) {
       console.error("Error saving candidate:", error);
-      toast.error(error.response?.data?.error || "Failed to save candidate profile");
+
+      // ── Handle duplicate candidate 409 specifically ──────────────────────
+      if (error.response?.status === 409) {
+        const errData = error.response.data;
+        const fieldLabels: Record<string, string> = {
+          email: "email address",
+          phone: "phone number",
+          "name+email": "name + email combination",
+          "name+phone": "name + phone combination",
+        };
+        const fieldLabel = fieldLabels[errData?.field] || errData?.field || "contact details";
+        const existingName = errData?.existingCandidateName
+          ? ` (${errData.existingCandidateName})`
+          : "";
+        setDuplicateErrorModal({
+          message: errData?.message || `Duplicate detected: a candidate with this ${fieldLabel} already exists${existingName}.`,
+          field: errData?.field || "unknown",
+          existingCandidateId: errData?.existingCandidateId || "",
+          existingCandidateName: errData?.existingCandidateName || "",
+        });
+      } else {
+        toast.error(error.response?.data?.message || error.response?.data?.error || "Failed to save candidate profile");
+      }
     } finally {
       setIsSavingCandidate(false);
     }
@@ -1215,13 +1198,19 @@ export default function UploadPage() {
   const resetUpload = () => {
     setUploadFiles([]);
     setCurrentUpload(null);
+    setIsBulkMode(false);
+    setIsAIBulkMode(false);
     setExtractedSections(null);
     setParsedSections(null);
     setParsedName("");
     setParsedEmail("");
     setParsedPhone("");
+    setParsedLinkedin("");
+    setParsedPortfolio("");
     setRawResumeText("");
     setExtractedSkillsFromText(null);
+    resetSummary();
+    clearQueue();
   };
 
   const formatFileSize = (bytes: number) => {
@@ -1267,13 +1256,23 @@ export default function UploadPage() {
               Single Upload
             </button>
             <button
-              onClick={() => setIsBulkMode(true)}
-              className={`px-6 py-2.5 rounded-lg font-medium transition-all duration-200 ${isBulkMode
+              onClick={() => { setIsBulkMode(true); setIsAIBulkMode(false); }}
+              className={`px-6 py-2.5 rounded-lg font-medium transition-all duration-200 ${isBulkMode && !isAIBulkMode
                   ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm shadow-purple-500/20"
                   : "text-slate-600 hover:text-slate-900"
                 }`}
             >
               Bulk Upload
+            </button>
+
+                 <button
+              onClick={() => { setIsBulkMode(true); setIsAIBulkMode(true); setSelectedLLM("gpt-4o-mini"); }}
+              className={`px-6 py-2.5 rounded-lg font-medium transition-all duration-200 ${isAIBulkMode
+                  ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm shadow-purple-500/20"
+                  : "text-slate-600 hover:text-slate-900"
+                }`}
+            >
+             AI Bulk Upload
             </button>
           </div>
         </div>
@@ -1424,7 +1423,7 @@ export default function UploadPage() {
                   : "Drag & drop your resume file here, or click to browse"}
               </p>
               <p className="text-xs text-slate-500 mb-6">
-                Supports PDF, DOC, and DOCX files • Max 10MB per file
+                Supports PDF, DOC, DOCX, JPG, JPEG, PNG, and WEBP files • Max 10MB per file
               </p>
               <button className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-purple-500/40 transition-all duration-200">
                 Choose Files
@@ -1917,20 +1916,77 @@ export default function UploadPage() {
                         />
                         {contactErrors.phone && <p className="text-red-500 text-xs mt-1">{contactErrors.phone}</p>}
                       </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">LinkedIn URL</label>
+                        <input
+                          type="url"
+                          value={tempContact.linkedin || ""}
+                          onChange={(e) => setTempContact({ ...tempContact, linkedin: e.target.value })}
+                          placeholder="https://linkedin.com/in/..."
+                          className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Portfolio / Website</label>
+                        <input
+                          type="url"
+                          value={tempContact.portfolio || ""}
+                          onChange={(e) => setTempContact({ ...tempContact, portfolio: e.target.value })}
+                          placeholder="https://yourportfolio.com"
+                          className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm">
-                      <div>
-                        <span className="text-gray-500 block text-xs mb-1">Candidate Name</span>
-                        <span className="font-medium text-gray-900">{parsedName || <span className="text-gray-400 italic">Not available</span>}</span>
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm">
+                      {/* Row 1: Name · Email · Phone */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <div>
+                          <span className="text-gray-500 block text-xs mb-1">Candidate Name</span>
+                          <span className="font-medium text-gray-900">{parsedName || <span className="text-gray-400 italic">Not available</span>}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block text-xs mb-1">Email Address</span>
+                          <span className="font-medium text-gray-900">{parsedEmail || <span className="text-gray-400 italic">Not available</span>}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block text-xs mb-1">Phone Number</span>
+                          <span className="font-medium text-gray-900">{parsedPhone || <span className="text-gray-400 italic">Not available</span>}</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-gray-500 block text-xs mb-1">Email Address</span>
-                        <span className="font-medium text-gray-900">{parsedEmail || <span className="text-gray-400 italic">Not available</span>}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 block text-xs mb-1">Phone Number</span>
-                        <span className="font-medium text-gray-900">{parsedPhone || <span className="text-gray-400 italic">Not available</span>}</span>
+                      {/* Row 2: LinkedIn · Portfolio · Experience */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-gray-200">
+                        <div>
+                          <span className="text-gray-500 block text-xs mb-1">LinkedIn URL</span>
+                          {parsedLinkedin ? (
+                            <a
+                              href={parsedLinkedin}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-medium text-blue-600 hover:text-blue-800 break-all"
+                            >
+                              {parsedLinkedin}
+                            </a>
+                          ) : (
+                            <span className="text-gray-400 italic">Not available</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block text-xs mb-1">Portfolio / Website</span>
+                          {parsedPortfolio ? (
+                            <a
+                              href={parsedPortfolio}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-medium text-blue-600 hover:text-blue-800 break-all"
+                            >
+                              {parsedPortfolio}
+                            </a>
+                          ) : (
+                            <span className="text-gray-400 italic">Not available</span>
+                          )}
+                        </div>
+
                       </div>
                     </div>
                   )}
@@ -1991,11 +2047,65 @@ export default function UploadPage() {
                   </div>
                 )}
 
+                {/* Total Experience Banner */}
+                {(parsedSections.work_experience?.length || 0) > 0 && (() => {
+                  const { total } = calculateTotalExperience(parsedSections.work_experience || []);
+                  if (total.total_records > 0) {
+                      return (
+                        <div className="mb-6 bg-[#f2faf0] rounded-xl p-4 border border-green-200 shadow-sm flex flex-col xl:flex-row items-center gap-4 justify-between">
+                          {/* Left: Total Experience */}
+                          <div className="flex items-center gap-3 flex-shrink-0 min-w-max">
+                            <div className="w-10 h-10 bg-[#bdf0c1] rounded flex items-center justify-center shrink-0">
+                              <Briefcase className="w-5 h-5 text-green-800" />
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-0.5">Total Experience</p>
+                              <p className="text-xl font-bold text-green-700 whitespace-nowrap tracking-tight">{total.formatted_string}</p>
+                            </div>
+                          </div>
+                          
+                          {/* Middle: From / To */}
+                          {total.earliest_date && total.latest_date && (
+                            <div className="flex items-center gap-6 px-4 py-2 bg-[#f8fcf7] rounded-lg border border-green-100 shrink-0 mx-auto w-full xl:w-auto justify-center">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded bg-green-50 flex items-center justify-center">
+                                  <Calendar className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-gray-400 font-semibold uppercase">From</p>
+                                  <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">{new Date(total.earliest_date).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'})}</p>
+                                </div>
+                              </div>
+                              <div className="w-px h-8 bg-green-200" />
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded bg-green-50 flex items-center justify-center">
+                                  <Calendar className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-gray-400 font-semibold uppercase">To</p>
+                                  <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">{new Date(total.latest_date).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'})}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Right: Calculated from */}
+                          <div className="text-center xl:text-right shrink-0 min-w-max">
+                            <p className="text-[11px] text-gray-500 font-medium mb-0.5">Calculated from</p>
+                            <p className="text-sm font-bold text-green-700">{total.total_records} Employment Records</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">(Based on start and end dates)</p>
+                          </div>
+                        </div>
+                      );
+                  }
+                  return null;
+                })()}
+
                 {/* Work Experience Results */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      Work Experience ({parsedSections.work_experience.length} entries - Model-wise)
+                      Work Experience ({parsedSections.work_experience?.length || 0} entries - Model-wise)
                     </h3>
                     {!isAddingWork && (
                       <button
@@ -2122,20 +2232,20 @@ export default function UploadPage() {
                   )}
 
                   <div className="space-y-4">
-                    {parsedSections.work_experience.map((exp, idx) => (
+                    {(parsedSections.work_experience || []).map((exp, idx) => (
                       <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200 relative group">
                         <div className="absolute top-4 right-4 flex gap-1.5 transition-opacity">
                           {editingWorkIdx !== idx ? (
                             <>
                               <button
                                 onClick={() => handleStartEditWork(idx, exp)}
-                                className="px-2 py-0.5 text-xs font-semibold text-blue-600 bg-white border border-blue-200 rounded-md hover:bg-blue-50 transition-colors shadow-sm"
+                                className="px-3 py-1 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded hover:bg-blue-100 transition-colors"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteWork(idx)}
-                                className="px-2 py-0.5 text-xs font-semibold text-red-600 bg-white border border-red-200 rounded-md hover:bg-red-50 transition-colors shadow-sm"
+                                className="px-3 py-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded hover:bg-red-100 transition-colors"
                               >
                                 Delete
                               </button>
@@ -2179,7 +2289,7 @@ export default function UploadPage() {
                                 {workErrors.job_title && <p className="text-red-500 text-xs mt-1">{workErrors.job_title}</p>}
                               </div>
                               <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Company Name</label>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Company</label>
                                 <input
                                   type="text"
                                   value={editWorkData.company_name || ""}
@@ -2261,16 +2371,16 @@ export default function UploadPage() {
                           </div>
                         ) : (
                           <div className="grid grid-cols-2 gap-3 text-sm pr-20">
-                            {exp.job_title && (
+                            {(exp.job_title || exp.title) && (
                               <div>
                                 <span className="text-gray-600">Job Title:</span>
-                                <span className="font-medium text-gray-900 ml-2">{exp.job_title}</span>
+                                <span className="font-medium text-gray-900 ml-2">{exp.job_title || exp.title}</span>
                               </div>
                             )}
-                            {exp.company_name && (
+                            {(exp.company_name || exp.company) && (
                               <div>
                                 <span className="text-gray-600">Company:</span>
-                                <span className="font-medium text-gray-900 ml-2">{exp.company_name}</span>
+                                <span className="font-medium text-gray-900 ml-2">{exp.company_name || exp.company}</span>
                               </div>
                             )}
                             {exp.location && (
@@ -2281,27 +2391,37 @@ export default function UploadPage() {
                             )}
                             {exp.start_date && (
                               <div>
-                                <span className="text-gray-600">Start:</span>
+                                <span className="text-gray-600">Start Date:</span>
                                 <span className="font-medium text-gray-900 ml-2">{exp.start_date}</span>
                               </div>
                             )}
-                            {exp.end_date && (
+                            {(exp.end_date || exp.is_current) && (
                               <div>
-                                <span className="text-gray-600">End:</span>
-                                <span className="font-medium text-gray-900 ml-2">{exp.end_date}</span>
+                                <span className="text-gray-600">End Date:</span>
+                                <span className="font-medium text-gray-900 ml-2">{exp.end_date || (exp.is_current ? "Present" : "Unknown")}</span>
                               </div>
                             )}
+                            {(() => {
+                              const { processed } = calculateTotalExperience([exp]);
+                              const duration = processed[0]?.duration_string;
+                              return duration && duration !== "0 Months" ? (
+                                <div>
+                                  <span className="text-gray-600">Duration:</span>
+                                  <span className="font-medium text-gray-900 ml-2">{duration}</span>
+                                </div>
+                              ) : null;
+                            })()}
                             {exp.description && (
-                              <div className="col-span-2 mt-1">
-                                <span className="text-gray-600 block mb-0.5">Description:</span>
-                                <span className="text-gray-700 text-xs whitespace-pre-line leading-normal">{exp.description}</span>
+                              <div className="col-span-2 mt-2">
+                                <span className="text-gray-600 block mb-1">Description:</span>
+                                <p className="text-gray-800 whitespace-pre-wrap">{exp.description}</p>
                               </div>
                             )}
                           </div>
                         )}
                       </div>
                     ))}
-                    {parsedSections.work_experience.length === 0 && (
+                    {(parsedSections.work_experience?.length || 0) === 0 && (
                       <p className="text-sm text-gray-500 italic">No work experience entries.</p>
                     )}
                   </div>
@@ -2311,7 +2431,7 @@ export default function UploadPage() {
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      Education ({parsedSections.education.length} entries - Model-wise)
+                      Education ({parsedSections.education?.length || 0} entries - Model-wise)
                     </h3>
                     {!isAddingEdu && (
                       <button
@@ -2439,7 +2559,7 @@ export default function UploadPage() {
                   )}
 
                   <div className="space-y-3">
-                    {parsedSections.education.map((edu, idx) => (
+                    {(parsedSections.education || []).map((edu, idx) => (
                       <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200 relative group">
                         <div className="absolute top-4 right-4 flex gap-1.5 transition-opacity">
                           {editingEduIdx !== idx ? (
@@ -2617,7 +2737,7 @@ export default function UploadPage() {
                         )}
                       </div>
                     ))}
-                    {parsedSections.education.length === 0 && (
+                    {(parsedSections.education?.length || 0) === 0 && (
                       <p className="text-sm text-gray-500 italic">No education entries.</p>
                     )}
                   </div>
@@ -2627,7 +2747,7 @@ export default function UploadPage() {
                 <div className="mb-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      Extracted Skills ({parsedSections.skills.length} - Rule-wise)
+                      Extracted Skills ({parsedSections.skills?.length || 0} - Rule-wise)
                     </h3>
                     <div className="flex flex-col gap-1">
                       <div className="flex gap-2">
@@ -2655,7 +2775,7 @@ export default function UploadPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {parsedSections.skills.map((skill, idx) => (
+                    {(parsedSections.skills || []).map((skill, idx) => (
                       <span
                         key={idx}
                         className="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold rounded-full flex items-center gap-1.5 shadow-sm group hover:bg-purple-100 transition-colors"
@@ -2670,7 +2790,7 @@ export default function UploadPage() {
                         </button>
                       </span>
                     ))}
-                    {parsedSections.skills.length === 0 && (
+                    {(parsedSections.skills?.length || 0) === 0 && (
                       <p className="text-sm text-gray-500 italic">No skills added yet.</p>
                     )}
                   </div>
@@ -2680,7 +2800,7 @@ export default function UploadPage() {
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      Projects ({parsedSections.projects.length} - Rule-wise)
+                      Projects ({parsedSections.projects?.length || 0} - Rule-wise)
                     </h3>
                     {!isAddingProject && (
                       <button
@@ -2722,7 +2842,7 @@ export default function UploadPage() {
                   )}
 
                   <div className="space-y-3">
-                    {parsedSections.projects.map((proj, idx) => (
+                    {(parsedSections.projects || []).map((proj, idx) => (
                       <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200 relative group">
                         <div className="absolute top-4 right-4 flex gap-1.5 transition-opacity">
                           {editingProjectIdx !== idx ? (
@@ -2774,7 +2894,7 @@ export default function UploadPage() {
                         )}
                       </div>
                     ))}
-                    {parsedSections.projects.length === 0 && (
+                    {(parsedSections.projects?.length || 0) === 0 && (
                       <p className="text-sm text-gray-500 italic">No projects entries.</p>
                     )}
                   </div>
@@ -2784,7 +2904,7 @@ export default function UploadPage() {
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      Certifications ({parsedSections.certifications.length} - Rule-wise)
+                      Certifications ({parsedSections.certifications?.length || 0} - Rule-wise)
                     </h3>
                     {!isAddingCert && (
                       <button
@@ -2827,7 +2947,7 @@ export default function UploadPage() {
                   )}
 
                   <ul className="space-y-2">
-                    {parsedSections.certifications.map((cert, idx) => (
+                    {(parsedSections.certifications || []).map((cert, idx) => (
                       <li key={idx} className="flex items-center justify-between bg-gray-50 rounded-lg p-3 border border-gray-200 text-sm text-gray-700 relative group">
                         {editingCertIdx === idx ? (
                           <div className="flex items-center gap-2 w-full pr-20">
@@ -2885,7 +3005,7 @@ export default function UploadPage() {
                         </div>
                       </li>
                     ))}
-                    {parsedSections.certifications.length === 0 && (
+                    {(parsedSections.certifications?.length || 0) === 0 && (
                       <p className="text-sm text-gray-500 italic">No certifications entries.</p>
                     )}
                   </ul>
@@ -2894,7 +3014,7 @@ export default function UploadPage() {
                 {/* Action Buttons */}
                 <div className="mt-8 flex justify-end gap-3 border-t border-gray-100 pt-6">
                   <button
-                    onClick={saveCandidateProfile}
+                    onClick={() => saveCandidateProfile()}
                     disabled={isSavingCandidate}
                     className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-500/20 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
@@ -3006,27 +3126,31 @@ export default function UploadPage() {
         )}
 
         {/* Bulk Upload */}
-        {isBulkMode && uploadFiles.length > 0 && (
+        {isBulkMode && queue.length > 0 && (
           <div className="space-y-4">
             {/* Upload Controls */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium text-gray-900">
-                  {uploadFiles.length} file{uploadFiles.length !== 1 ? "s" : ""}{" "}
+                  {queue.length} file{queue.length !== 1 ? "s" : ""}{" "}
                   selected
                 </h3>
                 <div className="space-x-3">
                   <button
                     onClick={handleBulkUpload}
-                    disabled={uploadFiles.some(
-                      (f) => f.status === "uploading" || f.status === "parsing",
+                    disabled={queue.some(
+                      (f) => f.status === "uploading" || f.status === "parsing" || f.status === "previewing" || f.status === "saving",
                     )}
                     className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg hover:shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
                   >
                     Upload All
                   </button>
                   <button
-                    onClick={resetUpload}
+                    onClick={() => {
+                      resetUpload();
+                      resetSummary();
+                      clearQueue();
+                    }}
                     className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors font-medium"
                   >
                     Clear All
@@ -3036,7 +3160,7 @@ export default function UploadPage() {
             </div>
 
             {/* File List */}
-            {uploadFiles.map((uploadFile) => (
+            {queue.map((uploadFile: any) => (
               <div
                 key={uploadFile.id}
                 className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6"
@@ -3051,31 +3175,34 @@ export default function UploadPage() {
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
-                    {uploadFile.status === "pending" && (
-                      <button
-                        onClick={() => handleUpload(uploadFile)}
-                        className="px-4 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm rounded-lg hover:shadow-md transition-all font-medium"
-                      >
-                        Upload
-                      </button>
-                    )}
                     <span
-                      className={`px-3 py-1 text-xs font-semibold rounded-full ${uploadFile.status === "completed" || uploadFile.status === "saved"
+                      className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                        uploadFile.status === "completed" || uploadFile.status === "saved" || uploadFile.status === "success"
                           ? "bg-gradient-to-r from-teal-500 to-teal-600 text-white"
-                          : uploadFile.status === "error"
+                          : uploadFile.status === "error" || uploadFile.status === "failed"
                             ? "bg-gradient-to-r from-red-500 to-pink-500 text-white"
-                            : uploadFile.status === "parsing"
-                              ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white"
-                              : "bg-slate-100 text-slate-700"
+                          : uploadFile.status === "duplicate"
+                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+                          : uploadFile.status === "previewing"
+                            ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                          : uploadFile.status === "parsing"
+                            ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white"
+                          : uploadFile.status === "saving"
+                            ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
+                          : "bg-slate-100 text-slate-700"
                         }`}
                     >
-                      {uploadFile.status}
+                      {uploadFile.status === "success" || uploadFile.status === "saved" ? "Saved" : 
+                       uploadFile.status === "failed" || uploadFile.status === "error" ? "Failed" : 
+                       uploadFile.status === "duplicate" ? "Duplicate" :
+                       uploadFile.status === "queued" ? "Queued" :
+                       uploadFile.status.charAt(0).toUpperCase() + uploadFile.status.slice(1)}
                     </span>
                   </div>
                 </div>
 
                 {/* Progress */}
-                {uploadFile.status !== "pending" && (
+                {uploadFile.status !== "queued" && (
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm text-gray-600">
@@ -3087,7 +3214,7 @@ export default function UploadPage() {
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-2">
                       <div
-                        className={`h-2 rounded-full transition-all duration-300 ${uploadFile.status === "error"
+                        className={`h-2 rounded-full transition-all duration-300 ${uploadFile.status === "error" || uploadFile.status === "failed"
                             ? "bg-gradient-to-r from-red-500 to-pink-500"
                             : "bg-gradient-to-r from-purple-600 to-blue-600"
                           }`}
@@ -3121,10 +3248,59 @@ export default function UploadPage() {
             ))}
 
             {/* Summary */}
-            {uploadFiles.length > 0 &&
+            {uploadComplete && (
+              <div className="mb-6">
+                <BulkUploadSummary
+                  totalUploaded={summary.totalUploaded}
+                  successful={summary.successful}
+                  duplicates={summary.duplicates}
+                  failed={summary.failed}
+                  failedFiles={summary.failedFiles}
+                  duplicateFiles={summary.duplicateFiles}
+                  onDismiss={() => resetSummary()}
+                  onDownloadFailed={() => {
+                    // Download failed files list as JSON
+                    const failedList = summary.failedFiles.map(f => ({
+                      fileName: f.fileName,
+                      error: f.error,
+                    }));
+                    const blob = new Blob([JSON.stringify(failedList, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `failed-resumes-${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  onDownloadDuplicates={() => {
+                    // Download duplicate files list as JSON
+                    const duplicateList = summary.duplicateFiles.map(f => ({
+                      fileName: f.fileName,
+                      message: f.message,
+                      field: f.field,
+                      existingCandidateId: f.existingCandidateId,
+                      existingCandidateName: f.existingCandidateName,
+                    }));
+                    const blob = new Blob([JSON.stringify(duplicateList, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `duplicate-resumes-${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  onViewDuplicate={(duplicateFile) => {
+                    setDuplicateModal(duplicateFile);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Legacy Summary (for non-bulk mode) */}
+            {!isBulkMode && uploadFiles.length > 0 &&
               uploadFiles.every(
                 (f) => f.status === "completed" || f.status === "error",
-              ) && (
+              ) && !uploadComplete && (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">
                     Upload Summary
@@ -3163,6 +3339,128 @@ export default function UploadPage() {
           </div>
         )}
       </div>
+
+      {/* Duplicate Candidate Modal */}
+      <DuplicateCandidateModal
+        open={!!duplicateErrorModal}
+        onClose={() => setDuplicateErrorModal(null)}
+        errorData={duplicateErrorModal as any}
+        newCandidateData={{
+          name: parsedName,
+          email: parsedEmail,
+          phone: parsedPhone,
+          summary: parsedSections?.summary,
+          education: parsedSections?.education,
+        }}
+        onSaveAsNew={() => {
+          setDuplicateErrorModal(null);
+          saveCandidateProfile(true);
+        }}
+        onViewExisting={(id) => {
+          setDuplicateErrorModal(null);
+          navigate(`/candidates/${id}`);
+        }}
+        onUpdateExisting={async (id) => {
+          setDuplicateErrorModal(null);
+          
+          try {
+            console.log("Updating existing candidate with ID:", id);
+            
+            // Prepare the complete candidate data from parsed sections
+            const updateData = {
+              name: parsedName,
+              email: parsedEmail,
+              phone: parsedPhone,
+              summary: parsedSections?.summary,
+              skills: parsedSections?.skills || [],
+              work_history: parsedSections?.work_experience || [],
+              education: parsedSections?.education || [],
+              certifications: parsedSections?.certifications || [],
+              projects: parsedSections?.projects || [],
+              linkedin_url: parsedLinkedin,
+              portfolio_url: parsedPortfolio,
+              raw_resume_text: rawResumeText,
+            };
+
+            console.log("Sending update data:", {
+              name: updateData.name,
+              email: updateData.email,
+              skillsCount: updateData.skills?.length || 0,
+              workHistoryCount: updateData.work_history?.length || 0,
+              educationCount: updateData.education?.length || 0,
+              certificationsCount: updateData.certifications?.length || 0,
+              projectsCount: updateData.projects?.length || 0,
+            });
+
+            // Call the enhanced update endpoint
+            const response = await api.put(`/candidates/${id}/update-full`, updateData);
+            
+            console.log("Update response:", response.data);
+            
+            toast.success("Candidate updated successfully with all resume data!");
+            
+            // Navigate to the updated candidate page
+            navigate(`/candidates/${id}`);
+            
+          } catch (error: any) {
+            console.error("Error updating candidate:", error);
+            
+            if (error.response?.data?.message) {
+              toast.error(`Update failed: ${error.response.data.message}`);
+            } else {
+              toast.error("Failed to update candidate. Please try again.");
+            }
+            
+            // Fallback to manual edit page
+            navigate(`/candidates/${id}`);
+          }
+        }}
+      />
+
+      {/* Bulk Upload Duplicate Modal */}
+      {duplicateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Duplicate Candidate Detected</h3>
+              <button
+                onClick={() => setDuplicateModal(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm font-medium text-amber-900">{duplicateModal.fileName}</p>
+                <p className="text-xs text-amber-700 mt-1">{duplicateModal.message}</p>
+              </div>
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-xs text-gray-600">
+                  <strong>Duplicate Field:</strong> {duplicateModal.field}
+                </p>
+                <p className="text-xs text-gray-600">
+                  <strong>Existing Candidate:</strong> {duplicateModal.existingCandidateName}
+                </p>
+                <p className="text-xs text-gray-600">
+                  <strong>Existing ID:</strong> {duplicateModal.existingCandidateId}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => {
+                  setDuplicateModal(null);
+                  navigate(`/candidates/${duplicateModal.existingCandidateId}`);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                View Existing Candidate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

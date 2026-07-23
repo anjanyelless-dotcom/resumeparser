@@ -11,7 +11,7 @@ import {
   handleUploadError,
   addFileInfo,
 } from "../middleware/upload.middleware";
-import { authenticateToken, requireRole } from "../middleware/auth.middleware";
+import { authenticateToken, requireRole, requirePermission } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -279,7 +279,7 @@ router.get("/config", getUploadConfig);
  */
 router.get(
   "/stats",
-  requireRole(["admin", "manager"]), // Require admin or manager role
+  requirePermission("upload", "view_stats"), // Require upload view_stats permission
   getUploadStats,
 );
 

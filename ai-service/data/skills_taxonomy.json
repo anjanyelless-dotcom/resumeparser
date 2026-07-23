@@ -1,0 +1,20 @@
+[
+  "Python", "Java", "JavaScript", "TypeScript", "C++", "C#", "Go", "Rust", "PHP", "Ruby", "Kotlin", "Swift",
+  "React", "React.js", "Angular", "Vue", "Vue.js", "Next.js", "Nuxt.js", "Svelte", "Ember",
+  "Node.js", "Express", "FastAPI", "Django", "Flask", "Spring Boot", "Laravel", "NestJS",
+  "HTML", "HTML5", "CSS", "CSS3", "Sass", "SCSS", "Tailwind CSS", "Bootstrap", "Material UI", "Styled Components",
+  "Redux", "Redux Toolkit", "Redux Thunk", "Redux Saga", "Zustand", "MobX", "React Query", "Context API", "Recoil",
+  "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Elasticsearch", "SQLite", "DynamoDB", "Cassandra",
+  "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Terraform", "Ansible", "CI/CD", "Jenkins", "GitHub Actions",
+  "Git", "GitHub", "GitLab", "Bitbucket", "REST", "RESTful", "GraphQL", "WebSocket", "gRPC", "Microservices",
+  "Jest", "Pytest", "Cypress", "Selenium", "React Testing Library", "Mocha", "Chai", "JUnit",
+  "Webpack", "Vite", "Babel", "ESLint", "Prettier", "npm", "yarn", "pnpm",
+  "Linux", "Bash", "PowerShell", "Figma", "Storybook", "Postman", "Firebase", "Supabase",
+  "Machine Learning", "Deep Learning", "TensorFlow", "PyTorch", "Scikit-learn", "NLP", "Computer Vision",
+  "Jira", "Confluence", "Agile", "Scrum", "Kanban", "Recharts", "D3.js", "Chart.js",
+  "Vercel", "Netlify", "Heroku", "DigitalOcean", "Nginx", "Apache",
+  "Pandas", "NumPy", "Matplotlib", "Seaborn", "Keras", "OpenCV", "NLTK", "spaCy",
+  "Hadoop", "Spark", "Airflow", "Kafka", "RabbitMQ", "Tableau", "Power BI", "Excel",
+  "React Native", "Flutter", "Android", "iOS", "Unity", "OpenGL", "Swagger", "OAuth", "JWT", "SAML", "LDAP",
+  "Hibernate", ".NET", "ASP.NET", "Entity Framework", "LINQ", "Xamarin", "Blazor"
+]

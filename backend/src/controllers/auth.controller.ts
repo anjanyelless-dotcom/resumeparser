@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 import { query } from "../database/db";
 import { v4 as uuidv4 } from "uuid";
+import { isValidRole, getDefaultRole, VALID_ROLES } from "../constants/roles";
 
 interface RegisterRequest {
   email: string;
@@ -20,11 +21,20 @@ export const registerUser = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { email, password, role = "recruiter" }: RegisterRequest = req.body;
+    const { email, password, role = getDefaultRole() }: RegisterRequest = req.body;
 
     // Validate input
     if (!email || !password) {
       res.status(400).json({ error: "Email and password are required" });
+      return;
+    }
+
+    // Validate role
+    if (!isValidRole(role)) {
+      res.status(400).json({ 
+        error: "Invalid role",
+        details: `Role must be one of: ${VALID_ROLES.join(', ')}`
+      });
       return;
     }
 
@@ -42,20 +52,35 @@ export const registerUser = async (
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
+    // Fetch role_id from roles table
+    const roleResult = await query(
+      "SELECT id FROM roles WHERE name = $1",
+      [role]
+    );
+    let roleId = null;
+    if (roleResult.rows.length > 0) {
+      roleId = roleResult.rows[0].id;
+    }
+
     // Create user
     const id = uuidv4();
     const result = await query(
-      `INSERT INTO users (id, email, hashed_password, role, is_active, tenant_id, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) 
-       RETURNING id, email, role, created_at`,
-      [id, email, passwordHash, role, true, "default", new Date()],
+      `INSERT INTO users (id, email, hashed_password, role, role_id, is_active, tenant_id, created_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       RETURNING id, email, role, role_id, created_at`,
+      [id, email, passwordHash, role, roleId, true, "default", new Date()],
     );
 
     const user = result.rows[0];
 
-    // Generate JWT token
+    // Generate JWT token with role information
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        roleId: user.role_id,
+      },
       process.env.JWT_SECRET || "fallback-secret",
       { expiresIn: "24h" },
     );
@@ -66,6 +91,7 @@ export const registerUser = async (
         id: user.id,
         email: user.email,
         role: user.role,
+        roleId: user.role_id,
         created_at: user.created_at,
       },
       token,
@@ -86,9 +112,11 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Find user
+    // Find user with role information
     const result = await query(
-      "SELECT id, email, hashed_password, role, created_at FROM users WHERE email = $1",
+      `SELECT u.id, u.email, u.hashed_password, u.role, u.role_id, u.created_at
+       FROM users u 
+       WHERE u.email = $1`,
       [email],
     );
 
@@ -110,22 +138,29 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Generate JWT token
+    // Generate JWT token with role information
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        roleId: user.role_id,
+      },
       process.env.JWT_SECRET || "fallback-secret",
       { expiresIn: "24h" },
     );
 
-    res.json({
-      message: "Login successful",
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        created_at: user.created_at,
-      },
-      token,
+      res.json({
+        message: "Login successful",
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.email.split('@')[0], // Generate name from email
+          role: user.role,
+          roleId: user.role_id,
+          created_at: user.created_at,
+        },
+        token,
     });
   } catch (error) {
     console.error("Login error:", error);

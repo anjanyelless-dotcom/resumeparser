@@ -14,20 +14,32 @@ export interface JobDescription {
   education_level?: string;
   salary_min?: number;
   salary_max?: number;
+  approval_status?: string;
+  recruitment_status?: string;
   created_at?: Date;
   updated_at?: Date;
-  
+  client_id?: string;
+  created_by_user_id?: string;
+
   // Custom ATS columns
   education_requirement?: string;
   seniority_level?: string;
   salary_range?: string;
-  status?: string;
   preferred_skills?: string[];
   currency?: string;
   salary_period?: string;
   work_mode?: string;
   number_of_openings?: number;
   notice_period?: string;
+
+  // Enhanced Location fields
+  country?: string;
+  state?: string;
+  city?: string;
+  pincode?: string;
+  latitude?: string;
+  longitude?: string;
+  location_source?: "manual" | "pincode" | "geolocation";
 }
 
 export interface JobFilter {
@@ -37,52 +49,51 @@ export interface JobFilter {
   employment_type?: string;
   min_experience?: number;
   max_experience?: number;
+  created_by_user_id?: string;
+  status?: string;
 }
 
 export class JobModel {
   static async create(
     client: PoolClient,
-    data: Partial<JobDescription>
+    data: Partial<JobDescription>,
+    userId?: string
   ): Promise<JobDescription> {
     const query = `
       INSERT INTO job_descriptions (
-        title, description, required_skills, department, location,
-        employment_type, min_experience_years, max_experience_years,
-        education_level, salary_min, salary_max, education_requirement,
-        seniority_level, salary_range, status, preferred_skills,
-        currency, salary_period, work_mode, number_of_openings, notice_period
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
-      RETURNING *
+        id, title, department, location, employment_type, description, required_skills, 
+        experience_years, education_level, min_experience_years, max_experience_years, 
+        salary_min, salary_max, created_by_user_id, number_of_openings, approval_status, 
+        recruitment_status, client_id
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+      ) RETURNING *
     `;
 
     const values = [
+      uuidv4(),
       data.title,
-      data.description,
-      JSON.stringify(data.required_skills || []),
       data.department,
       data.location,
       data.employment_type,
+      data.description,
+      JSON.stringify(data.required_skills || []),
+      data.min_experience_years || 0,
+      data.education_level,
       data.min_experience_years,
       data.max_experience_years,
-      data.education_level,
       data.salary_min,
       data.salary_max,
-      data.education_requirement || null,
-      data.seniority_level || null,
-      data.salary_range || null,
-      data.status || "active",
-      JSON.stringify(data.preferred_skills || []),
-      data.currency || 'USD',
-      data.salary_period || 'Yearly',
-      data.work_mode || null,
-      data.number_of_openings || 1,
-      data.notice_period || null,
+      userId,
+      data.number_of_openings,
+      data.approval_status || 'draft',
+      data.recruitment_status || 'not_started',
+      data.client_id,
     ];
 
     const result = await client.query(query, values);
     const job = result.rows[0];
-    
+
     if (job.required_skills && typeof job.required_skills === 'string') {
       job.required_skills = JSON.parse(job.required_skills);
     }
@@ -114,61 +125,102 @@ export class JobModel {
     client: PoolClient,
     page: number = 1,
     limit: number = 20,
-    filters: JobFilter = {}
+    filters: JobFilter = {},
+    scopeFilter?: { sql: string; params: any[] }
   ): Promise<{ jobs: JobDescription[]; total: number }> {
-    const offset = (page - 1) * limit;
+    console.log("=== JobModel.findAll START ===");
+    console.log("Parameters:", { page, limit, filters, scopeFilter });
+    
+    try {
+      const offset = (page - 1) * limit;
     const conditions: string[] = [];
     const values: any[] = [];
     let paramCount = 1;
 
+    // Add generic RBAC scoping
+    if (scopeFilter && scopeFilter.sql) {
+      let scopedSql = scopeFilter.sql;
+      for (const param of scopeFilter.params) {
+        scopedSql = scopedSql.replace('$PARAM', `$${paramCount}`);
+        values.push(param);
+        paramCount++;
+      }
+      
+      if (scopedSql.trim().toUpperCase().startsWith('AND ')) {
+        scopedSql = scopedSql.trim().substring(4);
+      }
+      
+      if (scopedSql) {
+        conditions.push(scopedSql);
+      }
+    }
+
     if (filters.search) {
       conditions.push(
-        `(title ILIKE $${paramCount} OR description ILIKE $${paramCount})`
+        `(j.title ILIKE $${paramCount} OR j.description ILIKE $${paramCount})`
       );
       values.push(`%${filters.search}%`);
       paramCount++;
     }
 
     if (filters.department) {
-      conditions.push(`department = $${paramCount}`);
+      conditions.push(`j.department = $${paramCount}`);
       values.push(filters.department);
       paramCount++;
     }
 
     if (filters.location) {
-      conditions.push(`location = $${paramCount}`);
+      conditions.push(`j.location = $${paramCount}`);
       values.push(filters.location);
       paramCount++;
     }
 
     if (filters.employment_type) {
-      conditions.push(`employment_type = $${paramCount}`);
+      conditions.push(`j.employment_type = $${paramCount}`);
       values.push(filters.employment_type);
       paramCount++;
     }
 
     if (filters.min_experience !== undefined) {
-      conditions.push(`min_experience_years >= $${paramCount}`);
+      conditions.push(`j.min_experience_years >= $${paramCount}`);
       values.push(filters.min_experience);
       paramCount++;
     }
 
     if (filters.max_experience !== undefined) {
-      conditions.push(`max_experience_years <= $${paramCount}`);
+      conditions.push(`j.max_experience_years <= $${paramCount}`);
       values.push(filters.max_experience);
+      paramCount++;
+    }
+
+    if (filters.created_by_user_id) {
+      conditions.push(`j.created_by_user_id = $${paramCount}`);
+      values.push(filters.created_by_user_id);
+      paramCount++;
+    }
+
+    if (filters.status) {
+      conditions.push(`(j.approval_status = $${paramCount} OR j.recruitment_status = $${paramCount})`);
+      values.push(filters.status);
       paramCount++;
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-    const countQuery = `SELECT COUNT(*) FROM job_descriptions ${whereClause}`;
+    const countQuery = `SELECT COUNT(*) FROM job_descriptions j ${whereClause}`;
     const countResult = await client.query(countQuery, values);
     const total = parseInt(countResult.rows[0].count);
 
     const dataQuery = `
-      SELECT * FROM job_descriptions
+      SELECT 
+        j.*,
+        c.company_name as client_name,
+        u.email as owner_name
+      FROM job_descriptions j
+      LEFT JOIN clients c ON j.client_id = c.id
+      LEFT JOIN users u ON j.created_by_user_id = u.id::varchar
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY j.created_at DESC
       LIMIT $${paramCount} OFFSET $${paramCount + 1}
     `;
     
@@ -185,7 +237,21 @@ export class JobModel {
       return job;
     });
 
-    return { jobs, total };
+    console.log("JobModel.findAll completed, returning", jobs.length, "jobs, total:", total);
+      return { jobs, total };
+    } catch (error: any) {
+      console.error("JobModel.findAll error:", error.message);
+      console.error("Error details:", {
+        code: error.code,
+        detail: error.detail,
+        constraint: error.constraint,
+        column: error.column,
+        table: error.table,
+        routine: error.routine,
+        stack: error.stack
+      });
+      throw error;
+    }
   }
 
   static async findById(
@@ -285,51 +351,15 @@ export class JobModel {
       paramCount++;
     }
 
-    if (data.education_requirement !== undefined) {
-      updates.push(`education_requirement = $${paramCount}`);
-      values.push(data.education_requirement);
+    if (data.approval_status !== undefined) {
+      updates.push(`approval_status = $${paramCount}`);
+      values.push(data.approval_status);
       paramCount++;
     }
 
-    if (data.seniority_level !== undefined) {
-      updates.push(`seniority_level = $${paramCount}`);
-      values.push(data.seniority_level);
-      paramCount++;
-    }
-
-    if (data.salary_range !== undefined) {
-      updates.push(`salary_range = $${paramCount}`);
-      values.push(data.salary_range);
-      paramCount++;
-    }
-
-    if (data.status !== undefined) {
-      updates.push(`status = $${paramCount}`);
-      values.push(data.status);
-      paramCount++;
-    }
-
-    if (data.preferred_skills !== undefined) {
-      updates.push(`preferred_skills = $${paramCount}`);
-      values.push(JSON.stringify(data.preferred_skills));
-      paramCount++;
-    }
-
-    if (data.currency !== undefined) {
-      updates.push(`currency = $${paramCount}`);
-      values.push(data.currency);
-      paramCount++;
-    }
-
-    if (data.salary_period !== undefined) {
-      updates.push(`salary_period = $${paramCount}`);
-      values.push(data.salary_period);
-      paramCount++;
-    }
-
-    if (data.work_mode !== undefined) {
-      updates.push(`work_mode = $${paramCount}`);
-      values.push(data.work_mode);
+    if (data.recruitment_status !== undefined) {
+      updates.push(`recruitment_status = $${paramCount}`);
+      values.push(data.recruitment_status);
       paramCount++;
     }
 
@@ -339,9 +369,46 @@ export class JobModel {
       paramCount++;
     }
 
-    if (data.notice_period !== undefined) {
-      updates.push(`notice_period = $${paramCount}`);
-      values.push(data.notice_period);
+    // Enhanced location fields
+    if (data.country !== undefined) {
+      updates.push(`country = $${paramCount}`);
+      values.push(data.country);
+      paramCount++;
+    }
+
+    if (data.state !== undefined) {
+      updates.push(`state = $${paramCount}`);
+      values.push(data.state);
+      paramCount++;
+    }
+
+    if (data.city !== undefined) {
+      updates.push(`city = $${paramCount}`);
+      values.push(data.city);
+      paramCount++;
+    }
+
+    if (data.pincode !== undefined) {
+      updates.push(`pincode = $${paramCount}`);
+      values.push(data.pincode);
+      paramCount++;
+    }
+
+    if (data.latitude !== undefined) {
+      updates.push(`latitude = $${paramCount}`);
+      values.push(data.latitude);
+      paramCount++;
+    }
+
+    if (data.longitude !== undefined) {
+      updates.push(`longitude = $${paramCount}`);
+      values.push(data.longitude);
+      paramCount++;
+    }
+
+    if (data.location_source !== undefined) {
+      updates.push(`location_source = $${paramCount}`);
+      values.push(data.location_source);
       paramCount++;
     }
 

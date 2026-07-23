@@ -26,6 +26,7 @@ export interface WorkHistory {
   is_current?: boolean | null;
   location?: string | null;
   description?: string | null;
+  duration_string?: string | null;
 }
 
 export interface Education {
@@ -75,6 +76,8 @@ export interface Candidate {
   summary?: string | null;
   summary_manually_edited?: boolean | null;
   years_experience?: number | null;
+  total_experience_years?: number | null;
+  total_years_exp?: any;
   current_title?: string | null;
   current_company?: string | null;
   status: CandidateStatus;

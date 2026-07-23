@@ -7,7 +7,7 @@ export type AuthTokens = {
 };
 
 export const login = async (email: string, password: string) => {
-  const response = await apiClient.post<AuthTokens>("/api/auth/login", {
+  const response = await apiClient.post<AuthTokens>("/auth/login", {
     email,
     password,
   });
@@ -19,7 +19,7 @@ export const register = async (
   password: string,
   role: string,
 ) => {
-  const response = await apiClient.post("/api/auth/register", {
+  const response = await apiClient.post("/auth/register", {
     email,
     password,
     role,

@@ -1,15 +1,25 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import PermissionGuard from "../components/common/PermissionGuard";
 import { useJobStore } from "../store/useJobStore";
 import toast from "react-hot-toast";
+import { api } from "../services/api";
+import AssignTeamLeadModal from "../components/team/AssignTeamLeadModal";
+import AssignRecruitersModal from "../components/team/AssignRecruitersModal";
+import JobProgressDrawer from "../components/jobs/JobProgressDrawer";
+import JobDetailsDrawer from "../components/jobs/JobDetailsDrawer";
+import { JobCard } from "../components/jobs/JobCard";
+import { MoreVertical } from "lucide-react";
 import { Country, State, City } from "country-state-city";
 
 interface Job {
   id: string;
   title: string;
   description: string;
+  requirements?: string;
   min_experience_years?: number;
   max_experience_years?: number;
+  education_level?: string;
   education_requirement?: string;
   employment_type?: string;
   seniority_level?: string;
@@ -26,6 +36,8 @@ interface Job {
   notice_period?: string;
   salary_min?: number;
   salary_max?: number;
+  client_id?: string;
+  manual_client_name?: string;
   required_skills?: Array<{
     id: string;
     skill_name: string;
@@ -36,6 +48,52 @@ interface Job {
     skill_name: string;
     skill_type: "required" | "preferred";
   }>;
+  // Enhanced location fields
+  country?: string;
+  state?: string;
+  city?: string;
+  district?: string;
+  pincode?: string;
+  latitude?: string;
+  longitude?: string;
+  location_source?: "manual" | "pincode" | "geolocation";
+  // Dashboard Metrics
+  priority?: string;
+  team_lead_id?: string;
+  team_lead_name?: string;
+  team_lead_assignment_status?: string;
+  recruiters_assigned_count?: number;
+  recruiter_capacity_max?: number;
+  total_openings?: number;
+  filled_positions?: number;
+  remaining_positions?: number;
+  total_candidates?: number;
+  parsed?: number;
+  jd_matched?: number;
+  ai_matched?: number;
+  shortlisted?: number;
+  submitted?: number;
+  interviews?: number;
+  offers?: number;
+  joined?: number;
+  placements?: number;
+  current_recruitment_stage?: string;
+  next_action?: string;
+  next_action_type?: "MODAL" | "PAGE" | "NONE";
+  next_action_route?: string;
+  action_enabled?: boolean;
+  action_message?: string;
+  job_health_indicator?: string;
+  recruitment_progress_percentage?: number;
+  completed_stages?: string[];
+  pending_stages?: string[];
+  available_actions?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    enabled: boolean;
+    message: string;
+  }>;
 }
 
 interface JobFormData {
@@ -45,23 +103,38 @@ interface JobFormData {
   country: string;
   state: string;
   city: string;
+  district?: string;
   employment_type: string;
   work_mode: string;
   description: string;
+  requirements: string;
   required_skills: string[];
   preferred_skills: string[];
   salary_min: string;
   salary_max: string;
   currency: string;
   salary_period: string;
-  experience_range: string;
-  education_requirement: string;
+  min_experience_years: string;
+  max_experience_years: string;
+  education_level: string;
   number_of_openings: string;
   notice_period: string;
   status: string;
+  client_id: string;
+  // Enhanced location fields
+  pincode: string;
+  latitude?: string;
+  longitude?: string;
+  location_source?: "manual" | "pincode" | "geolocation";
 }
 
-const experienceRanges = ["0-2 years", "3-5 years", "5-8 years", "8+ years"];
+const educationLevels = [
+  { value: "any", label: "Any" },
+  { value: "high-school", label: "High School" },
+  { value: "bachelor", label: "Bachelor's Degree" },
+  { value: "master", label: "Master's Degree" },
+  { value: "phd", label: "PhD" },
+];
 
 const employmentTypes = [
   "Full-time",
@@ -69,14 +142,6 @@ const employmentTypes = [
   "Contract",
   "Internship",
   "Remote",
-];
-const educationRequirements = [
-  "High School",
-  "Associate",
-  "Bachelor",
-  "Master",
-  "PhD",
-  "None",
 ];
 const departments = [
   "Engineering",
@@ -125,12 +190,240 @@ export const validateJobDescription = (desc: string): string | null => {
   return null;
 };
 
+// GeoNames API Configuration
+const GEONAMES_USERNAME = import.meta.env.VITE_GEONAMES_USERNAME || "demo";
+
+// GeoNames API Types
+interface GeoNamesLocation {
+  placeName: string;
+  adminName1: string;
+  adminName2: string;
+  countryCode: string;
+  postalCode: string;
+  lat: string;
+  lng: string;
+}
+
+interface GeoNamesNearbyResponse {
+  postalCodes: GeoNamesLocation[];
+  status?: {
+    message: string;
+    value: number;
+  };
+}
+
+interface GeoNamesPostalResponse {
+  postalCodes: GeoNamesLocation[];
+  status?: {
+    message: string;
+    value: number;
+  };
+}
+
+// Helper: Get location by PIN code using OpenStreetMap Nominatim (fallback)
+const getLocationByPincodeNominatim = async (
+  pincode: string
+): Promise<GeoNamesLocation | null> => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?postalcode=${pincode}&format=json&limit=1&country=IN`
+    );
+    const data = await response.json();
+
+    if (data && data.length > 0) {
+      const result = data[0];
+      
+      // Parse display_name to extract location components
+      // Format: "500085, Ward 114 KPHB Colony, Hyderabad, Kukatpally mandal, Medchal–Malkajgiri, Telangana, India"
+      const parts = result.display_name.split(',').map((p: string) => p.trim());
+      
+      // Extract components from display_name
+      let city = '';
+      let state = '';
+      
+      // Try to extract city and state from display_name
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (part.includes('Hyderabad') || part.includes('Bangalore') || 
+            part.includes('Mumbai') || part.includes('Delhi') ||
+            part.includes('Chennai') || part.includes('Kolkata')) {
+          city = part;
+        }
+        if (part.includes('Telangana') || part.includes('Karnataka') ||
+            part.includes('Maharashtra') || part.includes('Delhi') ||
+            part.includes('Tamil Nadu') || part.includes('West Bengal')) {
+          state = part;
+        }
+      }
+      
+      return {
+        postalCode: result.name || pincode,
+        placeName: city || parts[2] || 'Unknown', // Usually city is 3rd element
+        countryCode: 'IN',
+        lat: parseFloat(result.lat).toString(),
+        lng: parseFloat(result.lon).toString(),
+        adminName1: state || parts[parts.length - 2] || '', // Usually state is 2nd to last
+        adminName2: city || parts[2] || '', // Usually city is 3rd element
+      };
+    }
+    return null;
+  } catch (error: any) {
+    console.error("Error fetching location by PIN code from Nominatim:", error);
+    return null;
+  }
+};
+
+// Helper: Get location by PIN code (with Nominatim fallback)
+export const getLocationByPincode = async (
+  pincode: string
+): Promise<GeoNamesLocation | null> => {
+  try {
+    const response = await fetch(
+      `https://secure.geonames.org/postalCodeSearchJSON?postalcode=${pincode}&maxRows=1&username=${GEONAMES_USERNAME}`
+    );
+    const data: GeoNamesPostalResponse = await response.json();
+
+    // Check if GeoNames returned an error (e.g., demo account limit exceeded or user doesn't exist)
+    if (data.status && data.status.message) {
+      console.warn("GeoNames error, falling back to Nominatim:", data.status.message);
+      return getLocationByPincodeNominatim(pincode);
+    }
+
+    if (data.postalCodes && data.postalCodes.length > 0) {
+      return data.postalCodes[0];
+    }
+    return null;
+  } catch (error: any) {
+    console.error("Error fetching location by PIN code from GeoNames, falling back to Nominatim:", error);
+    return getLocationByPincodeNominatim(pincode);
+  }
+};
+
+// Helper: Get current location using browser geolocation
+export const getCurrentLocation = (): Promise<GeolocationPosition> => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation is not supported by this browser"));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve(position),
+      (error) => {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            reject(new Error("Location permission denied"));
+            break;
+          case error.POSITION_UNAVAILABLE:
+            reject(new Error("Location information unavailable"));
+            break;
+          case error.TIMEOUT:
+            reject(new Error("Location request timed out"));
+            break;
+          default:
+            reject(new Error("An unknown error occurred"));
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  });
+};
+
+// Helper: Reverse geocode coordinates to location using OpenStreetMap Nominatim (fallback)
+const reverseGeocodeLocationNominatim = async (
+  lat: number,
+  lng: number
+): Promise<GeoNamesLocation | null> => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`
+    );
+    const data = await response.json();
+
+    if (data && data.address) {
+      const address = data.address;
+      return {
+        postalCode: address.postcode || '',
+        placeName: address.city || address.town || address.village || address.suburb || data.display_name?.split(',')[0] || 'Unknown',
+        countryCode: address.country_code || 'IN',
+        lat: lat.toString(),
+        lng: lng.toString(),
+        adminName1: address.state || address.state_district || '',
+        adminName2: address.city || address.town || address.district || address.county || '',
+      };
+    }
+    return null;
+  } catch (error: any) {
+    console.error("Error reverse geocoding location from Nominatim:", error);
+    return null;
+  }
+};
+
+export const reverseGeocodeLocation = async (
+  lat: number,
+  lng: number
+): Promise<GeoNamesLocation | null> => {
+  try {
+    const response = await fetch(
+      `https://secure.geonames.org/findNearbyPostalCodesJSON?lat=${lat}&lng=${lng}&username=${GEONAMES_USERNAME}`
+    );
+    const data: GeoNamesNearbyResponse = await response.json();
+
+    // Check if GeoNames returned an error (e.g., demo account limit exceeded or user doesn't exist)
+    if (data.status && data.status.message) {
+      console.warn("GeoNames error, falling back to Nominatim:", data.status.message);
+      return reverseGeocodeLocationNominatim(lat, lng);
+    }
+
+    if (data.postalCodes && data.postalCodes.length > 0) {
+      return data.postalCodes[0];
+    }
+    return null;
+  } catch (error: any) {
+    console.error("Error reverse geocoding location from GeoNames, falling back to Nominatim:", error);
+    return reverseGeocodeLocationNominatim(lat, lng);
+  }
+};
+
 export default function JobsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedJobForTeamLead, setSelectedJobForTeamLead] = useState<Job | null>(null);
+  const [showAssignRecruitersModal, setShowAssignRecruitersModal] = useState(false);
+  const [selectedJobForRecruiters, setSelectedJobForRecruiters] = useState<Job | null>(null);
+  const [selectedJobForProgress, setSelectedJobForProgress] = useState<Job | null>(null);
+  const [selectedJobForDetails, setSelectedJobForDetails] = useState<Job | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Open create form via navigation state (from dashboard quick actions)
+    if (location.state?.showCreateModal) {
+      setIsCreateModalOpen(true);
+      window.history.replaceState({}, document.title);
+      return;
+    }
+    // Also support ?create=true query param (from /jobs?create=true links)
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('create') === 'true') {
+      setIsCreateModalOpen(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, location.search]);
+
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [currentSkill, setCurrentSkill] = useState("");
   const [currentPreferredSkill, setCurrentPreferredSkill] = useState("");
+  const [clients, setClients] = useState<Array<{ id: string; company_name: string }>>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+const [clientSearch, setClientSearch] = useState("");
+const [showManualClientInput, setShowManualClientInput] = useState(false);
+const [manualClientName, setManualClientName] = useState("");
 
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [expandedSkills, setExpandedSkills] = useState<Set<string>>(new Set());
@@ -153,22 +446,55 @@ export default function JobsPage() {
     });
   };
 
-  const parseExperience = (range: string) => {
-    switch (range) {
-      case "0-2 years": return { min: 0, max: 2 };
-      case "3-5 years": return { min: 3, max: 5 };
-      case "5-8 years": return { min: 5, max: 8 };
-      case "8+ years": return { min: 8, max: 20 };
-      default: return { min: 0, max: 2 };
-    }
-  };
 
-  const formatExperience = (min?: number, max?: number) => {
-    if (min === 0 && max === 2) return "0-2 years";
-    if (min === 3 && max === 5) return "3-5 years";
-    if (min === 5 && max === 8) return "5-8 years";
-    if (min === 8 && max === 20) return "8+ years";
-    return "0-2 years";
+
+
+  const handleActionClick = async (job: Job, action: any) => {
+    if (!action.enabled) {
+      if (action.message) {
+        toast.error(action.message);
+      }
+      return;
+    }
+
+    switch (action.id) {
+      case "assign_team_lead":
+      case "tl_assign":
+      case "tl_reassign":
+        setSelectedJobForTeamLead(job);
+        setShowAssignModal(true);
+        break;
+      case "tl_remove":
+        if (window.confirm("Are you sure you want to remove the Team Lead assignment?")) {
+          try {
+            await api.patch(`/jobs/${job.id}/remove-team-lead`, {
+              removal_reason: "Manual Removal"
+            });
+            toast.success("Team Lead removed successfully");
+            fetchJobs();
+          } catch (error: any) {
+            toast.error(error.response?.data?.error || error.message || "Failed to remove Team Lead");
+          }
+        }
+        break;
+      case "rec_assign":
+      case "rec_manage":
+      case "rec_assign_additional":
+        setSelectedJobForRecruiters(job);
+        setShowAssignRecruitersModal(true);
+        break;
+      case "edit_job":
+        openEditModal(job);
+        break;
+      case "close_job":
+        handleDeleteJob(job.id);
+        break;
+      case "view_progress":
+        navigate(`/jobs/${job.id}`);
+        break;
+      default:
+        console.warn("Unknown action:", action.id);
+    }
   };
 
   const normalizeSkill = (skill: string) => {
@@ -201,6 +527,7 @@ export default function JobsPage() {
     fetchJobs,
     createJob,
     updateJob,
+    updateJobStatus,
     isLoading: storeLoading,
   } = useJobStore();
 
@@ -212,29 +539,59 @@ export default function JobsPage() {
     country: "",
     state: "",
     city: "",
+    district: "",
     employment_type: "",
     work_mode: "Onsite",
     description: "",
+    requirements: "",
     required_skills: [],
     preferred_skills: [],
     salary_min: "",
     salary_max: "",
     currency: "USD",
     salary_period: "Yearly",
-    experience_range: "0-2 years",
-    education_requirement: "",
+    min_experience_years: "0",
+    max_experience_years: "5",
+    education_level: "any",
     number_of_openings: "1",
     notice_period: "",
     status: "active",
+    client_id: "",
+    pincode: "",
+    latitude: undefined,
+    longitude: undefined,
+    location_source: undefined,
   });
+  const [locationLoading, setLocationLoading] = useState(false);
 
   useEffect(() => {
     loadJobs();
+    loadClients();
   }, []);
+
+  const loadClients = async () => {
+    try {
+      setLoadingClients(true);
+      const response = await api.get("/clients");
+      if (response.data && response.data.clients) {
+        setClients(response.data.clients);
+      }
+    } catch (error) {
+      console.error("Failed to load clients:", error);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
 
   const loadJobs = async () => {
     try {
-      await fetchJobs();
+      const searchParams = new URLSearchParams(location.search);
+      const statusParam = searchParams.get('status');
+      
+      const params: any = {};
+      if (statusParam) params.status = statusParam;
+      
+      await fetchJobs(params);
     } catch (error) {
       toast.error("Failed to load jobs");
     }
@@ -250,8 +607,11 @@ export default function JobsPage() {
     formData.title.trim().length >= 2 &&
     formData.department &&
     formData.employment_type &&
-    formData.experience_range &&
-    formData.country &&
+    (formData.client_id || (showManualClientInput && manualClientName.trim())) &&
+    formData.min_experience_years !== "" &&
+    formData.max_experience_years !== "" &&
+    formData.education_level &&
+    (formData.location_source || formData.country) && // Either auto-detected OR manual selection
     formData.description.length >= 50 &&
     formData.required_skills.length > 0;
 
@@ -261,7 +621,29 @@ export default function JobsPage() {
       case "title": error = validateJobTitle(formData.title); break;
       case "department": error = formData.department ? null : "Please select Department."; break;
       case "employment_type": error = formData.employment_type ? null : "Please select Employment Type."; break;
-      case "experience_range": error = formData.experience_range ? null : "Please select Experience Range."; break;
+      case "client_id": 
+        if (showManualClientInput) {
+          error = manualClientName.trim() ? null : "Please enter client name.";
+        } else {
+          error = formData.client_id ? null : "Please select a client.";
+        }
+        break;
+      case "min_experience_years": 
+        if (formData.min_experience_years === "") error = "Please enter minimum experience years.";
+        else {
+          const min = parseInt(formData.min_experience_years);
+          if (isNaN(min) || min < 0 || min > 50) error = "Minimum experience must be between 0 and 50 years.";
+        }
+        break;
+      case "max_experience_years":
+        if (formData.max_experience_years === "") error = "Please enter maximum experience years.";
+        else {
+          const max = parseInt(formData.max_experience_years);
+          if (isNaN(max) || max < 0 || max > 50) error = "Maximum experience must be between 0 and 50 years.";
+        }
+        break;
+      case "education_level": error = formData.education_level ? null : "Please select Education Level."; break;
+      case "client_id": error = (formData.client_id === "" && !showManualClientInput) ? "Please select a client." : null; break;
       case "country": error = formData.country ? null : "Please select Country."; break;
       case "state": error = (formData.country && !formData.state && availableStates.length > 0) ? "Please select State." : null; break;
       case "city": error = (formData.state && !formData.city && availableCities.length > 0) ? "Please select City." : null; break;
@@ -279,6 +661,14 @@ export default function JobsPage() {
       }
     }
 
+    if (field === "min_experience_years" || field === "max_experience_years") {
+      const minExp = formData.min_experience_years ? parseInt(formData.min_experience_years) : 0;
+      const maxExp = formData.max_experience_years ? parseInt(formData.max_experience_years) : 0;
+      if (formData.min_experience_years && formData.max_experience_years && minExp > maxExp) {
+        if (field === "max_experience_years") error = "Max experience must be greater than or equal to Min experience.";
+      }
+    }
+
     setFormErrors(prev => {
       const next = { ...prev };
       if (error) next[field] = error;
@@ -288,13 +678,94 @@ export default function JobsPage() {
     return error;
   };
 
+  // Handler: Detect location using current geolocation
+  const handleDetectCurrentLocation = async () => {
+    try {
+      setLocationLoading(true);
+      const position = await getCurrentLocation();
+      const { latitude, longitude } = position.coords;
+
+      const locationData = await reverseGeocodeLocation(latitude, longitude);
+
+      if (locationData) {
+        setFormData(prev => ({
+          ...prev,
+          country: locationData.countryCode,
+          state: locationData.adminName1,
+          city: locationData.placeName,
+          district: locationData.adminName2,
+          pincode: locationData.postalCode,
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          location_source: "geolocation",
+        }));
+        toast.success("Location detected successfully");
+      } else {
+        toast.error("Unable to detect location from coordinates");
+      }
+    } catch (error: any) {
+      console.error("Geolocation error:", error);
+      toast.error(error.message || "Unable to detect location");
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  // Handler: Detect location using PIN code
+  const handleDetectByPincode = async () => {
+    const pincode = formData.pincode.trim();
+
+    // Validate PIN code format
+    if (!pincode) {
+      toast.error("Please enter a PIN code");
+      return;
+    }
+
+    if (!/^\d{5,10}$/.test(pincode)) {
+      toast.error("PIN code must be between 5 and 10 digits");
+      return;
+    }
+
+    try {
+      setLocationLoading(true);
+      const locationData = await getLocationByPincode(pincode);
+
+      if (locationData) {
+        setFormData(prev => ({
+          ...prev,
+          country: locationData.countryCode,
+          state: locationData.adminName1,
+          city: locationData.placeName,
+          district: locationData.adminName2,
+          pincode: locationData.postalCode,
+          latitude: locationData.lat,
+          longitude: locationData.lng,
+          location_source: "pincode",
+        }));
+        toast.success("Location detected successfully from PIN code");
+      } else {
+        toast.error("Invalid PIN code or location not found");
+      }
+    } catch (error: any) {
+      console.error("PIN code lookup error:", error);
+      toast.error("Failed to lookup PIN code");
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const fieldsToValidate: (keyof JobFormData)[] = [
-      "title", "department", "employment_type", "experience_range", "country", "state", "city", 
-      "salary_min", "salary_max", "number_of_openings", "description"
+      "title", "department", "employment_type", "client_id", "min_experience_years", "max_experience_years", 
+      "education_level", "salary_min", "salary_max", "number_of_openings", "description"
     ];
+
+    // Only validate location fields if not auto-detected
+    if (!formData.location_source) {
+      fieldsToValidate.push("country", "state", "city");
+    }
 
     let hasErrors = false;
     const newErrors: Partial<Record<keyof JobFormData, string>> = {};
@@ -323,6 +794,8 @@ export default function JobsPage() {
 
     const sMin = formData.salary_min ? parseInt(formData.salary_min) : 0;
     const sMax = formData.salary_max ? parseInt(formData.salary_max) : 0;
+    const minExp = formData.min_experience_years ? parseInt(formData.min_experience_years) : 0;
+    const maxExp = formData.max_experience_years ? parseInt(formData.max_experience_years) : 0;
     const numOpenings = parseInt(formData.number_of_openings) || 1;
 
     // Construct Location String
@@ -331,7 +804,6 @@ export default function JobsPage() {
     if (formData.city) finalLocation = `${formData.city}, ${finalLocation}`;
 
     try {
-      const exp = parseExperience(formData.experience_range);
       const jobData: Partial<Job> = {
         title: formData.title.trim(),
         department: formData.department,
@@ -339,6 +811,7 @@ export default function JobsPage() {
         employment_type: formData.employment_type,
         work_mode: formData.work_mode,
         description: formData.description,
+        requirements: formData.requirements,
         required_skills: formData.required_skills.map(skill => ({
           id: crypto.randomUUID(),
           skill_name: skill,
@@ -349,16 +822,26 @@ export default function JobsPage() {
           skill_name: skill,
           skill_type: "preferred" as const
         })),
-        min_experience_years: exp.min,
-        max_experience_years: exp.max,
+        min_experience_years: minExp,
+        max_experience_years: maxExp,
+        education_level: formData.education_level,
         salary_min: sMin || undefined,
         salary_max: sMax || undefined,
         currency: formData.currency,
         salary_period: formData.salary_period,
-        education_requirement: formData.education_requirement,
         number_of_openings: numOpenings,
         notice_period: formData.notice_period,
         status: formData.status,
+        client_id: formData.client_id === "manual" ? undefined : formData.client_id,
+        manual_client_name: formData.client_id === "manual" ? manualClientName : undefined,
+        // Enhanced location fields
+        country: formData.country,
+        state: formData.state,
+        city: formData.city,
+        pincode: formData.pincode || undefined,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        location_source: formData.location_source,
       };
 
       if (editingJob) {
@@ -384,23 +867,34 @@ export default function JobsPage() {
       country: "",
       state: "",
       city: "",
+      district: "",
       employment_type: "",
       work_mode: "Onsite",
       description: "",
+      requirements: "",
       required_skills: [],
       preferred_skills: [],
       salary_min: "",
       salary_max: "",
       currency: "USD",
       salary_period: "Yearly",
-      experience_range: "0-2 years",
-      education_requirement: "",
+      min_experience_years: "0",
+      max_experience_years: "5",
+      education_level: "any",
       number_of_openings: "1",
       notice_period: "",
       status: "active",
+      client_id: "",
+      pincode: "",
+      latitude: undefined,
+      longitude: undefined,
+      location_source: undefined,
     });
     setCurrentSkill("");
     setCurrentPreferredSkill("");
+    setClientSearch("");
+    setShowManualClientInput(false);
+    setManualClientName("");
   };
 
   const openCreateModal = () => {
@@ -435,17 +929,25 @@ export default function JobsPage() {
       employment_type: job.employment_type || "",
       work_mode: job.work_mode || "Onsite",
       description: job.description,
+      requirements: (job as any).requirements || "",
       required_skills: job.required_skills?.map(s => typeof s === 'string' ? s : s.skill_name) || [],
       preferred_skills: job.preferred_skills?.map(s => typeof s === 'string' ? s : s.skill_name) || [],
       salary_min: job.salary_min ? String(job.salary_min) : "",
       salary_max: job.salary_max ? String(job.salary_max) : "",
       currency: job.currency || "USD",
       salary_period: job.salary_period || "Yearly",
-      experience_range: formatExperience(job.min_experience_years, job.max_experience_years),
-      education_requirement: job.education_requirement || "",
+      min_experience_years: job.min_experience_years !== undefined ? String(job.min_experience_years) : "0",
+      max_experience_years: job.max_experience_years !== undefined ? String(job.max_experience_years) : "5",
+      education_level: (job as any).education_level || "any",
       number_of_openings: job.number_of_openings ? String(job.number_of_openings) : "1",
       notice_period: job.notice_period || "",
       status: job.status || "active",
+      client_id: (job as any).client_id || "",
+      // Enhanced location fields
+      pincode: (job as any).pincode || "",
+      latitude: (job as any).latitude,
+      longitude: (job as any).longitude,
+      location_source: (job as any).location_source,
     });
     setEditingJob(job);
     setIsCreateModalOpen(true);
@@ -553,13 +1055,6 @@ export default function JobsPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   return (
     <div className="p-6">
@@ -569,22 +1064,17 @@ export default function JobsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Job Management</h1>
           <p className="text-gray-600">Create and manage job postings</p>
         </div>
-        {!isCreateModalOpen && (
-          <button
-            onClick={openCreateModal}
-            className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
-          >
-            <svg
-              className="h-5 w-5 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <PermissionGuard module="jobs" action="create">
+            <button
+              onClick={openCreateModal}
+              className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors shadow-sm text-sm font-medium"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Create Job
-          </button>
-        )}
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Create Job</span>
+            </button>
+          </PermissionGuard>
       </div>
 
       {/* Inline Create/Edit Form */}
@@ -623,6 +1113,81 @@ export default function JobsPage() {
                     placeholder="e.g. Senior Software Engineer"
                   />
                   {formErrors.title && <p className="mt-1 text-xs text-red-500">{formErrors.title}</p>}
+                </div>
+
+                {/* Client */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client *</label>
+                  
+                  {!showManualClientInput ? (
+                    <>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={clientSearch}
+                          onChange={(e) => setClientSearch(e.target.value)}
+                          placeholder="Search client..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 mb-2"
+                        />
+                        <select
+                          value={formData.client_id}
+                          onChange={(e) => {
+                            setFormData((prev) => ({ ...prev, client_id: e.target.value }));
+                            if (formErrors.client_id) setFormErrors(prev => ({ ...prev, client_id: undefined }));
+                          }}
+                          onBlur={() => handleBlur("client_id")}
+                          disabled={loadingClients}
+                          className={`w-full px-3 py-2 border ${formErrors.client_id ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
+                        >
+                          <option value="">Select Client</option>
+                          {clients
+                            .filter(client => 
+                              client.company_name.toLowerCase().includes(clientSearch.toLowerCase())
+                            )
+                            .map((client) => (
+                              <option key={client.id} value={client.id}>{client.company_name}</option>
+                            ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {loadingClients && <p className="mt-1 text-xs text-gray-500">Loading clients...</p>}
+                        <button
+                          type="button"
+                          onClick={() => setShowManualClientInput(true)}
+                          className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+                        >
+                          Client not in list? Enter manually
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        value={manualClientName}
+                        onChange={(e) => {
+                          setManualClientName(e.target.value);
+                          setFormData((prev) => ({ ...prev, client_id: "manual" }));
+                          if (formErrors.client_id) setFormErrors(prev => ({ ...prev, client_id: undefined }));
+                        }}
+                        onBlur={() => handleBlur("client_id")}
+                        placeholder="Enter client name"
+                        className={`w-full px-3 py-2 border ${formErrors.client_id ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowManualClientInput(false);
+                          setManualClientName("");
+                          setFormData((prev) => ({ ...prev, client_id: "" }));
+                        }}
+                        className="text-xs text-gray-600 hover:text-gray-800 underline mt-1"
+                      >
+                        Cancel manual entry
+                      </button>
+                    </>
+                  )}
+                  {formErrors.client_id && <p className="mt-1 text-xs text-red-500">{formErrors.client_id}</p>}
                 </div>
 
                 {/* Grid 1 */}
@@ -673,15 +1238,181 @@ export default function JobsPage() {
                   </div>
                 </div>
 
-                {/* Grid 2 */}
-                <div className="grid grid-cols-1 gap-4 mb-2">
-                  <label className="block text-sm font-medium text-gray-700 -mb-2">Location *</label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Description *</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => {
+                      setFormData((prev) => ({ ...prev, description: e.target.value }));
+                      if (formErrors.description) setFormErrors(prev => ({ ...prev, description: undefined }));
+                    }}
+                    onBlur={() => handleBlur("description")}
+                    rows={6}
+                    className={`w-full px-3 py-2 border ${formErrors.description ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
+                    placeholder="Describe the role, responsibilities, and requirements..."
+                  />
+                  {formErrors.description && <p className="mt-1 text-xs text-red-500">{formErrors.description}</p>}
+                </div>
+
+                {/* Requirements */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Requirements & Qualifications</label>
+                  <textarea
+                    value={formData.requirements}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, requirements: e.target.value }))}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="List specific requirements, qualifications, and certifications..."
+                  />
+                </div>
+
+                {/* Location Detection Section */}
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
+                  <label className="block text-sm font-semibold text-indigo-900 mb-3">
+                    📍 Location Detection
+                  </label>
+                  
+                  <div className="space-y-3">
+                    {/* Use Current Location Button */}
+                    <div>
+                      <button
+                        type="button"
+                        onClick={handleDetectCurrentLocation}
+                        disabled={locationLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                      >
+                        {locationLoading ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Detecting Location...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Use Current Location
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center">
+                      <div className="flex-grow border-t border-indigo-300"></div>
+                      <span className="flex-shrink-0 mx-4 text-indigo-600 text-sm font-medium">OR</span>
+                      <div className="flex-grow border-t border-indigo-300"></div>
+                    </div>
+
+                    {/* PIN Code Detection */}
+                    <div className="flex gap-2">
+                      <div className="flex-grow">
+                        <input
+                          type="text"
+                          value={formData.pincode}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                            setFormData(prev => ({ ...prev, pincode: value }));
+                          }}
+                          placeholder="Enter PIN Code (5-10 digits)"
+                          className="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          disabled={locationLoading}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDetectByPincode}
+                        disabled={locationLoading || !formData.pincode}
+                        className="px-4 py-2 bg-white text-indigo-600 border border-indigo-300 rounded-md hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium whitespace-nowrap"
+                      >
+                        {locationLoading ? "Detecting..." : "Auto Detect"}
+                      </button>
+                    </div>
+
+                    {/* Detected Location Info */}
+                    {(formData.country || formData.state || formData.city) && (
+                      <div className="mt-3 p-3 bg-white rounded-md border border-indigo-200">
+                        <p className="text-xs font-semibold text-indigo-700 mb-2">Detected Location Details:</p>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {formData.country && (
+                            <div>
+                              <span className="text-gray-500">Country:</span>
+                              <span className="ml-1 font-medium text-gray-700">{formData.country}</span>
+                            </div>
+                          )}
+                          {formData.state && (
+                            <div>
+                              <span className="text-gray-500">State:</span>
+                              <span className="ml-1 font-medium text-gray-700">{formData.state}</span>
+                            </div>
+                          )}
+                          {formData.city && (
+                            <div>
+                              <span className="text-gray-500">City:</span>
+                              <span className="ml-1 font-medium text-gray-700">{formData.city}</span>
+                            </div>
+                          )}
+                          {formData.district && (
+                            <div>
+                              <span className="text-gray-500">District:</span>
+                              <span className="ml-1 font-medium text-gray-700">{formData.district}</span>
+                            </div>
+                          )}
+                          {formData.pincode && (
+                            <div>
+                              <span className="text-gray-500">PIN Code:</span>
+                              <span className="ml-1 font-medium text-gray-700">{formData.pincode}</span>
+                            </div>
+                          )}
+                          {formData.location_source && (
+                            <div>
+                              <span className="text-gray-500">Source:</span>
+                              <span className="ml-1 font-medium text-indigo-600 capitalize">{formData.location_source}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    country: "",
+                                    state: "",
+                                    city: "",
+                                    district: "",
+                                    pincode: "",
+                                    latitude: undefined,
+                                    longitude: undefined,
+                                    location_source: undefined,
+                                  }));
+                                  toast.success("Location cleared. You can now select manually.");
+                                }}
+                                className="ml-3 text-xs text-red-600 hover:text-red-800 underline"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Manual Location Selection - Only show if not auto-detected */}
+                {!formData.location_source && (
+                  <div className="grid grid-cols-1 gap-4 mb-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm font-medium text-gray-700">Location *</label>
+                      <span className="text-xs text-gray-500">💡 Use PIN code detection above OR select manually below</span>
+                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                       <select
                         value={formData.country}
                         onChange={(e) => {
-                          setFormData((prev) => ({ ...prev, country: e.target.value, state: "", city: "" }));
+                          setFormData((prev) => ({ ...prev, country: e.target.value, state: "", city: "", district: "" }));
                           if (formErrors.country) setFormErrors(prev => ({ ...prev, country: undefined, state: undefined, city: undefined }));
                         }}
                         onBlur={() => handleBlur("country")}
@@ -699,7 +1430,7 @@ export default function JobsPage() {
                       <select
                         value={formData.state}
                         onChange={(e) => {
-                          setFormData((prev) => ({ ...prev, state: e.target.value, city: "" }));
+                          setFormData((prev) => ({ ...prev, state: e.target.value, city: "", district: "" }));
                           if (formErrors.state) setFormErrors(prev => ({ ...prev, state: undefined, city: undefined }));
                         }}
                         onBlur={() => handleBlur("state")}
@@ -732,24 +1463,58 @@ export default function JobsPage() {
                       </select>
                       {formErrors.city && <p className="mt-1 text-xs text-red-500">{formErrors.city}</p>}
                     </div>
+
+                    <div>
+                      <input
+                        type="text"
+                        value={formData.district || ""}
+                        onChange={(e) => {
+                          setFormData((prev) => ({ ...prev, district: e.target.value }));
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="District (optional)"
+                      />
+                    </div>
                   </div>
                 </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Experience Range *</label>
-                    <select
-                      value={formData.experience_range}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Min Experience (Years) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={formData.min_experience_years}
                       onChange={(e) => {
-                        setFormData((prev) => ({ ...prev, experience_range: e.target.value }));
-                        if (formErrors.experience_range) setFormErrors(prev => ({ ...prev, experience_range: undefined }));
+                        const value = e.target.value;
+                        setFormData((prev) => ({ ...prev, min_experience_years: value }));
+                        if (formErrors.min_experience_years) setFormErrors(prev => ({ ...prev, min_experience_years: undefined }));
                       }}
-                      onBlur={() => handleBlur("experience_range")}
-                      className={`w-full px-3 py-2 border ${formErrors.experience_range ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
-                    >
-                      {experienceRanges.map((range) => <option key={range} value={range}>{range}</option>)}
-                    </select>
-                    {formErrors.experience_range && <p className="mt-1 text-xs text-red-500">{formErrors.experience_range}</p>}
+                      onBlur={() => handleBlur("min_experience_years")}
+                      className={`w-full px-3 py-2 border ${formErrors.min_experience_years ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
+                      placeholder="e.g. 0"
+                    />
+                    {formErrors.min_experience_years && <p className="mt-1 text-xs text-red-500">{formErrors.min_experience_years}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Experience (Years) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={formData.max_experience_years}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFormData((prev) => ({ ...prev, max_experience_years: value }));
+                        if (formErrors.max_experience_years) setFormErrors(prev => ({ ...prev, max_experience_years: undefined }));
+                      }}
+                      onBlur={() => handleBlur("max_experience_years")}
+                      className={`w-full px-3 py-2 border ${formErrors.max_experience_years ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
+                      placeholder="e.g. 5"
+                    />
+                    {formErrors.max_experience_years && <p className="mt-1 text-xs text-red-500">{formErrors.max_experience_years}</p>}
                   </div>
                 </div>
 
@@ -815,15 +1580,19 @@ export default function JobsPage() {
                 {/* Grid 4 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Education Requirement</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Education Level</label>
                     <select
-                      value={formData.education_requirement}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, education_requirement: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      value={formData.education_level}
+                      onChange={(e) => {
+                        setFormData((prev) => ({ ...prev, education_level: e.target.value }));
+                        if (formErrors.education_level) setFormErrors(prev => ({ ...prev, education_level: undefined }));
+                      }}
+                      onBlur={() => handleBlur("education_level")}
+                      className={`w-full px-3 py-2 border ${formErrors.education_level ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
                     >
-                      <option value="">Select Education</option>
-                      {educationRequirements.map((req) => <option key={req} value={req}>{req}</option>)}
+                      {educationLevels.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}
                     </select>
+                    {formErrors.education_level && <p className="mt-1 text-xs text-red-500">{formErrors.education_level}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Number of Openings</label>
@@ -980,171 +1749,72 @@ export default function JobsPage() {
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
         </div>
-      ) : jobs && jobs.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {jobs.map((job) => (
-            <div
-              key={job.id}
-              className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6 flex flex-col h-full"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
+      ) : jobs && jobs.length > 0 ? (() => {
+        const isTeamLeadTab = location.pathname.includes('/team-lead-assignment');
+        const isRecruiterTab = location.pathname.includes('/recruiter-assignment');
+        const isJobsTab = !isTeamLeadTab && !isRecruiterTab;
+        
+        const variant = isTeamLeadTab ? "TEAM_LEAD" : isRecruiterTab ? "RECRUITER" : "JOB";
 
-                  </div>
-                  <p className="text-sm text-gray-600">{job.department}</p>
-                </div>
-                <button
-                  onClick={() => updateJob(job.id, { status: job.status === "active" ? "closed" : "active" })}
-                  className={`px-2 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer hover:opacity-80 ${getStatusColor(job.status)}`}
-                  title="Click to toggle status"
-                >
-                  {job.status}
-                </button>
-              </div>
+        const filteredJobs = jobs.filter(job => {
+          if (isTeamLeadTab) {
+            return job.current_recruitment_stage === "Waiting Team Lead Assignment" || job.team_lead_id || job.team_lead_name;
+          }
+          if (isRecruiterTab) {
+            return job.current_recruitment_stage === "Recruiter Assignment" || (job.recruiters_assigned_count && job.recruiters_assigned_count > 0);
+          }
+          if (location.pathname.includes('/requirement-approval')) {
+            return job.current_recruitment_stage === "Requirement Review";
+          }
+          return true;
+        });
 
-              {/* Description Preview */}
-              {job.description && (
-                <div 
-                  className="mb-4 cursor-pointer group"
-                  onClick={() => toggleDescription(job.id)}
-                >
-                  <p className={`text-sm text-gray-600 ${expandedDescriptions.has(job.id) ? '' : 'line-clamp-2'}`}>
-                    {job.description}
-                  </p>
-                  {job.description.length > 100 && (
-                    <span className="text-xs text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity mt-1 inline-block font-medium">
-                      {expandedDescriptions.has(job.id) ? "Show less" : "Show more"}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Job Details Grid */}
-              <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-4">
-                <div className="flex items-center text-xs text-gray-600">
-                  <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                  <span className="truncate">{job.location || "Location not set"}</span>
-                </div>
-                <div className="flex items-center text-xs text-gray-600">
-                  <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                  <span className="truncate">{job.employment_type || "Type not set"}</span>
-                </div>
-                <div className="flex items-center text-xs text-gray-600">
-                  <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  <span className="truncate">{job.min_experience_years}-{job.max_experience_years} years</span>
-                </div>
-                <div className="flex items-center text-xs text-gray-600">
-                  <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                  <span className="truncate">{job.education_requirement || "Education not set"}</span>
-                </div>
-                {job.work_mode && (
-                  <div className="flex items-center text-xs text-gray-600">
-                    <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                    <span className="truncate">{job.work_mode}</span>
-                  </div>
-                )}
-                {(job.salary_min || job.salary_max) && (
-                  <div className="flex items-center text-xs text-gray-600 col-span-2">
-                    <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span className="truncate">
-                      {job.salary_min ? job.salary_min : '0'} - {job.salary_max ? job.salary_max : '0'} {job.currency || 'USD'} {job.salary_period ? `/${job.salary_period}` : ''}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Skills */}
-              <div className="mb-4 space-y-3 flex-1">
-                {job.required_skills && job.required_skills.length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">Must Have</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(expandedSkills.has(job.id) ? job.required_skills : job.required_skills.slice(0, 3)).map((skill, index) => (
-                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
-                          {typeof skill === 'string' ? skill : skill.skill_name}
-                        </span>
-                      ))}
-                      {!expandedSkills.has(job.id) && job.required_skills.length > 3 && (
-                        <span 
-                          onClick={() => toggleSkills(job.id)}
-                          className="px-2 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded cursor-pointer transition-colors"
-                        >
-                          +{job.required_skills.length - 3} more
-                        </span>
-                      )}
-                      {expandedSkills.has(job.id) && job.required_skills.length > 3 && (
-                        <span 
-                          onClick={() => toggleSkills(job.id)}
-                          className="px-2 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded cursor-pointer transition-colors"
-                        >
-                          Show less
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {job.preferred_skills && job.preferred_skills.length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">Good to Have</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(expandedSkills.has(job.id) ? job.preferred_skills : job.preferred_skills.slice(0, 3)).map((skill, index) => (
-                        <span key={index} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">
-                          {typeof skill === 'string' ? skill : skill.skill_name}
-                        </span>
-                      ))}
-                      {!expandedSkills.has(job.id) && job.preferred_skills.length > 3 && (
-                        <span 
-                          onClick={() => toggleSkills(job.id)}
-                          className="px-2 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded cursor-pointer transition-colors"
-                        >
-                          +{job.preferred_skills.length - 3} more
-                        </span>
-                      )}
-                      {expandedSkills.has(job.id) && job.preferred_skills.length > 3 && (
-                        <span 
-                          onClick={() => toggleSkills(job.id)}
-                          className="px-2 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded cursor-pointer transition-colors"
-                        >
-                          Show less
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Card Footer */}
-              <div className="flex justify-between items-center text-xs text-gray-400 mb-3">
-                <span>Created: {formatDate(job.created_at)}</span>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200 mt-auto">
-                <button
-                  onClick={() => navigate("/matching", { state: { jobId: job.id } })}
-                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center bg-indigo-50 px-3 py-1.5 rounded-md transition-colors"
-                >
-                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  Match
-                </button>
-                <div className="flex space-x-3">
-                  <button onClick={() => openEditModal(job)} className="text-indigo-600 hover:text-indigo-700 text-sm font-medium transition-colors">
-                    Edit
-                  </button>
-                  <button onClick={() => handleDeleteJob(job.id)} className="text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
-                    Close
-                  </button>
-                </div>
-              </div>
+        if (filteredJobs.length === 0) {
+          let emptyTitle = "No jobs found";
+          let emptyDesc = "There are currently no jobs waiting for action in this workflow stage.";
+          
+          if (isTeamLeadTab) {
+            emptyTitle = "No Jobs Waiting for Team Lead Assignment";
+            emptyDesc = "All jobs have been assigned team leads.";
+          } else if (isRecruiterTab) {
+            emptyTitle = "No Jobs Waiting for Recruiter Assignment";
+            emptyDesc = "All jobs have been assigned recruiters.";
+          } else if (isJobsTab) {
+             emptyTitle = "No Jobs Found";
+             emptyDesc = "Get started by creating your first job posting.";
+          }
+          return (
+            <div className="bg-white rounded-lg border border-gray-200 p-12 text-center col-span-full">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">{emptyTitle}</h3>
+              <p className="mt-1 text-sm text-gray-500">{emptyDesc}</p>
             </div>
-          ))}
-        </div>
-      ) : (
+          );
+        }
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredJobs.map((job) => (
+              <JobCard
+                key={job.id}
+                job={job as any}
+                variant={variant as any}
+                onActionClick={handleActionClick as any}
+                onViewDetails={() => setSelectedJobForDetails(job)}
+                onViewProgress={() => setSelectedJobForProgress(job)}
+                onToggleStatus={(j) => updateJob((j as any).id, { status: (j as any).status === "active" ? "closed" : "active" })}
+                onEditJob={(j) => setEditingJob(j as any)}
+                onCopyLink={(j) => {
+                  navigator.clipboard.writeText(`${window.location.origin}/jobs/${j.id}`);
+                  toast.success("Link copied to clipboard");
+                }}
+              />
+            ))}
+          </div>
+        );
+      })() : (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -1153,6 +1823,51 @@ export default function JobsPage() {
           <p className="mt-1 text-sm text-gray-500">Get started by creating your first job posting</p>
         </div>
       )}
+      {/* Team Lead Assignment Modal */}
+      {selectedJobForTeamLead && (
+        <AssignTeamLeadModal
+          isOpen={showAssignModal}
+          onClose={() => {
+            setShowAssignModal(false);
+            setSelectedJobForTeamLead(null);
+          }}
+          jobId={selectedJobForTeamLead.id}
+          jobTitle={selectedJobForTeamLead.title}
+          currentTeamLeadId={selectedJobForTeamLead.team_lead_id}
+          onAssign={() => {
+            fetchJobs(); // Assuming fetchJobs exists in this component
+          }}
+        />
+      )}
+
+      {/* Recruiter Assignment Modal */}
+      {selectedJobForRecruiters && (
+        <AssignRecruitersModal
+          isOpen={showAssignRecruitersModal}
+          onClose={() => {
+            setShowAssignRecruitersModal(false);
+            setSelectedJobForRecruiters(null);
+          }}
+          jobId={selectedJobForRecruiters.id}
+          jobTitle={selectedJobForRecruiters.title}
+          onAssign={() => {
+            fetchJobs();
+          }}
+        />
+      )}
+
+      {/* Progressive Disclosure Drawers */}
+      <JobProgressDrawer
+        isOpen={!!selectedJobForProgress}
+        onClose={() => setSelectedJobForProgress(null)}
+        job={selectedJobForProgress}
+      />
+      
+      <JobDetailsDrawer
+        isOpen={!!selectedJobForDetails}
+        onClose={() => setSelectedJobForDetails(null)}
+        job={selectedJobForDetails}
+      />
     </div>
   );
 }
