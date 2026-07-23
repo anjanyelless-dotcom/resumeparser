@@ -10,7 +10,7 @@ const generatePDFBuffer = (data: {
   success_rate: number;
   avg_time: number;
   avg_confidence: number;
-}) => {
+}) => { 
   const streamContent = `BT
 /F1 12 Tf
 70 700 Td

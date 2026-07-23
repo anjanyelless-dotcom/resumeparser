@@ -16,7 +16,7 @@
         "email",
         "phone",
         "skills"
-      ],
+      ], 
       "field_accuracies": {
         "name": 0.0,
         "email": 0.0,
