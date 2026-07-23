@@ -69,7 +69,7 @@ export class JobDashboardService {
     }
 
     if (filters.created_by_user_id) {
-      conditions.push(`j.created_by_user_id = $${paramCount}`);
+      conditions.push(`j.created_by_user_id::text = $${paramCount}`);
       values.push(filters.created_by_user_id);
       paramCount++;
     }
@@ -101,31 +101,31 @@ export class JobDashboardService {
         CASE WHEN tla.team_lead_id IS NOT NULL THEN 'Assigned' ELSE 'Not Assigned' END as team_lead_assignment_status,
         
         -- Recruiter Info
-        (SELECT COUNT(DISTINCT recruiter_id) FROM job_recruiter_assignments WHERE job_id = j.id AND is_active = true) as recruiters_assigned_count,
+        (SELECT COUNT(DISTINCT recruiter_id::text) FROM job_recruiter_assignments WHERE job_id::text = j.id::text AND is_active = true) as recruiters_assigned_count,
         8 as recruiter_capacity_max,
         
         -- Hiring Progress
         COALESCE(j.number_of_openings, 1) as total_openings,
-        (SELECT COUNT(*) FROM submissions WHERE job_id = j.id AND status = 'placed') as filled_positions,
-        GREATEST(0, COALESCE(j.number_of_openings, 1) - (SELECT COUNT(*) FROM submissions WHERE job_id = j.id AND status = 'placed')) as remaining_positions,
+        (SELECT COUNT(*) FROM submissions WHERE job_id::text = j.id::text AND status = 'placed') as filled_positions,
+        GREATEST(0, COALESCE(j.number_of_openings, 1) - (SELECT COUNT(*) FROM submissions WHERE job_id::text = j.id::text AND status = 'placed')) as remaining_positions,
         
         -- Candidate Pipeline
-        (SELECT COUNT(*) FROM submissions WHERE job_id = j.id) as total_candidates,
+        (SELECT COUNT(*) FROM submissions WHERE job_id::text = j.id::text) as total_candidates,
         0 as parsed,
         0 as jd_matched,
         0 as ai_matched,
-        (SELECT COUNT(*) FROM submissions WHERE job_id = j.id AND status = 'shortlisted') as shortlisted,
-        (SELECT COUNT(*) FROM submissions WHERE job_id = j.id AND status = 'submitted') as submitted,
-        (SELECT COUNT(*) FROM submissions WHERE job_id = j.id AND status IN ('interview_scheduled', 'interviewing', 'interview_completed')) as interviews,
-        (SELECT COUNT(*) FROM submissions WHERE job_id = j.id AND status IN ('offer_extended', 'offer_accepted')) as offers,
-        (SELECT COUNT(*) FROM submissions WHERE job_id = j.id AND status = 'joined') as joined,
-        (SELECT COUNT(*) FROM submissions WHERE job_id = j.id AND status = 'placed') as placements
+        (SELECT COUNT(*) FROM submissions WHERE job_id::text = j.id::text AND status = 'shortlisted') as shortlisted,
+        (SELECT COUNT(*) FROM submissions WHERE job_id::text = j.id::text AND status = 'submitted') as submitted,
+        (SELECT COUNT(*) FROM submissions WHERE job_id::text = j.id::text AND status IN ('interview_scheduled', 'interviewing', 'interview_completed')) as interviews,
+        (SELECT COUNT(*) FROM submissions WHERE job_id::text = j.id::text AND status IN ('offer_extended', 'offer_accepted')) as offers,
+        (SELECT COUNT(*) FROM submissions WHERE job_id::text = j.id::text AND status = 'joined') as joined,
+        (SELECT COUNT(*) FROM submissions WHERE job_id::text = j.id::text AND status = 'placed') as placements
         
       FROM job_descriptions j
-      LEFT JOIN clients c ON j.client_id = c.id
-      LEFT JOIN users u ON j.created_by_user_id = u.id::varchar
-      LEFT JOIN job_teamlead_assignments tla ON j.id = tla.job_id AND tla.is_active = true
-      LEFT JOIN users tlu ON tla.team_lead_id = tlu.id
+      LEFT JOIN clients c ON j.client_id::text = c.id::text
+      LEFT JOIN users u ON j.created_by_user_id::text = u.id::text
+      LEFT JOIN job_teamlead_assignments tla ON j.id::text = tla.job_id::text AND tla.is_active = true
+      LEFT JOIN users tlu ON tla.team_lead_id::text = tlu.id::text
       ${whereClause}
       ORDER BY j.created_at DESC
       LIMIT $${paramCount} OFFSET $${paramCount + 1}
