@@ -101,7 +101,7 @@ export class JobDashboardService {
         CASE WHEN tla.team_lead_id IS NOT NULL THEN 'Assigned' ELSE 'Not Assigned' END as team_lead_assignment_status,
         
         -- Recruiter Info
-        (SELECT COUNT(DISTINCT recruiter_id::text) FROM job_recruiter_assignments WHERE job_id::text = j.id::text AND is_active = true) as recruiters_assigned_count,
+        (SELECT COUNT(DISTINCT recruiter_id::text) FROM job_recruiter_assignments jra WHERE jra.job_id::text = j.id::text AND jra.is_active = true) as recruiters_assigned_count,
         8 as recruiter_capacity_max,
         
         -- Hiring Progress
