@@ -435,7 +435,7 @@ export const getAllJobs = async (
       max_experience: req.query.max_experience
         ? parseInt(req.query.max_experience as string)
         : undefined,
-      created_by_user_id: (req.query.created_by_user_id as string) || undefined,
+      created_by_user_id: (req.query.created_by_user_id as string) || undefined ? (req.query.created_by_user_id as string) : undefined,
       status: (req.query.status as string) || undefined,
     };
 

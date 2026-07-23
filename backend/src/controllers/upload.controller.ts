@@ -222,7 +222,12 @@ async function storeAllParsedData(client: any, candidateId: string, ai: any, fil
   console.log(`  ✅ Education: ${eduItems.length} entries stored`);
 
   // ── 4. SKILLS + CANDIDATE_SKILLS ──────────────────────────────────────────
-  const rawSkills: any[] = Array.isArray(ai.skills) ? ai.skills : [];
+  let rawSkills: any[] = Array.isArray(ai.skills) ? ai.skills : [];
+  
+  // If skills_text is available but skills array is empty, parse skills_text
+  if (rawSkills.length === 0 && ai.skills_text && typeof ai.skills_text === 'string') {
+    rawSkills = ai.skills_text.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+  }
   await client.query("DELETE FROM candidate_skills WHERE candidate_id = $1", [candidateId]);
   for (const sk of rawSkills) {
     const skillName = typeof sk === "string" ? sk.trim() : (sk.name || sk.skill_name || "").trim();

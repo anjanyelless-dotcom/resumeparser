@@ -93,7 +93,7 @@ export class CandidateModel {
       let skillRows: any[] = [];
       try {
         const skillsResult = await client.query(
-          `SELECT id, COALESCE(skill_name, name) as skill_name, category, proficiency_level, years_experience
+          `SELECT id, COALESCE(skill_name, name) as skill_name, category
            FROM skills
            WHERE candidate_id = $1
            ORDER BY COALESCE(skill_name, name)`,
@@ -143,7 +143,7 @@ export class CandidateModel {
         education: educationResult.rows,
         certifications: certificationRows,
         projects: projectRows,
-        skills: skillRows
+        skills: skillRows.map(row => row.skill_name)
       };
       console.log("Returning candidate with", skillRows.length, "skills");
     } catch (error) {
