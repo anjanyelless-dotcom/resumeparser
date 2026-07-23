@@ -2,17 +2,14 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useJobStore } from "../store/useJobStore";
 import toast from "react-hot-toast";
-import { api } from "../services/api";
 import { Country, State, City } from "country-state-city";
 
 interface Job {
   id: string;
   title: string;
   description: string;
-  requirements?: string;
   min_experience_years?: number;
   max_experience_years?: number;
-  education_level?: string;
   education_requirement?: string;
   employment_type?: string;
   seniority_level?: string;
@@ -29,8 +26,6 @@ interface Job {
   notice_period?: string;
   salary_min?: number;
   salary_max?: number;
-  client_id?: string;
-  manual_client_name?: string;
   required_skills?: Array<{
     id: string;
     skill_name: string;
@@ -41,15 +36,6 @@ interface Job {
     skill_name: string;
     skill_type: "required" | "preferred";
   }>;
-  // Enhanced location fields
-  country?: string;
-  state?: string;
-  city?: string;
-  district?: string;
-  pincode?: string;
-  latitude?: string;
-  longitude?: string;
-  location_source?: "manual" | "pincode" | "geolocation";
 }
 
 interface JobFormData {
@@ -59,38 +45,23 @@ interface JobFormData {
   country: string;
   state: string;
   city: string;
-  district?: string;
   employment_type: string;
   work_mode: string;
   description: string;
-  requirements: string;
   required_skills: string[];
   preferred_skills: string[];
   salary_min: string;
   salary_max: string;
   currency: string;
   salary_period: string;
-  min_experience_years: string;
-  max_experience_years: string;
-  education_level: string;
+  experience_range: string;
+  education_requirement: string;
   number_of_openings: string;
   notice_period: string;
   status: string;
-  client_id: string;
-  // Enhanced location fields
-  pincode: string;
-  latitude?: string;
-  longitude?: string;
-  location_source?: "manual" | "pincode" | "geolocation";
 }
 
-const educationLevels = [
-  { value: "any", label: "Any" },
-  { value: "high-school", label: "High School" },
-  { value: "bachelor", label: "Bachelor's Degree" },
-  { value: "master", label: "Master's Degree" },
-  { value: "phd", label: "PhD" },
-];
+const experienceRanges = ["0-2 years", "3-5 years", "5-8 years", "8+ years"];
 
 const employmentTypes = [
   "Full-time",
@@ -98,6 +69,14 @@ const employmentTypes = [
   "Contract",
   "Internship",
   "Remote",
+];
+const educationRequirements = [
+  "High School",
+  "Associate",
+  "Bachelor",
+  "Master",
+  "PhD",
+  "None",
 ];
 const departments = [
   "Engineering",
@@ -146,216 +125,12 @@ export const validateJobDescription = (desc: string): string | null => {
   return null;
 };
 
-// GeoNames API Configuration
-const GEONAMES_USERNAME = import.meta.env.VITE_GEONAMES_USERNAME || "demo";
-
-// GeoNames API Types
-interface GeoNamesLocation {
-  placeName: string;
-  adminName1: string;
-  adminName2: string;
-  countryCode: string;
-  postalCode: string;
-  lat: string;
-  lng: string;
-}
-
-interface GeoNamesNearbyResponse {
-  postalCodes: GeoNamesLocation[];
-  status?: {
-    message: string;
-    value: number;
-  };
-}
-
-interface GeoNamesPostalResponse {
-  postalCodes: GeoNamesLocation[];
-  status?: {
-    message: string;
-    value: number;
-  };
-}
-
-// Helper: Get location by PIN code using OpenStreetMap Nominatim (fallback)
-const getLocationByPincodeNominatim = async (
-  pincode: string
-): Promise<GeoNamesLocation | null> => {
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?postalcode=${pincode}&format=json&limit=1&country=IN`
-    );
-    const data = await response.json();
-
-    if (data && data.length > 0) {
-      const result = data[0];
-      
-      // Parse display_name to extract location components
-      // Format: "500085, Ward 114 KPHB Colony, Hyderabad, Kukatpally mandal, Medchal–Malkajgiri, Telangana, India"
-      const parts = result.display_name.split(',').map((p: string) => p.trim());
-      
-      // Extract components from display_name
-      let city = '';
-      let state = '';
-      
-      // Try to extract city and state from display_name
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        if (part.includes('Hyderabad') || part.includes('Bangalore') || 
-            part.includes('Mumbai') || part.includes('Delhi') ||
-            part.includes('Chennai') || part.includes('Kolkata')) {
-          city = part;
-        }
-        if (part.includes('Telangana') || part.includes('Karnataka') ||
-            part.includes('Maharashtra') || part.includes('Delhi') ||
-            part.includes('Tamil Nadu') || part.includes('West Bengal')) {
-          state = part;
-        }
-      }
-      
-      return {
-        postalCode: result.name || pincode,
-        placeName: city || parts[2] || 'Unknown', // Usually city is 3rd element
-        countryCode: 'IN',
-        lat: parseFloat(result.lat).toString(),
-        lng: parseFloat(result.lon).toString(),
-        adminName1: state || parts[parts.length - 2] || '', // Usually state is 2nd to last
-        adminName2: city || parts[2] || '', // Usually city is 3rd element
-      };
-    }
-    return null;
-  } catch (error: any) {
-    console.error("Error fetching location by PIN code from Nominatim:", error);
-    return null;
-  }
-};
-
-// Helper: Get location by PIN code (with Nominatim fallback)
-export const getLocationByPincode = async (
-  pincode: string
-): Promise<GeoNamesLocation | null> => {
-  try {
-    const response = await fetch(
-      `https://secure.geonames.org/postalCodeSearchJSON?postalcode=${pincode}&maxRows=1&username=${GEONAMES_USERNAME}`
-    );
-    const data: GeoNamesPostalResponse = await response.json();
-
-    // Check if GeoNames returned an error (e.g., demo account limit exceeded or user doesn't exist)
-    if (data.status && data.status.message) {
-      console.warn("GeoNames error, falling back to Nominatim:", data.status.message);
-      return getLocationByPincodeNominatim(pincode);
-    }
-
-    if (data.postalCodes && data.postalCodes.length > 0) {
-      return data.postalCodes[0];
-    }
-    return null;
-  } catch (error: any) {
-    console.error("Error fetching location by PIN code from GeoNames, falling back to Nominatim:", error);
-    return getLocationByPincodeNominatim(pincode);
-  }
-};
-
-// Helper: Get current location using browser geolocation
-export const getCurrentLocation = (): Promise<GeolocationPosition> => {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error("Geolocation is not supported by this browser"));
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => resolve(position),
-      (error) => {
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            reject(new Error("Location permission denied"));
-            break;
-          case error.POSITION_UNAVAILABLE:
-            reject(new Error("Location information unavailable"));
-            break;
-          case error.TIMEOUT:
-            reject(new Error("Location request timed out"));
-            break;
-          default:
-            reject(new Error("An unknown error occurred"));
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
-  });
-};
-
-// Helper: Reverse geocode coordinates to location using OpenStreetMap Nominatim (fallback)
-const reverseGeocodeLocationNominatim = async (
-  lat: number,
-  lng: number
-): Promise<GeoNamesLocation | null> => {
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`
-    );
-    const data = await response.json();
-
-    if (data && data.address) {
-      const address = data.address;
-      return {
-        postalCode: address.postcode || '',
-        placeName: address.city || address.town || address.village || address.suburb || data.display_name?.split(',')[0] || 'Unknown',
-        countryCode: address.country_code || 'IN',
-        lat: lat.toString(),
-        lng: lng.toString(),
-        adminName1: address.state || address.state_district || '',
-        adminName2: address.city || address.town || address.district || address.county || '',
-      };
-    }
-    return null;
-  } catch (error: any) {
-    console.error("Error reverse geocoding location from Nominatim:", error);
-    return null;
-  }
-};
-
-export const reverseGeocodeLocation = async (
-  lat: number,
-  lng: number
-): Promise<GeoNamesLocation | null> => {
-  try {
-    const response = await fetch(
-      `https://secure.geonames.org/findNearbyPostalCodesJSON?lat=${lat}&lng=${lng}&username=${GEONAMES_USERNAME}`
-    );
-    const data: GeoNamesNearbyResponse = await response.json();
-
-    // Check if GeoNames returned an error (e.g., demo account limit exceeded or user doesn't exist)
-    if (data.status && data.status.message) {
-      console.warn("GeoNames error, falling back to Nominatim:", data.status.message);
-      return reverseGeocodeLocationNominatim(lat, lng);
-    }
-
-    if (data.postalCodes && data.postalCodes.length > 0) {
-      return data.postalCodes[0];
-    }
-    return null;
-  } catch (error: any) {
-    console.error("Error reverse geocoding location from GeoNames, falling back to Nominatim:", error);
-    return reverseGeocodeLocationNominatim(lat, lng);
-  }
-};
-
 export default function JobsPage() {
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [currentSkill, setCurrentSkill] = useState("");
   const [currentPreferredSkill, setCurrentPreferredSkill] = useState("");
-  const [clients, setClients] = useState<Array<{ id: string; company_name: string }>>([]);
-  const [loadingClients, setLoadingClients] = useState(false);
-const [clientSearch, setClientSearch] = useState("");
-const [showManualClientInput, setShowManualClientInput] = useState(false);
-const [manualClientName, setManualClientName] = useState("");
 
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [expandedSkills, setExpandedSkills] = useState<Set<string>>(new Set());
@@ -378,7 +153,23 @@ const [manualClientName, setManualClientName] = useState("");
     });
   };
 
-  
+  const parseExperience = (range: string) => {
+    switch (range) {
+      case "0-2 years": return { min: 0, max: 2 };
+      case "3-5 years": return { min: 3, max: 5 };
+      case "5-8 years": return { min: 5, max: 8 };
+      case "8+ years": return { min: 8, max: 20 };
+      default: return { min: 0, max: 2 };
+    }
+  };
+
+  const formatExperience = (min?: number, max?: number) => {
+    if (min === 0 && max === 2) return "0-2 years";
+    if (min === 3 && max === 5) return "3-5 years";
+    if (min === 5 && max === 8) return "5-8 years";
+    if (min === 8 && max === 20) return "8+ years";
+    return "0-2 years";
+  };
 
   const normalizeSkill = (skill: string) => {
     const trimmed = skill.trim();
@@ -421,49 +212,25 @@ const [manualClientName, setManualClientName] = useState("");
     country: "",
     state: "",
     city: "",
-    district: "",
     employment_type: "",
     work_mode: "Onsite",
     description: "",
-    requirements: "",
     required_skills: [],
     preferred_skills: [],
     salary_min: "",
     salary_max: "",
     currency: "USD",
     salary_period: "Yearly",
-    min_experience_years: "0",
-    max_experience_years: "5",
-    education_level: "any",
+    experience_range: "0-2 years",
+    education_requirement: "",
     number_of_openings: "1",
     notice_period: "",
     status: "active",
-    client_id: "",
-    pincode: "",
-    latitude: undefined,
-    longitude: undefined,
-    location_source: undefined,
   });
-  const [locationLoading, setLocationLoading] = useState(false);
 
   useEffect(() => {
     loadJobs();
-    loadClients();
   }, []);
-
-  const loadClients = async () => {
-    try {
-      setLoadingClients(true);
-      const response = await api.get("/clients");
-      if (response.data && response.data.clients) {
-        setClients(response.data.clients);
-      }
-    } catch (error) {
-      console.error("Failed to load clients:", error);
-    } finally {
-      setLoadingClients(false);
-    }
-  };
 
   const loadJobs = async () => {
     try {
@@ -483,11 +250,8 @@ const [manualClientName, setManualClientName] = useState("");
     formData.title.trim().length >= 2 &&
     formData.department &&
     formData.employment_type &&
-    (formData.client_id || (showManualClientInput && manualClientName.trim())) &&
-    formData.min_experience_years !== "" &&
-    formData.max_experience_years !== "" &&
-    formData.education_level &&
-    (formData.location_source || formData.country) && // Either auto-detected OR manual selection
+    formData.experience_range &&
+    formData.country &&
     formData.description.length >= 50 &&
     formData.required_skills.length > 0;
 
@@ -497,29 +261,7 @@ const [manualClientName, setManualClientName] = useState("");
       case "title": error = validateJobTitle(formData.title); break;
       case "department": error = formData.department ? null : "Please select Department."; break;
       case "employment_type": error = formData.employment_type ? null : "Please select Employment Type."; break;
-      case "client_id": 
-        if (showManualClientInput) {
-          error = manualClientName.trim() ? null : "Please enter client name.";
-        } else {
-          error = formData.client_id ? null : "Please select a client.";
-        }
-        break;
-      case "min_experience_years": 
-        if (formData.min_experience_years === "") error = "Please enter minimum experience years.";
-        else {
-          const min = parseInt(formData.min_experience_years);
-          if (isNaN(min) || min < 0 || min > 50) error = "Minimum experience must be between 0 and 50 years.";
-        }
-        break;
-      case "max_experience_years":
-        if (formData.max_experience_years === "") error = "Please enter maximum experience years.";
-        else {
-          const max = parseInt(formData.max_experience_years);
-          if (isNaN(max) || max < 0 || max > 50) error = "Maximum experience must be between 0 and 50 years.";
-        }
-        break;
-      case "education_level": error = formData.education_level ? null : "Please select Education Level."; break;
-      case "client_id": error = (formData.client_id === "" && !showManualClientInput) ? "Please select a client." : null; break;
+      case "experience_range": error = formData.experience_range ? null : "Please select Experience Range."; break;
       case "country": error = formData.country ? null : "Please select Country."; break;
       case "state": error = (formData.country && !formData.state && availableStates.length > 0) ? "Please select State." : null; break;
       case "city": error = (formData.state && !formData.city && availableCities.length > 0) ? "Please select City." : null; break;
@@ -537,14 +279,6 @@ const [manualClientName, setManualClientName] = useState("");
       }
     }
 
-    if (field === "min_experience_years" || field === "max_experience_years") {
-      const minExp = formData.min_experience_years ? parseInt(formData.min_experience_years) : 0;
-      const maxExp = formData.max_experience_years ? parseInt(formData.max_experience_years) : 0;
-      if (formData.min_experience_years && formData.max_experience_years && minExp > maxExp) {
-        if (field === "max_experience_years") error = "Max experience must be greater than or equal to Min experience.";
-      }
-    }
-
     setFormErrors(prev => {
       const next = { ...prev };
       if (error) next[field] = error;
@@ -554,94 +288,13 @@ const [manualClientName, setManualClientName] = useState("");
     return error;
   };
 
-  // Handler: Detect location using current geolocation
-  const handleDetectCurrentLocation = async () => {
-    try {
-      setLocationLoading(true);
-      const position = await getCurrentLocation();
-      const { latitude, longitude } = position.coords;
-
-      const locationData = await reverseGeocodeLocation(latitude, longitude);
-
-      if (locationData) {
-        setFormData(prev => ({
-          ...prev,
-          country: locationData.countryCode,
-          state: locationData.adminName1,
-          city: locationData.placeName,
-          district: locationData.adminName2,
-          pincode: locationData.postalCode,
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-          location_source: "geolocation",
-        }));
-        toast.success("Location detected successfully");
-      } else {
-        toast.error("Unable to detect location from coordinates");
-      }
-    } catch (error: any) {
-      console.error("Geolocation error:", error);
-      toast.error(error.message || "Unable to detect location");
-    } finally {
-      setLocationLoading(false);
-    }
-  };
-
-  // Handler: Detect location using PIN code
-  const handleDetectByPincode = async () => {
-    const pincode = formData.pincode.trim();
-
-    // Validate PIN code format
-    if (!pincode) {
-      toast.error("Please enter a PIN code");
-      return;
-    }
-
-    if (!/^\d{5,10}$/.test(pincode)) {
-      toast.error("PIN code must be between 5 and 10 digits");
-      return;
-    }
-
-    try {
-      setLocationLoading(true);
-      const locationData = await getLocationByPincode(pincode);
-
-      if (locationData) {
-        setFormData(prev => ({
-          ...prev,
-          country: locationData.countryCode,
-          state: locationData.adminName1,
-          city: locationData.placeName,
-          district: locationData.adminName2,
-          pincode: locationData.postalCode,
-          latitude: locationData.lat,
-          longitude: locationData.lng,
-          location_source: "pincode",
-        }));
-        toast.success("Location detected successfully from PIN code");
-      } else {
-        toast.error("Invalid PIN code or location not found");
-      }
-    } catch (error: any) {
-      console.error("PIN code lookup error:", error);
-      toast.error("Failed to lookup PIN code");
-    } finally {
-      setLocationLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const fieldsToValidate: (keyof JobFormData)[] = [
-      "title", "department", "employment_type", "client_id", "min_experience_years", "max_experience_years", 
-      "education_level", "salary_min", "salary_max", "number_of_openings", "description"
+      "title", "department", "employment_type", "experience_range", "country", "state", "city", 
+      "salary_min", "salary_max", "number_of_openings", "description"
     ];
-
-    // Only validate location fields if not auto-detected
-    if (!formData.location_source) {
-      fieldsToValidate.push("country", "state", "city");
-    }
 
     let hasErrors = false;
     const newErrors: Partial<Record<keyof JobFormData, string>> = {};
@@ -670,8 +323,6 @@ const [manualClientName, setManualClientName] = useState("");
 
     const sMin = formData.salary_min ? parseInt(formData.salary_min) : 0;
     const sMax = formData.salary_max ? parseInt(formData.salary_max) : 0;
-    const minExp = formData.min_experience_years ? parseInt(formData.min_experience_years) : 0;
-    const maxExp = formData.max_experience_years ? parseInt(formData.max_experience_years) : 0;
     const numOpenings = parseInt(formData.number_of_openings) || 1;
 
     // Construct Location String
@@ -680,6 +331,7 @@ const [manualClientName, setManualClientName] = useState("");
     if (formData.city) finalLocation = `${formData.city}, ${finalLocation}`;
 
     try {
+      const exp = parseExperience(formData.experience_range);
       const jobData: Partial<Job> = {
         title: formData.title.trim(),
         department: formData.department,
@@ -687,7 +339,6 @@ const [manualClientName, setManualClientName] = useState("");
         employment_type: formData.employment_type,
         work_mode: formData.work_mode,
         description: formData.description,
-        requirements: formData.requirements,
         required_skills: formData.required_skills.map(skill => ({
           id: crypto.randomUUID(),
           skill_name: skill,
@@ -698,26 +349,16 @@ const [manualClientName, setManualClientName] = useState("");
           skill_name: skill,
           skill_type: "preferred" as const
         })),
-        min_experience_years: minExp,
-        max_experience_years: maxExp,
-        education_level: formData.education_level,
+        min_experience_years: exp.min,
+        max_experience_years: exp.max,
         salary_min: sMin || undefined,
         salary_max: sMax || undefined,
         currency: formData.currency,
         salary_period: formData.salary_period,
+        education_requirement: formData.education_requirement,
         number_of_openings: numOpenings,
         notice_period: formData.notice_period,
         status: formData.status,
-        client_id: formData.client_id === "manual" ? undefined : formData.client_id,
-        manual_client_name: formData.client_id === "manual" ? manualClientName : undefined,
-        // Enhanced location fields
-        country: formData.country,
-        state: formData.state,
-        city: formData.city,
-        pincode: formData.pincode || undefined,
-        latitude: formData.latitude,
-        longitude: formData.longitude,
-        location_source: formData.location_source,
       };
 
       if (editingJob) {
@@ -743,34 +384,23 @@ const [manualClientName, setManualClientName] = useState("");
       country: "",
       state: "",
       city: "",
-      district: "",
       employment_type: "",
       work_mode: "Onsite",
       description: "",
-      requirements: "",
       required_skills: [],
       preferred_skills: [],
       salary_min: "",
       salary_max: "",
       currency: "USD",
       salary_period: "Yearly",
-      min_experience_years: "0",
-      max_experience_years: "5",
-      education_level: "any",
+      experience_range: "0-2 years",
+      education_requirement: "",
       number_of_openings: "1",
       notice_period: "",
       status: "active",
-      client_id: "",
-      pincode: "",
-      latitude: undefined,
-      longitude: undefined,
-      location_source: undefined,
     });
     setCurrentSkill("");
     setCurrentPreferredSkill("");
-    setClientSearch("");
-    setShowManualClientInput(false);
-    setManualClientName("");
   };
 
   const openCreateModal = () => {
@@ -805,25 +435,17 @@ const [manualClientName, setManualClientName] = useState("");
       employment_type: job.employment_type || "",
       work_mode: job.work_mode || "Onsite",
       description: job.description,
-      requirements: (job as any).requirements || "",
       required_skills: job.required_skills?.map(s => typeof s === 'string' ? s : s.skill_name) || [],
       preferred_skills: job.preferred_skills?.map(s => typeof s === 'string' ? s : s.skill_name) || [],
       salary_min: job.salary_min ? String(job.salary_min) : "",
       salary_max: job.salary_max ? String(job.salary_max) : "",
       currency: job.currency || "USD",
       salary_period: job.salary_period || "Yearly",
-      min_experience_years: job.min_experience_years !== undefined ? String(job.min_experience_years) : "0",
-      max_experience_years: job.max_experience_years !== undefined ? String(job.max_experience_years) : "5",
-      education_level: (job as any).education_level || "any",
+      experience_range: formatExperience(job.min_experience_years, job.max_experience_years),
+      education_requirement: job.education_requirement || "",
       number_of_openings: job.number_of_openings ? String(job.number_of_openings) : "1",
       notice_period: job.notice_period || "",
       status: job.status || "active",
-      client_id: (job as any).client_id || "",
-      // Enhanced location fields
-      pincode: (job as any).pincode || "",
-      latitude: (job as any).latitude,
-      longitude: (job as any).longitude,
-      location_source: (job as any).location_source,
     });
     setEditingJob(job);
     setIsCreateModalOpen(true);
@@ -1003,81 +625,6 @@ const [manualClientName, setManualClientName] = useState("");
                   {formErrors.title && <p className="mt-1 text-xs text-red-500">{formErrors.title}</p>}
                 </div>
 
-                {/* Client */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Client *</label>
-                  
-                  {!showManualClientInput ? (
-                    <>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={clientSearch}
-                          onChange={(e) => setClientSearch(e.target.value)}
-                          placeholder="Search client..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 mb-2"
-                        />
-                        <select
-                          value={formData.client_id}
-                          onChange={(e) => {
-                            setFormData((prev) => ({ ...prev, client_id: e.target.value }));
-                            if (formErrors.client_id) setFormErrors(prev => ({ ...prev, client_id: undefined }));
-                          }}
-                          onBlur={() => handleBlur("client_id")}
-                          disabled={loadingClients}
-                          className={`w-full px-3 py-2 border ${formErrors.client_id ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
-                        >
-                          <option value="">Select Client</option>
-                          {clients
-                            .filter(client => 
-                              client.company_name.toLowerCase().includes(clientSearch.toLowerCase())
-                            )
-                            .map((client) => (
-                              <option key={client.id} value={client.id}>{client.company_name}</option>
-                            ))}
-                        </select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {loadingClients && <p className="mt-1 text-xs text-gray-500">Loading clients...</p>}
-                        <button
-                          type="button"
-                          onClick={() => setShowManualClientInput(true)}
-                          className="text-xs text-indigo-600 hover:text-indigo-800 underline"
-                        >
-                          Client not in list? Enter manually
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <input
-                        type="text"
-                        value={manualClientName}
-                        onChange={(e) => {
-                          setManualClientName(e.target.value);
-                          setFormData((prev) => ({ ...prev, client_id: "manual" }));
-                          if (formErrors.client_id) setFormErrors(prev => ({ ...prev, client_id: undefined }));
-                        }}
-                        onBlur={() => handleBlur("client_id")}
-                        placeholder="Enter client name"
-                        className={`w-full px-3 py-2 border ${formErrors.client_id ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowManualClientInput(false);
-                          setManualClientName("");
-                          setFormData((prev) => ({ ...prev, client_id: "" }));
-                        }}
-                        className="text-xs text-gray-600 hover:text-gray-800 underline mt-1"
-                      >
-                        Cancel manual entry
-                      </button>
-                    </>
-                  )}
-                  {formErrors.client_id && <p className="mt-1 text-xs text-red-500">{formErrors.client_id}</p>}
-                </div>
-
                 {/* Grid 1 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -1126,181 +673,15 @@ const [manualClientName, setManualClientName] = useState("");
                   </div>
                 </div>
 
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Description *</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => {
-                      setFormData((prev) => ({ ...prev, description: e.target.value }));
-                      if (formErrors.description) setFormErrors(prev => ({ ...prev, description: undefined }));
-                    }}
-                    onBlur={() => handleBlur("description")}
-                    rows={6}
-                    className={`w-full px-3 py-2 border ${formErrors.description ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
-                    placeholder="Describe the role, responsibilities, and requirements..."
-                  />
-                  {formErrors.description && <p className="mt-1 text-xs text-red-500">{formErrors.description}</p>}
-                </div>
-
-                {/* Requirements */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Requirements & Qualifications</label>
-                  <textarea
-                    value={formData.requirements}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, requirements: e.target.value }))}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="List specific requirements, qualifications, and certifications..."
-                  />
-                </div>
-
-                {/* Location Detection Section */}
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
-                  <label className="block text-sm font-semibold text-indigo-900 mb-3">
-                    📍 Location Detection
-                  </label>
-                  
-                  <div className="space-y-3">
-                    {/* Use Current Location Button */}
-                    <div>
-                      <button
-                        type="button"
-                        onClick={handleDetectCurrentLocation}
-                        disabled={locationLoading}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-                      >
-                        {locationLoading ? (
-                          <>
-                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Detecting Location...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            Use Current Location
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center">
-                      <div className="flex-grow border-t border-indigo-300"></div>
-                      <span className="flex-shrink-0 mx-4 text-indigo-600 text-sm font-medium">OR</span>
-                      <div className="flex-grow border-t border-indigo-300"></div>
-                    </div>
-
-                    {/* PIN Code Detection */}
-                    <div className="flex gap-2">
-                      <div className="flex-grow">
-                        <input
-                          type="text"
-                          value={formData.pincode}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                            setFormData(prev => ({ ...prev, pincode: value }));
-                          }}
-                          placeholder="Enter PIN Code (5-10 digits)"
-                          className="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          disabled={locationLoading}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleDetectByPincode}
-                        disabled={locationLoading || !formData.pincode}
-                        className="px-4 py-2 bg-white text-indigo-600 border border-indigo-300 rounded-md hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium whitespace-nowrap"
-                      >
-                        {locationLoading ? "Detecting..." : "Auto Detect"}
-                      </button>
-                    </div>
-
-                    {/* Detected Location Info */}
-                    {(formData.country || formData.state || formData.city) && (
-                      <div className="mt-3 p-3 bg-white rounded-md border border-indigo-200">
-                        <p className="text-xs font-semibold text-indigo-700 mb-2">Detected Location Details:</p>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          {formData.country && (
-                            <div>
-                              <span className="text-gray-500">Country:</span>
-                              <span className="ml-1 font-medium text-gray-700">{formData.country}</span>
-                            </div>
-                          )}
-                          {formData.state && (
-                            <div>
-                              <span className="text-gray-500">State:</span>
-                              <span className="ml-1 font-medium text-gray-700">{formData.state}</span>
-                            </div>
-                          )}
-                          {formData.city && (
-                            <div>
-                              <span className="text-gray-500">City:</span>
-                              <span className="ml-1 font-medium text-gray-700">{formData.city}</span>
-                            </div>
-                          )}
-                          {formData.district && (
-                            <div>
-                              <span className="text-gray-500">District:</span>
-                              <span className="ml-1 font-medium text-gray-700">{formData.district}</span>
-                            </div>
-                          )}
-                          {formData.pincode && (
-                            <div>
-                              <span className="text-gray-500">PIN Code:</span>
-                              <span className="ml-1 font-medium text-gray-700">{formData.pincode}</span>
-                            </div>
-                          )}
-                          {formData.location_source && (
-                            <div>
-                              <span className="text-gray-500">Source:</span>
-                              <span className="ml-1 font-medium text-indigo-600 capitalize">{formData.location_source}</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    country: "",
-                                    state: "",
-                                    city: "",
-                                    district: "",
-                                    pincode: "",
-                                    latitude: undefined,
-                                    longitude: undefined,
-                                    location_source: undefined,
-                                  }));
-                                  toast.success("Location cleared. You can now select manually.");
-                                }}
-                                className="ml-3 text-xs text-red-600 hover:text-red-800 underline"
-                              >
-                                Clear
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Manual Location Selection - Only show if not auto-detected */}
-                {!formData.location_source && (
-                  <div className="grid grid-cols-1 gap-4 mb-2">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-sm font-medium text-gray-700">Location *</label>
-                      <span className="text-xs text-gray-500">💡 Use PIN code detection above OR select manually below</span>
-                    </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Grid 2 */}
+                <div className="grid grid-cols-1 gap-4 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 -mb-2">Location *</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <select
                         value={formData.country}
                         onChange={(e) => {
-                          setFormData((prev) => ({ ...prev, country: e.target.value, state: "", city: "", district: "" }));
+                          setFormData((prev) => ({ ...prev, country: e.target.value, state: "", city: "" }));
                           if (formErrors.country) setFormErrors(prev => ({ ...prev, country: undefined, state: undefined, city: undefined }));
                         }}
                         onBlur={() => handleBlur("country")}
@@ -1318,7 +699,7 @@ const [manualClientName, setManualClientName] = useState("");
                       <select
                         value={formData.state}
                         onChange={(e) => {
-                          setFormData((prev) => ({ ...prev, state: e.target.value, city: "", district: "" }));
+                          setFormData((prev) => ({ ...prev, state: e.target.value, city: "" }));
                           if (formErrors.state) setFormErrors(prev => ({ ...prev, state: undefined, city: undefined }));
                         }}
                         onBlur={() => handleBlur("state")}
@@ -1351,58 +732,24 @@ const [manualClientName, setManualClientName] = useState("");
                       </select>
                       {formErrors.city && <p className="mt-1 text-xs text-red-500">{formErrors.city}</p>}
                     </div>
-
-                    <div>
-                      <input
-                        type="text"
-                        value={formData.district || ""}
-                        onChange={(e) => {
-                          setFormData((prev) => ({ ...prev, district: e.target.value }));
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="District (optional)"
-                      />
-                    </div>
                   </div>
                 </div>
-                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Min Experience (Years) *</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="50"
-                      value={formData.min_experience_years}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Experience Range *</label>
+                    <select
+                      value={formData.experience_range}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        setFormData((prev) => ({ ...prev, min_experience_years: value }));
-                        if (formErrors.min_experience_years) setFormErrors(prev => ({ ...prev, min_experience_years: undefined }));
+                        setFormData((prev) => ({ ...prev, experience_range: e.target.value }));
+                        if (formErrors.experience_range) setFormErrors(prev => ({ ...prev, experience_range: undefined }));
                       }}
-                      onBlur={() => handleBlur("min_experience_years")}
-                      className={`w-full px-3 py-2 border ${formErrors.min_experience_years ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
-                      placeholder="e.g. 0"
-                    />
-                    {formErrors.min_experience_years && <p className="mt-1 text-xs text-red-500">{formErrors.min_experience_years}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Experience (Years) *</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="50"
-                      value={formData.max_experience_years}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFormData((prev) => ({ ...prev, max_experience_years: value }));
-                        if (formErrors.max_experience_years) setFormErrors(prev => ({ ...prev, max_experience_years: undefined }));
-                      }}
-                      onBlur={() => handleBlur("max_experience_years")}
-                      className={`w-full px-3 py-2 border ${formErrors.max_experience_years ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
-                      placeholder="e.g. 5"
-                    />
-                    {formErrors.max_experience_years && <p className="mt-1 text-xs text-red-500">{formErrors.max_experience_years}</p>}
+                      onBlur={() => handleBlur("experience_range")}
+                      className={`w-full px-3 py-2 border ${formErrors.experience_range ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
+                    >
+                      {experienceRanges.map((range) => <option key={range} value={range}>{range}</option>)}
+                    </select>
+                    {formErrors.experience_range && <p className="mt-1 text-xs text-red-500">{formErrors.experience_range}</p>}
                   </div>
                 </div>
 
@@ -1468,19 +815,15 @@ const [manualClientName, setManualClientName] = useState("");
                 {/* Grid 4 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Education Level</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Education Requirement</label>
                     <select
-                      value={formData.education_level}
-                      onChange={(e) => {
-                        setFormData((prev) => ({ ...prev, education_level: e.target.value }));
-                        if (formErrors.education_level) setFormErrors(prev => ({ ...prev, education_level: undefined }));
-                      }}
-                      onBlur={() => handleBlur("education_level")}
-                      className={`w-full px-3 py-2 border ${formErrors.education_level ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
+                      value={formData.education_requirement}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, education_requirement: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                     >
-                      {educationLevels.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}
+                      <option value="">Select Education</option>
+                      {educationRequirements.map((req) => <option key={req} value={req}>{req}</option>)}
                     </select>
-                    {formErrors.education_level && <p className="mt-1 text-xs text-red-500">{formErrors.education_level}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Number of Openings</label>

@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
-import CandidateFilterSearch from "./CandidateFilterSearch";
-import XRaySearchPage from "./XRaySearchPage";
-import BooleanSearchPage from "./BooleanSearchPage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -328,7 +325,6 @@ function CandidateCard({ match, rank }: { match: ATSMatch; rank: number }) {
 // Main Page Component
 // ─────────────────────────────────────────────────────────────────────────────
 export default function JDMatchingPage() {
-  const [activeTab, setActiveTab] = useState<"jd-matching" | "filter-search" | "xray-search" | "boolean-search">("jd-matching");
   const [jdText, setJdText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<JDParseResponse | null>(null);
@@ -392,63 +388,12 @@ export default function JDMatchingPage() {
     <div className="p-6 min-h-full bg-gray-50">
       {/* ── Page Header ── */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Candidate Matching Workspace</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Job Description Matching</h1>
         <p className="text-gray-500 mt-1 text-sm">
-          Use multiple search methods to find the best candidates for your roles.
+          Paste a Job Description below and instantly rank all candidates by ATS compatibility.
+          Uses extracted skills, experience, role, projects, education, and certifications.
         </p>
       </div>
-
-      {/* ── Tab Navigation ── */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 overflow-x-auto scrollbar-hide" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab("jd-matching")}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === "jd-matching"
-                  ? "border-[#f18622] text-[#f18622]"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              JD Matching
-            </button>
-            <button
-              onClick={() => setActiveTab("filter-search")}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === "filter-search"
-                  ? "border-[#f18622] text-[#f18622]"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Filter Search
-            </button>
-            <button
-              onClick={() => setActiveTab("xray-search")}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === "xray-search"
-                  ? "border-[#f18622] text-[#f18622]"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              X-Ray Search
-            </button>
-            <button
-              onClick={() => setActiveTab("boolean-search")}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === "boolean-search"
-                  ? "border-[#f18622] text-[#f18622]"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Boolean Search
-            </button>
-          </nav>
-        </div>
-      </div>
-
-      {/* ── Tab Content ── */}
-      {activeTab === "jd-matching" && (
-        <>
 
       {/* ── JD Input Card ── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
@@ -620,31 +565,17 @@ export default function JDMatchingPage() {
       )}
 
       {/* ── Empty state (before first search) ── */}
-          {!isLoading && !results && (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
-              <svg className="mx-auto h-12 w-12 text-indigo-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h3 className="text-base font-medium text-gray-700 mb-1">Ready to match candidates</h3>
-              <p className="text-sm text-gray-400">
-                Paste a Job Description above and click <strong>Parse JD</strong> to see ranked results.
-              </p>
-            </div>
-          )}
-        </>
-      )}
-
-      {activeTab === "filter-search" && (
-        <CandidateFilterSearch />
-      )}
-
-      {activeTab === "xray-search" && (
-        <XRaySearchPage />
-      )}
-
-      {activeTab === "boolean-search" && (
-        <BooleanSearchPage />
+      {!isLoading && !results && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
+          <svg className="mx-auto h-12 w-12 text-indigo-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 className="text-base font-medium text-gray-700 mb-1">Ready to match candidates</h3>
+          <p className="text-sm text-gray-400">
+            Paste a Job Description above and click <strong>Parse JD</strong> to see ranked results.
+          </p>
+        </div>
       )}
     </div>
   );

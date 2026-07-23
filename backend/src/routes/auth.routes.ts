@@ -28,7 +28,7 @@ const router = Router();
  *                 minLength: 6
  *               role:
  *                 type: string
- *                 enum: [admin, recruiter, viewer, candidate, bdm, team_lead, client_manager]
+ *                 enum: [admin, recruiter, viewer]
  *                 default: recruiter
  *     responses:
  *       201:

@@ -80,35 +80,6 @@ export const analyticsService = {
     return response.data;
   },
 
-  // Get client performance analytics
-  async getClientPerformance(from?: string, to?: string): Promise<any> {
-    const params = new URLSearchParams();
-    if (from) params.append('from', from);
-    if (to) params.append('to', to);
-    const response = await api.get(`/analytics/client-performance?${params.toString()}`);
-    return response.data;
-  },
-
-  // Get placements analytics
-  async getPlacements(from?: string, to?: string, clientId?: string): Promise<any> {
-    const params = new URLSearchParams();
-    if (from) params.append('from', from);
-    if (to) params.append('to', to);
-    if (clientId) params.append('clientId', clientId);
-    const response = await api.get(`/analytics/placements?${params.toString()}`);
-    return response.data;
-  },
-
-  // Get revenue analytics
-  async getRevenue(from?: string, to?: string, groupBy?: string): Promise<any> {
-    const params = new URLSearchParams();
-    if (from) params.append('from', from);
-    if (to) params.append('to', to);
-    if (groupBy) params.append('groupBy', groupBy);
-    const response = await api.get(`/analytics/revenue?${params.toString()}`);
-    return response.data;
-  },
-
   // Export analytics as CSV
   async exportAnalyticsCSV(dateRange: string): Promise<Blob> {
     const response = await api.get(`/analytics/export/csv?range=${dateRange}`, {
@@ -122,56 +93,6 @@ export const analyticsService = {
     const response = await api.get(`/analytics/export/pdf?range=${dateRange}`, {
       responseType: 'blob',
     });
-    return response.data;
-  },
-
-  // Get team closures analytics
-  async getTeamClosures(from?: string, to?: string, teamLeadId?: string): Promise<any> {
-    const params = new URLSearchParams();
-    if (from) params.append('from', from);
-    if (to) params.append('to', to);
-    if (teamLeadId) params.append('teamLeadId', teamLeadId);
-    const response = await api.get(`/analytics/team-closures?${params.toString()}`);
-    return response.data;
-  },
-
-  // Get submission success rate analytics
-  async getSubmissionSuccessRate(from?: string, to?: string, teamLeadId?: string): Promise<any> {
-    const params = new URLSearchParams();
-    if (from) params.append('from', from);
-    if (to) params.append('to', to);
-    if (teamLeadId) params.append('teamLeadId', teamLeadId);
-    const response = await api.get(`/analytics/submission-success-rate?${params.toString()}`);
-    return response.data;
-  },
-
-  // Get new clients acquired analytics (BDM pipeline)
-  async getNewClientsAcquired(from?: string, to?: string, bdmId?: string): Promise<any> {
-    const params = new URLSearchParams();
-    if (from) params.append('from', from);
-    if (to) params.append('to', to);
-    if (bdmId) params.append('bdmId', bdmId);
-    const response = await api.get(`/analytics/new-clients-acquired?${params.toString()}`);
-    return response.data;
-  },
-
-  // Get revenue generated analytics (BDM pipeline)
-  async getRevenueGenerated(from?: string, to?: string, bdmId?: string): Promise<any> {
-    const params = new URLSearchParams();
-    if (from) params.append('from', from);
-    if (to) params.append('to', to);
-    if (bdmId) params.append('bdmId', bdmId);
-    const response = await api.get(`/analytics/revenue-generated?${params.toString()}`);
-    return response.data;
-  },
-
-  // Get open opportunities analytics (BDM pipeline funnel)
-  async getOpenOpportunities(from?: string, to?: string, bdmId?: string): Promise<any> {
-    const params = new URLSearchParams();
-    if (from) params.append('from', from);
-    if (to) params.append('to', to);
-    if (bdmId) params.append('bdmId', bdmId);
-    const response = await api.get(`/analytics/open-opportunities?${params.toString()}`);
     return response.data;
   },
 };

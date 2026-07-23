@@ -13,43 +13,10 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { OpenAIParserService } from "../services/openai-parser.service";
-import {
-  calculateExperienceFromWorkHistory,
-  extractExperienceFromText,
-  getBestExperience,
-} from "../services/experience.service";
-import { calculateTotalExperience } from "../utils/experienceCalculator";
-import { saveSkillsBestEffort } from "./candidate.controller";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers — used to store ALL parsed sections inline (no-Redis mode)
 // ─────────────────────────────────────────────────────────────────────────────
-
-interface CandidatesSchemaInfo {
-  columnNames: Set<string>;
-  hasResumeFilePath: boolean;
-  hasOriginalFilename: boolean;
-  hasFilePath: boolean;
-  hasCreatedByUserId: boolean;
-}
-let candidatesSchemaCache: CandidatesSchemaInfo | null = null;
-
-async function getCandidatesSchemaInfo(client: any): Promise<CandidatesSchemaInfo> {
-  if (candidatesSchemaCache) return candidatesSchemaCache;
-  const result = await client.query(
-    `SELECT column_name FROM information_schema.columns WHERE table_name = 'candidates' AND table_schema = 'public'`
-  );
-  const columns = new Set<string>(result.rows.map((row: any) => String(row.column_name)));
-  const schema: CandidatesSchemaInfo = {
-    columnNames: columns,
-    hasResumeFilePath: columns.has('resume_file_path'),
-    hasOriginalFilename: columns.has('original_filename'),
-    hasFilePath: columns.has('file_path'),
-    hasCreatedByUserId: columns.has('created_by_user_id'),
-  };
-  candidatesSchemaCache = schema;
-  return schema;
-}
 
 function parseDateStr(raw: any): string | null {
   if (!raw) return null;
@@ -123,8 +90,6 @@ function parseGrade(raw: any): number | null {
 // Stores ALL sections from the AI response into PostgreSQL
 async function storeAllParsedData(client: any, candidateId: string, ai: any, filePath?: string) {
   // ── 1. UPDATE candidates table ────────────────────────────────────────────
-  const candidatesSchema = await getCandidatesSchemaInfo(client);
-
   const emailHash = ai.email
     ? crypto.createHash("md5").update(ai.email.trim().toLowerCase()).digest("hex")
     : null;
@@ -139,48 +104,57 @@ async function storeAllParsedData(client: any, candidateId: string, ai: any, fil
     ai.location ||
     (Array.isArray(ai.locations) && ai.locations.length > 0 ? ai.locations[0] : null);
 
-  const candidateFields: { column: string; value: any }[] = [];
-  const push = (column: string, value: any) => { if (candidatesSchema.columnNames.has(column)) candidateFields.push({ column, value }); };
-
-  push("full_name", trunc(ai.name));
-  push("email", trunc(ai.email));
-  push("phone", trunc(ai.phone, 50));
-  push("location", trunc(location));
-  push("linkedin_url", trunc(ai.linkedin, 500));
-  push("github_url", trunc(ai.github, 500));
-  push("portfolio_url", trunc(ai.portfolio_url || ai.portfolio || ai.website || ai.personal_website, 500));
-  push("summary", trunc(ai.summary, 2000));
-  push("email_hash", emailHash);
-  push("resume_hash", resumeHash);
-  push("raw_resume_text", ai.raw_text || ai.raw_resume_text || null);
-  push("domain", ai.domain?.primary_domain || null);
-  push("domain_confidence", ai.domain?.confidence || null);
-  push("licenses", JSON.stringify(ai.licenses || []));
-
-  const setClauses = candidateFields.map((f, i) => `${f.column} = COALESCE($${i + 1}, ${f.column})`).join(", ");
-  const updateParams = candidateFields.map((f) => f.value);
-  const paramIdx = candidateFields.length + 1;
+  const qualityScore = ai.extraction_quality?.extraction_quality_percentage
+    ? Math.round(ai.extraction_quality.extraction_quality_percentage) : null;
+  const confidenceScore = ai.confidence?.overall ?? null;
 
   await client.query(
     `UPDATE candidates
-     SET ${setClauses}${setClauses ? ", " : ""}status = 'success', review_status = 'pending', updated_at = NOW()
-     WHERE id = $${paramIdx}`,
-    [...updateParams, candidateId]
+     SET full_name            = COALESCE($1,  full_name),
+         email                = COALESCE($2,  email),
+         phone                = COALESCE($3,  phone),
+         location             = COALESCE($4,  location),
+         linkedin_url         = COALESCE($5,  linkedin_url),
+         github_url           = COALESCE($6,  github_url),
+         summary              = COALESCE($7,  summary),
+         status               = 'success',
+         review_status        = 'pending',
+         email_hash           = COALESCE($8,  email_hash),
+         resume_hash          = COALESCE($9,  resume_hash),
+         resume_quality_score = COALESCE($10, resume_quality_score),
+         confidence_score     = COALESCE($11, confidence_score),
+         raw_resume_text      = COALESCE($12, raw_resume_text),
+         updated_at           = NOW()
+     WHERE id = $13`,
+    [
+      trunc(ai.name),
+      trunc(ai.email),
+      trunc(ai.phone, 50),
+      trunc(location),
+      trunc(ai.linkedin, 500),
+      trunc(ai.github, 500),
+      trunc(ai.summary, 2000),
+      emailHash,
+      resumeHash,
+      qualityScore,
+      confidenceScore,
+      ai.raw_text || ai.raw_resume_text || null,
+      candidateId,
+    ]
   );
   console.log(`  ✅ Candidate profile updated`);
 
   // ── 2. WORK HISTORY ───────────────────────────────────────────────────────
   // Accept both field names the AI may return
   const workItems: any[] =
-    (Array.isArray(ai.work_history) && ai.work_history.length > 0 ? ai.work_history : null) ??
+    (Array.isArray(ai.work_experience) && ai.work_experience.length > 0 ? ai.work_experience : null) ??
     (Array.isArray(ai.work_history)   && ai.work_history.length   > 0 ? ai.work_history   : null) ??
     [];
 
   await client.query("DELETE FROM work_history WHERE candidate_id = $1", [candidateId]);
-  
-  const { total, processed } = calculateTotalExperience(workItems);
-
-  for (const w of processed) {
+  for (const w of workItems) {
+    const isCurrent = w.is_current ||
+      ["present","current","now","till date"].includes(String(w.end_date || "").toLowerCase());
     await client.query(
       `INSERT INTO work_history
          (id, candidate_id, job_title, company_name, start_date, end_date, is_current, description, location)
@@ -188,31 +162,17 @@ async function storeAllParsedData(client: any, candidateId: string, ai: any, fil
       [
         uuidv4(),
         candidateId,
-        trunc(w.job_title || w.title, 200),
-        trunc(w.company_name || w.company, 200),
-        w.parsed_start ? w.parsed_start.toISOString().split('T')[0] : safeDate(w.start_date),
-        w.parsed_end ? w.parsed_end.toISOString().split('T')[0] : safeDate(w.is_current ? null : w.end_date),
-        w.is_current || false,
+        trunc(w.job_title || w.title),
+        trunc(w.company_name || w.company),
+        safeDate(w.start_date),
+        safeDate(isCurrent ? null : w.end_date),
+        isCurrent,
         trunc(w.description || (Array.isArray(w.responsibilities) ? w.responsibilities.join("; ") : null), 2000),
-        trunc(w.location, 200),
+        trunc(w.location),
       ]
     );
   }
   console.log(`  ✅ Work history: ${workItems.length} entries stored`);
-
-  // ── 2b. SAVE TOTAL EXPERIENCE ───────────────────────────────────────
-  if (total.total_records > 0) {
-    try {
-      const bestExpFloat = total.years + (total.months / 12);
-      await client.query(
-        `UPDATE candidates SET total_experience_years = $1, total_years_exp = $2 WHERE id = $3`,
-        [bestExpFloat, JSON.stringify(total), candidateId]
-      );
-      console.log(`  ✅ Experience: ${total.formatted_string}`);
-    } catch (expErr: any) {
-      console.warn(`  ⚠️  Could not update total_experience_years: ${expErr.message}`);
-    }
-  }
 
   // ── 3. EDUCATION ──────────────────────────────────────────────────────────
   const eduItems: any[] = Array.isArray(ai.education) ? ai.education : [];
@@ -237,7 +197,31 @@ async function storeAllParsedData(client: any, candidateId: string, ai: any, fil
 
   // ── 4. SKILLS + CANDIDATE_SKILLS ──────────────────────────────────────────
   const rawSkills: any[] = Array.isArray(ai.skills) ? ai.skills : [];
-  await saveSkillsBestEffort(client, candidateId, rawSkills, []);
+  await client.query("DELETE FROM candidate_skills WHERE candidate_id = $1", [candidateId]);
+  for (const sk of rawSkills) {
+    const skillName = typeof sk === "string" ? sk.trim() : (sk.name || sk.skill_name || "").trim();
+    if (!skillName) continue;
+    const nameTrimmed = trunc(skillName)!;
+
+    // Find or create the global skill row
+    const existing = await client.query("SELECT id FROM skills WHERE name = $1", [nameTrimmed]);
+    let skillId: string;
+    if (existing.rows.length > 0) {
+      skillId = existing.rows[0].id;
+    } else {
+      const ins = await client.query(
+        "INSERT INTO skills (id, name, category) VALUES ($1,$2,'technical') RETURNING id",
+        [uuidv4(), nameTrimmed]
+      );
+      skillId = ins.rows[0].id;
+    }
+
+    await client.query(
+      `INSERT INTO candidate_skills (candidate_id, skill_id, proficiency_level)
+       VALUES ($1,$2,'intermediate') ON CONFLICT DO NOTHING`,
+      [candidateId, skillId]
+    );
+  }
   console.log(`  ✅ Skills: ${rawSkills.length} entries stored`);
 
   // ── 5. CERTIFICATIONS ─────────────────────────────────────────────────────
@@ -294,19 +278,14 @@ export const uploadResume = async (
 
     console.log(`📄 Resume upload: ${fileInfo.originalname} (${fileInfo.type})`);
 
-    // ── 1.4. Detect if file is an image ─────────────────────────────────────────────
-    const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(fileInfo.type);
-    console.log(`  🖼️  Is image: ${isImage}`);
-
     // ── 1.5. Extract Text IMMEDIATELY ─────────────────────────────────────────────
     let rawResumeText = "";
     try {
       console.log(`  📄 Extracting text via /preview-sections before DB insert...`);
-      const AI_URL = process.env.AI_SERVICE_URL;
+      const AI_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
       const formData = new FormData();
       formData.append("file", fs.createReadStream(path.resolve(fileInfo.path)));
       formData.append("force_ocr", String(forceOcr));
-      formData.append("is_image", String(isImage));
 
       const previewRes = await axios.post(`${AI_URL}/preview-sections`, formData, {
         headers: {
@@ -335,25 +314,10 @@ export const uploadResume = async (
 
     const candidateId = uuidv4();
     const tenantId    = (req as any).user?.tenant_id || "default";
-
-    // ── DUPLICATE CHECK ── before creating the candidate
-    // We won't have name/email/phone yet at this early stage (before AI parse),
-    // so duplicate check runs AFTER the AI parse in the direct parse path below.
-    // The early candidate row is created as 'pending' and removed if duplicate.
-
-    const candidatesSchema = await getCandidatesSchemaInfo(client);
-    const candidateColumns = ["id", "status", "review_status", "tenant_id", "consent_given", "raw_resume_text"];
-    const candidateValues: any[] = [candidateId, "pending", "pending", tenantId, false, rawResumeText || null];
-    if (candidatesSchema.hasCreatedByUserId) { candidateColumns.push("created_by_user_id"); candidateValues.push(userId); }
-    if (candidatesSchema.hasResumeFilePath) { candidateColumns.push("resume_file_path"); candidateValues.push(fileInfo.path); }
-    if (candidatesSchema.hasOriginalFilename) { candidateColumns.push("original_filename"); candidateValues.push(fileInfo.originalname); }
-    if (candidatesSchema.hasFilePath) { candidateColumns.push("file_path"); candidateValues.push(fileInfo.path); }
-
-    const placeholders = candidateColumns.map((_, i) => `$${i + 1}`).join(", ");
     const cRes = await client.query(
-      `INSERT INTO candidates (${candidateColumns.join(", ")}, created_at, updated_at)
-       VALUES (${placeholders}, NOW(), NOW()) RETURNING *`,
-      candidateValues
+      `INSERT INTO candidates (id, status, review_status, tenant_id, consent_given, raw_resume_text, created_at, updated_at)
+       VALUES ($1,'pending','pending',$2,false,$3,NOW(),NOW()) RETURNING *`,
+      [candidateId, tenantId, rawResumeText || null]
     );
     const candidate = cRes.rows[0];
     console.log(`  ✅ Candidate created: ${candidate.id}`);
@@ -367,40 +331,6 @@ export const uploadResume = async (
     const parsingJob = pjRes.rows[0];
     console.log(`  ✅ Parsing job created: ${parsingJob.id}`);
 
-    // Log activity (best-effort; use a savepoint so a schema mismatch doesn't abort the main transaction)
-    try {
-      await client.query("SAVEPOINT sp_activity");
-      await client.query(
-        `INSERT INTO activity_log (action, entity_id, entity_type, user_id, created_at, details)
-         VALUES ($1, $2, $3, $4, NOW(), $5)`,
-        ['candidate_sourced', candidate.id, 'candidate', userId, JSON.stringify({
-          filename: fileInfo.originalname,
-          method: 'resume_upload'
-        })]
-      );
-      await client.query("RELEASE SAVEPOINT sp_activity");
-    } catch (logErr: any) {
-      await client.query("ROLLBACK TO SAVEPOINT sp_activity").catch(() => {});
-      console.warn(`⚠️  Could not write activity_log: ${logErr.message}`);
-    }
-
-    // Log audit (best-effort; use a savepoint so a schema mismatch doesn't abort the main transaction)
-    try {
-      await client.query("SAVEPOINT sp_audit");
-      await client.query(
-        `INSERT INTO audit_logs (id, action, resource_type, resource_id, user_id, created_at, details)
-         VALUES ($1, $2, $3, $4, $5, NOW(), $6)`,
-        [uuidv4(), 'create', 'candidates', candidate.id, userId, JSON.stringify({
-          filename: fileInfo.originalname,
-          method: 'resume_upload'
-        })]
-      );
-      await client.query("RELEASE SAVEPOINT sp_audit");
-    } catch (logErr: any) {
-      await client.query("ROLLBACK TO SAVEPOINT sp_audit").catch(() => {});
-      console.warn(`⚠️  Could not write audit_logs: ${logErr.message}`);
-    }
-
     // ── DIRECT PARSE PATH: call AI service inline ──────────────────────────
     await client.query("COMMIT"); // commit DB records before slow AI call
 
@@ -413,7 +343,7 @@ export const uploadResume = async (
       );
 
         // Call the Python AI service
-        const AI_URL = process.env.AI_SERVICE_URL;
+        const AI_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
         console.log(`  🤖 Calling AI service: ${AI_URL}/parse`);
 
         const aiRes = await fetch(`${AI_URL}/parse`, {
@@ -454,8 +384,6 @@ export const uploadResume = async (
 
         // Store ALL sections into the database
         console.log(`📥 Storing parsed data for candidate ${candidateId}...`);
-
-        // Duplicate candidate checks disabled per product requirement; always save the upload
         await storeAllParsedData(directClient, candidateId, aiData, fileInfo.path);
 
         // Mark parsing_job as completed
@@ -471,7 +399,7 @@ export const uploadResume = async (
         );
 
         const workCount = (
-          (Array.isArray(aiData.work_history) ? aiData.work_history : []).length ||
+          (Array.isArray(aiData.work_experience) ? aiData.work_experience : []).length ||
           (Array.isArray(aiData.work_history)   ? aiData.work_history   : []).length
         );
 
@@ -479,7 +407,6 @@ export const uploadResume = async (
         res.status(201).json({
           success: true,
           message: "Resume uploaded and parsed successfully",
-          warning: undefined,
           data: {
             candidateId: candidate.id,
             parsingJobId: parsingJob.id,
@@ -523,7 +450,6 @@ export const uploadResume = async (
     }
     if (req.file) deleteUploadedFile(req.file.path);
     console.error("❌ Upload error:", error);
-    console.error("❌ Full error stack:", error instanceof Error ? error.stack : String(error));
 
     if (error instanceof Error) {
       if (error.message.includes("Invalid file type")) {
@@ -535,18 +461,7 @@ export const uploadResume = async (
         return;
       }
     }
-    const isDevelopment = process.env.NODE_ENV !== 'production';
-    if (isDevelopment && error instanceof Error) {
-      res.status(500).json({ 
-        error: "Upload failed", 
-        message: "An unexpected error occurred", 
-        code: "UPLOAD_FAILED",
-        details: error.message,
-        stack: error.stack
-      });
-    } else {
-      res.status(500).json({ error: "Upload failed", message: "An unexpected error occurred", code: "UPLOAD_FAILED" });
-    }
+    res.status(500).json({ error: "Upload failed", message: "An unexpected error occurred", code: "UPLOAD_FAILED" });
   } finally {
     if (client) client.release();
   }
@@ -607,7 +522,10 @@ export const getUploadStats = async (
       const totalCandidates = parseInt(totalCandidatesResult.rows[0].count);
 
       // Get candidates with files
-      const withFiles = totalCandidates; // Assume all candidates have data
+      const withFilesResult = await client.query(
+        "SELECT COUNT(*) FROM candidates WHERE resume_file_path IS NOT NULL",
+      );
+      const withFiles = parseInt(withFilesResult.rows[0].count);
 
       // Get parsing jobs statistics
       const parsingStatsResult = await client.query(`
@@ -703,7 +621,7 @@ export const previewSections = async (
     formData.append("force_ocr", forceOcr ? "true" : "false");
  
     // 3. Forward to Python AI service
-    const aiServiceUrl = process.env.AI_SERVICE_URL;
+    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
     const endpoint = `${aiServiceUrl}/preview-sections`;
 
     console.log(`📤 Forwarding to Python AI service: ${endpoint}`);
@@ -712,7 +630,7 @@ export const previewSections = async (
       headers: {
         ...formData.getHeaders(),
       },
-      timeout: 120000, // 120 second timeout
+      timeout: 60000, // 60 second timeout
     });
 
     console.log(`✅ Preview sections completed for: ${fileInfo.originalname}`);
@@ -808,7 +726,7 @@ export const parseSections = async (
         );
 
         console.log(`✅ OpenAI Response Received`);
-        console.log(`📊 Extracted ${openaiResult.work_history.length} work experiences`);
+        console.log(`📊 Extracted ${openaiResult.work_experience.length} work experiences`);
         console.log(`🎓 Extracted ${openaiResult.education.length} education entries`);
 
         // Step B: Use existing parser for skills, contact, summary, certifications, projects
@@ -830,7 +748,7 @@ export const parseSections = async (
         console.log("🔀 Step C: Merging OpenAI and existing parser results...");
         const mergedResult = {
           status: "success",
-          work_history: openaiResult.work_history,
+          work_experience: openaiResult.work_experience,
           education: openaiResult.education,
           skills: existingResult.skills || [],
           summary: existingResult.summary || "",
@@ -838,7 +756,7 @@ export const parseSections = async (
           projects: existingResult.projects || [],
           contact: existingResult.contact || {},
           processing_time_ms: openaiResult.processing_time_ms,
-          message: `Successfully parsed with OpenAI (experience/education) + Existing parser (skills/contact/summary): ${openaiResult.work_history.length} experience entries, ${openaiResult.education.length} education entries, ${existingResult.skills?.length || 0} skills`,
+          message: `Successfully parsed with OpenAI (experience/education) + Existing parser (skills/contact/summary): ${openaiResult.work_experience.length} experience entries, ${openaiResult.education.length} education entries, ${existingResult.skills?.length || 0} skills`,
           metadata: {
             model: "gpt-4o-mini-hybrid",
             openai_token_usage: openaiResult.token_usage,
@@ -859,7 +777,7 @@ export const parseSections = async (
     }
 
     // Default: Use DeBERTa NER parser (own-model) or fallback
-    const aiServiceUrl = process.env.AI_SERVICE_URL;
+    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
     const endpoint = `${aiServiceUrl}/parse-sections`;
 
     console.log(`📤 Forwarding parse-sections request to Python AI service: ${endpoint}`);

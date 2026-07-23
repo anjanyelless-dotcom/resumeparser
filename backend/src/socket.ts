@@ -61,13 +61,9 @@ export const createSocketServer = (httpServer: HTTPServer): SocketIOServer => {
   const io = new SocketIOServer(httpServer, {
     cors: {
       origin: [
-        ...(process.env.NODE_ENV === 'development' ? [
-          "http://localhost:3000",
-          "http://localhost:5173",
-        ] : []),
-        ...(process.env.ALLOWED_ORIGINS?.split(',') || [
-          "https://lakshya-llm-resume-parser-ated.vercel.app",
-        ]),
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://lakshya-llm-resume-parser-ated.vercel.app",
       ],
       methods: ["GET", "POST"],
       credentials: true,
@@ -121,7 +117,7 @@ export const createSocketServer = (httpServer: HTTPServer): SocketIOServer => {
   });
 
   // Global error handling
-  io.on("error", (error: any) => {
+  io.on("error", (error) => {
     console.error("❌ Socket.io server error:", error);
   });
 

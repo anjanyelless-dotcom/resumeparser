@@ -6,15 +6,20 @@ from pydantic import BaseModel, field_validator, model_validator
 import logging
 import time
 import os
-import torch
 from typing import Optional, Dict, Any, List
 from collections import defaultdict
 from dotenv import load_dotenv
 
+# Optional torch import for NER model (not needed for skills taxonomy)
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    logging.warning("torch not available - NER model features will be disabled")
+
 # Load environment variables from .env file
 load_dotenv()
-
-from parsers.master_parser import MasterParser
 
 # Configure logging
 logging.basicConfig(
@@ -72,44 +77,9 @@ async def log_requests(request: Request, call_next):
     
     return response
 
-# Global master parser instance (will be initialized at startup)
-master_parser: Optional[MasterParser] = None
-
-# Cached lightweight parser instances (initialized once at startup)
-_cached_text_extractor: Optional[Any] = None
-_cached_section_splitter: Optional[Any] = None
-_cached_section_validator: Optional[Any] = None
-_cached_deberta_parser: Optional[Any] = None
-_cached_rule_parser: Optional[Any] = None
-_cached_experience_extractor: Optional[Any] = None
-_cached_education_extractor: Optional[Any] = None
-
-
-def get_cached_rule_parser():
-    """Return cached RuleBasedParser, creating it once on first call."""
-    global _cached_rule_parser
-    if _cached_rule_parser is None:
-        from parsers.rule_parser import RuleBasedParser
-        _cached_rule_parser = RuleBasedParser()
-    return _cached_rule_parser
-
-
-def get_cached_experience_extractor():
-    """Return cached ExperienceExtractor, creating it once on first call."""
-    global _cached_experience_extractor
-    if _cached_experience_extractor is None:
-        from parsers.experience_extractor import ExperienceExtractor
-        _cached_experience_extractor = ExperienceExtractor()
-    return _cached_experience_extractor
-
-
-def get_cached_education_extractor():
-    """Return cached EducationExtractor, creating it once on first call."""
-    global _cached_education_extractor
-    if _cached_education_extractor is None:
-        from parsers.education_extractor import EducationExtractor
-        _cached_education_extractor = EducationExtractor()
-    return _cached_education_extractor
+# Global master parser instance (will be initialized lazily if needed)
+master_parser = None
+MASTER_PARSER_AVAILABLE = False
 
 # Import matching engine
 try:
@@ -152,8 +122,6 @@ class ParseTextRequest(BaseModel):
 
 class BatchParseRequest(BaseModel):
     files: List[Dict[str, str]]  # List of {file_path, candidate_id}
-    llm_provider: Optional[str] = None
-    force_ocr: Optional[bool] = False
 
 class BenchmarkRequest(BaseModel):
     text: str
@@ -187,8 +155,6 @@ class ParseResponse(BaseModel):
     model_results: Optional[Dict[str, Any]] = None
     raw_text: Optional[str] = None
     raw_resume_text: Optional[str] = None
-    domain: Optional[Dict[str, Any]] = None
-    licenses: List[str] = []
     # Validators to ensure None values are converted to empty lists
     @field_validator('websites', 'skills', 'work_experience', 'work_history', 'education', 'job_titles', 'companies', 'locations', 'dates', mode='before')
     @classmethod
@@ -314,7 +280,6 @@ class SectionPreviewResponse(BaseModel):
     detected_sections: List[str]  # List of section names with non-empty text
     missing_sections: List[str]  # List of standard sections not detected
     validation_metadata: Dict[str, Any]  # Validation information (spacy_available, validation_ran, corrections, warnings)
-    processing_time_ms: Optional[float] = None
 
 # Routes
 @app.get("/", response_model=WelcomeResponse)
@@ -422,36 +387,6 @@ async def parse_resume(request: ParseRequest):
             force_ocr=request.force_ocr or False
         )
         
-        # TODO: Workaround - domain/license extraction added here as a workaround
-        # The master_parser._run_rule_parsing method was not being called in the active code path,
-        # so domain and licenses were not being extracted. Root cause not yet identified (2026-07-08).
-        # This workaround extracts domain and licenses directly in the endpoint.
-        # See master_parser.py lines 1087-1120 for the unreachable domain/license extraction code.
-        
-        # Add domain and license extraction if not present
-        if 'domain' not in result or not result['domain']:
-            if master_parser.rule_parser and hasattr(master_parser.rule_parser, 'detect_domain'):
-                skills = result.get('skills', [])
-                if skills:
-                    domain_info = master_parser.rule_parser.detect_domain(skills)
-                    result['domain'] = domain_info
-                    logger.info(f"Added domain detection: {domain_info['primary_domain']} (confidence: {domain_info['confidence']:.2f})")
-        
-        if 'licenses' not in result or not result['licenses']:
-            if master_parser.rule_parser and hasattr(master_parser.rule_parser, 'extract_licenses'):
-                # Extract text from file for license extraction
-                try:
-                    if master_parser.text_extractor:
-                        extraction_result = master_parser.text_extractor.extract(request.file_path)
-                        text = extraction_result.get('text', '')
-                        if text:
-                            licenses = master_parser.rule_parser.extract_licenses(text)
-                            result['licenses'] = licenses
-                            if licenses:
-                                logger.info(f"Added license extraction: {licenses}")
-                except Exception as e:
-                    logger.warning(f"Failed to extract licenses: {e}")
-        
         # Update metrics
         parse_time = (time.time() - start_time) * 1000
         parse_metrics['total_parses'] += 1
@@ -557,7 +492,7 @@ async def parse_text_direct(request: ParseTextRequest):
 @app.post("/parse-batch", response_model=BatchParseResponse)
 async def parse_batch(request: BatchParseRequest):
     """
-    Parse multiple resume files in batch with controlled concurrency.
+    Parse multiple resume files in batch.
     
     Args:
         request: BatchParseRequest containing list of {file_path, candidate_id}
@@ -572,13 +507,10 @@ async def parse_batch(request: BatchParseRequest):
         )
     
     # Validate batch size
-    max_batch = int(os.getenv('PARSE_BATCH_MAX', '100'))
-    batch_concurrency = int(os.getenv('PARSE_BATCH_CONCURRENCY', '4'))
-    
-    if len(request.files) > max_batch:
+    if len(request.files) > 100:
         raise HTTPException(
             status_code=400,
-            detail=f"Batch size too large. Maximum {max_batch} files allowed per batch."
+            detail="Batch size too large. Maximum 100 files allowed per batch."
         )
     
     if len(request.files) == 0:
@@ -587,97 +519,57 @@ async def parse_batch(request: BatchParseRequest):
             detail="Batch cannot be empty. Please provide at least one file."
         )
     
-    import time
-    import asyncio
-    
-    batch_start = time.time()
-    llm_provider = request.llm_provider
-    force_ocr = request.force_ocr or False
-    logger.info(f"Starting batch parse of {len(request.files)} files (concurrency={batch_concurrency}, force_ocr={force_ocr}, llm={llm_provider})")
-    
-    async def parse_one(file_info: dict) -> dict:
-        file_path = file_info.get('file_path')
-        candidate_id = file_info.get('candidate_id')
-        step_start = time.time()
-        
-        if not file_path or not candidate_id:
-            return {
-                'status': 'error',
-                'file_path': file_path or 'unknown',
-                'candidate_id': candidate_id or 'unknown',
-                'error': 'Missing file_path or candidate_id',
-                'duration_ms': 0
-            }
-        
-        try:
-            # Offload CPU-bound parse to thread pool
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None,  # default executor
-                master_parser.parse_file,
-                file_path,
-                candidate_id,
-                llm_provider,
-                force_ocr
-            )
-            result['duration_ms'] = (time.time() - step_start) * 1000
-            return result
-        except Exception as e:
-            return {
-                'status': 'error',
-                'file_path': file_path,
-                'candidate_id': candidate_id,
-                'error': str(e),
-                'duration_ms': (time.time() - step_start) * 1000
-            }
-    
-    # Process in chunks to control concurrency
-    all_results = []
-    for i in range(0, len(request.files), batch_concurrency):
-        chunk = request.files[i:i + batch_concurrency]
-        chunk_results = await asyncio.gather(*[parse_one(f) for f in chunk])
-        all_results.extend(chunk_results)
+    logger.info(f"Starting batch parse of {len(request.files)} files")
     
     results = []
     errors = []
     successful_parses = 0
     
-    for result in all_results:
-        if result.get('status') == 'error':
+    for file_info in request.files:
+        try:
+            file_path = file_info.get('file_path')
+            candidate_id = file_info.get('candidate_id')
+            
+            if not file_path or not candidate_id:
+                errors.append({
+                    'file_path': file_path or 'unknown',
+                    'candidate_id': candidate_id or 'unknown',
+                    'error': 'Missing file_path or candidate_id'
+                })
+                continue
+            
+            # Parse individual file
+            result = master_parser.parse_file(file_path, candidate_id)
+            results.append(ParseResponse(**result))
+            
+            if result['status'] == 'success':
+                successful_parses += 1
+                # Update metrics
+                parse_metrics['total_parses'] += 1
+                parse_metrics['successful_parses'] += 1
+                confidence_score = result.get('confidence', {}).get('overall', 0.0)
+                parse_metrics['total_confidence_score'] += confidence_score
+            else:
+                errors.append({
+                    'file_path': file_path,
+                    'candidate_id': candidate_id,
+                    'error': result.get('error', 'Unknown parsing error')
+                })
+                parse_metrics['failed_parses'] += 1
+                parse_metrics['error_counts']['batch_parse_error'] += 1
+                
+        except Exception as e:
             errors.append({
-                'file_path': result.get('file_path', 'unknown'),
-                'candidate_id': result.get('candidate_id', 'unknown'),
-                'error': result.get('error', 'Unknown parsing error')
+                'file_path': file_info.get('file_path', 'unknown'),
+                'candidate_id': file_info.get('candidate_id', 'unknown'),
+                'error': str(e)
             })
             parse_metrics['failed_parses'] += 1
             parse_metrics['error_counts']['batch_file_error'] += 1
-            continue
-        
-        results.append(ParseResponse(**result))
-        
-        if result['status'] == 'success':
-            successful_parses += 1
-            parse_metrics['total_parses'] += 1
-            parse_metrics['successful_parses'] += 1
-            confidence_score = result.get('confidence', {}).get('overall', 0.0)
-            parse_metrics['total_confidence_score'] += confidence_score
-        else:
-            errors.append({
-                'file_path': result.get('file_path', 'unknown'),
-                'candidate_id': result.get('candidate_id', 'unknown'),
-                'error': result.get('error', 'Unknown parsing error')
-            })
-            parse_metrics['failed_parses'] += 1
-            parse_metrics['error_counts']['batch_parse_error'] += 1
     
     failed_parses = len(request.files) - successful_parses
-    batch_time_ms = (time.time() - batch_start) * 1000
     
-    logger.info(
-        f"Batch parse completed in {batch_time_ms:.1f}ms: "
-        f"{successful_parses}/{len(request.files)} successful, "
-        f"avg per file: {batch_time_ms / max(len(request.files), 1):.1f}ms"
-    )
+    logger.info(f"Batch parse completed: {successful_parses}/{len(request.files)} successful")
     
     return BatchParseResponse(
         status="completed",
@@ -709,7 +601,7 @@ async def get_metrics():
             model_name = model_info.get('model_name', 'Unknown')
             model_type = model_info.get('model_type', 'Unknown')
             supported_entities = model_info.get('supported_entities', [])
-            device = "GPU" if torch.cuda.is_available() else "CPU"
+            device = "GPU" if TORCH_AVAILABLE and torch.cuda.is_available() else "CPU"
         else:
             model_name = "Unknown"
             model_type = "Unknown"
@@ -1005,7 +897,8 @@ async def parse_sections(request: ParseSectionsRequest):
         # 0. Parse contact details from explicit contact section
         if request.contact_text and request.contact_text.strip():
             try:
-                rule_parser = get_cached_rule_parser()
+                from parsers.rule_parser import RuleBasedParser
+                rule_parser = RuleBasedParser()
                 contact['email'] = rule_parser.extract_email(request.contact_text)
                 contact['phone'] = rule_parser.extract_phone(request.contact_text)
                 contact['linkedin'] = rule_parser.extract_linkedin(request.contact_text)
@@ -1048,7 +941,8 @@ async def parse_sections(request: ParseSectionsRequest):
         # which may not be part of any extracted section.
         if request.raw_text:
             try:
-                _rp = get_cached_rule_parser()
+                from parsers.rule_parser import RuleBasedParser
+                _rp = RuleBasedParser()
                 # Only search first 500 chars (the header) for email/phone
                 _header_text = request.raw_text[:800]
                 if not contact.get('email'):
@@ -1067,7 +961,8 @@ async def parse_sections(request: ParseSectionsRequest):
 
         if combined_all_text:
             try:
-                rule_parser = get_cached_rule_parser()
+                from parsers.rule_parser import RuleBasedParser
+                rule_parser = RuleBasedParser()
                 if not contact.get('email'):
                     contact['email'] = rule_parser.extract_email(combined_all_text)
                 if not contact.get('phone'):
@@ -1088,7 +983,8 @@ async def parse_sections(request: ParseSectionsRequest):
         elif raw_text_for_name:
             # Edge case: no section texts but raw_text is available
             try:
-                rule_parser = get_cached_rule_parser()
+                from parsers.rule_parser import RuleBasedParser
+                rule_parser = RuleBasedParser()
                 if not contact.get('name'):
                     contact['name'] = _clean_name(rule_parser.extract_name(raw_text_for_name))
                 if not contact.get('email'):
@@ -1101,7 +997,8 @@ async def parse_sections(request: ParseSectionsRequest):
         # 1. Parse skills
         if request.skills_text and request.skills_text.strip():
             try:
-                rule_parser = get_cached_rule_parser()
+                from parsers.rule_parser import RuleBasedParser
+                rule_parser = RuleBasedParser()
                 skills = rule_parser.extract_skills(request.skills_text)
             except Exception as e:
                 logger.warning(f"Failed to extract skills: {e}")
@@ -1118,10 +1015,9 @@ async def parse_sections(request: ParseSectionsRequest):
         if request.projects_text and request.projects_text.strip():
             projects = [p.strip() for p in request.projects_text.split('\n\n') if p.strip()]
         
-        # Try to use DeBERTa model first (use cached instance to avoid reload)
+        # Try to use DeBERTa model first
         try:
-            global _cached_deberta_parser
-            deberta_parser = _cached_deberta_parser or DeBERTaNerParser()
+            deberta_parser = DeBERTaNerParser()
             if deberta_parser.is_loaded and deberta_parser.deberta_available:
                 logger.info("Using DeBERTa NER model for parsing sections")
                 
@@ -1234,7 +1130,8 @@ async def parse_sections(request: ParseSectionsRequest):
 
                 # Post-process skills: extract extra skills from job titles/descriptions and raw text
                 try:
-                    rule_parser = get_cached_rule_parser()
+                    from parsers.rule_parser import RuleBasedParser
+                    rule_parser = RuleBasedParser()
                     extra_skills = []
                     for exp in work_experience:
                         title = exp.get('job_title') or exp.get('title')
@@ -1401,7 +1298,7 @@ async def parse_sections(request: ParseSectionsRequest):
                 
                 # Process each chunk sequentially
                 all_experiences = []
-                exp_extractor = get_cached_experience_extractor()
+                exp_extractor = ExperienceExtractor()
                 
                 for idx, chunk in enumerate(chunks):
                     logger.info(f"Processing chunk {idx+1}/{len(chunks)}: {len(chunk)} chars, ~{len(chunk.split())} words")
@@ -1421,7 +1318,7 @@ async def parse_sections(request: ParseSectionsRequest):
                 if len(work_experience) == 0:
                     logger.warning("Chunked extraction returned 0 experiences - attempting full-text parse as fallback")
                     try:
-                        exp_extractor = get_cached_experience_extractor()
+                        exp_extractor = ExperienceExtractor()
                         full_result = exp_extractor.extract_work_experience(exp_text)
                         work_experience = full_result.get('work_experience', []) if isinstance(full_result, dict) else []
                         logger.info(f"Full-text fallback extracted {len(work_experience)} experiences")
@@ -1429,7 +1326,7 @@ async def parse_sections(request: ParseSectionsRequest):
                         logger.error(f"Full-text fallback also failed: {e}")
             else:
                 # Normal processing for shorter text
-                exp_extractor = get_cached_experience_extractor()
+                exp_extractor = ExperienceExtractor()
                 exp_result = exp_extractor.extract_work_experience(exp_text)
                 work_experience = exp_result.get('work_experience', []) if isinstance(exp_result, dict) else []
                 logger.info(f"Extracted {len(work_experience)} work experience entries")
@@ -1437,7 +1334,7 @@ async def parse_sections(request: ParseSectionsRequest):
         # Parse education section if provided
         if request.education_text and request.education_text.strip():
             logger.info(f"Parsing education section: {len(request.education_text)} chars")
-            edu_extractor = get_cached_education_extractor()
+            edu_extractor = EducationExtractor()
             edu_result = edu_extractor.extract_education(request.education_text)
             # EducationExtractor returns a list directly, not a dict
             education = edu_result if isinstance(edu_result, list) else []
@@ -1445,7 +1342,8 @@ async def parse_sections(request: ParseSectionsRequest):
         
         # Post-process skills: extract extra skills from job titles/descriptions and raw text
         try:
-            rule_parser = get_cached_rule_parser()
+            from parsers.rule_parser import RuleBasedParser
+            rule_parser = RuleBasedParser()
             extra_skills = []
             for exp in work_experience:
                 title = exp.get('job_title') or exp.get('title')
@@ -1502,12 +1400,12 @@ async def parse_sections(request: ParseSectionsRequest):
         )
 
 @app.post("/preview-sections", response_model=SectionPreviewResponse)
-async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(False), is_image: bool = Form(False)):
+async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(False)):
     """
     Preview resume sections without running DeBERTa entity extraction.
     
     This endpoint runs only:
-    1. Text extraction (from PDF/DOCX/TXT/IMAGE)
+    1. Text extraction (from PDF/DOCX/TXT)
     2. Section splitting (using regex + font metadata)
     3. Section validation (using spaCy NLP)
     
@@ -1517,29 +1415,22 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
     """
     import tempfile
     import shutil
-    import time
     from parsers.text_extractor import TextExtractor
     from parsers.section_splitter import SectionSplitter
     from parsers.section_validator import SectionValidator
     
     temp_file_path = None
-    start_time = time.time()
-    timing = {}
     
     try:
         # Save uploaded file to temporary location
-        step_start = time.time()
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
             shutil.copyfileobj(file.file, temp_file)
             temp_file_path = temp_file.name
-        timing['file_upload_ms'] = (time.time() - step_start) * 1000
         
-        logger.info(f"Processing file for section preview: {file.filename} (force_ocr={force_ocr}, is_image={is_image})")
+        logger.info(f"Processing file for section preview: {file.filename} (force_ocr={force_ocr})")
         
-        # STEP 1: Text Extraction (use cached extractor if available)
-        step_start = time.time()
-        global _cached_text_extractor
-        extractor = _cached_text_extractor or TextExtractor()
+        # STEP 1: Text Extraction
+        extractor = TextExtractor()
         file_ext = file.filename.lower().split('.')[-1]
         
         extraction_method = "unknown"
@@ -1559,38 +1450,28 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
                     baseline_font_size = extractor.calculate_baseline_font_size(font_metadata)
                 except:
                     pass
-        elif file_ext in ['docx', 'doc']:
-            text = extractor.extract_from_docx(temp_file_path)
-            extraction_method = "python-docx"
-        elif file_ext == 'txt':
-            text = extractor.extract_from_txt(temp_file_path)
-            extraction_method = "direct"
-        elif file_ext in ['jpg', 'jpeg', 'png', 'webp']:
-            # Image OCR extraction
-            result = extractor.extract_from_image(temp_file_path)
-            extraction_method = result.get('method_used', 'unknown')
-            text = result['text']
-            ocr_confidence = result.get('ocr_confidence')
-            if ocr_confidence is not None:
-                logger.info(f"🖼️  Image OCR completed: {extraction_method}, conf: {ocr_confidence:.1f}%")
             else:
-                logger.info(f"🖼️  Image OCR completed: {extraction_method}")
+                font_metadata = {}
+                baseline_font_size = 11.0
+                
+        elif file_ext == 'docx':
+            text, font_metadata = extractor.extract_with_font_metadata(temp_file_path)
+            baseline_font_size = extractor.calculate_baseline_font_size(font_metadata)
+            extraction_method = "python-docx"
+            
         else:
-            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_ext}")
+            text, font_metadata = extractor.extract_with_font_metadata(temp_file_path)
+            baseline_font_size = extractor.calculate_baseline_font_size(font_metadata)
+            extraction_method = "direct"
         
-        timing['text_extraction_ms'] = (time.time() - step_start) * 1000
-        logger.info(f"Text extracted: {len(text)} chars using {extraction_method} in {timing['text_extraction_ms']:.1f}ms")
+        logger.info(f"Text extracted: {len(text)} chars using {extraction_method}")
         
-        # STEP 2: Section Splitting (use cached splitter if available)
-        step_start = time.time()
-        global _cached_section_splitter
-        splitter = _cached_section_splitter or SectionSplitter()
+        # STEP 2: Section Splitting
+        splitter = SectionSplitter()
         all_sections = splitter.split_sections(text, font_metadata, baseline_font_size)
-        timing['section_splitting_ms'] = (time.time() - step_start) * 1000
-        logger.info(f"Sections detected: {len(all_sections)} in {timing['section_splitting_ms']:.1f}ms")
+        logger.info(f"Sections detected: {len(all_sections)}")
         
-        # STEP 3: Section Validation (use cached validator if available)
-        step_start = time.time()
+        # STEP 3: Section Validation
         validation_metadata = {
             'spacy_available': False,
             'validation_ran': False,
@@ -1598,16 +1479,13 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
             'sections_split': [],
             'sections_resolved': [],
             'warnings': [],
-            'summary': {},
-            'validation_ms': 0
+            'summary': {}
         }
         
         try:
-            global _cached_section_validator
-            validator = _cached_section_validator or SectionValidator()
+            validator = SectionValidator()
             corrected_sections, validation_metadata = validator.validate_and_correct(all_sections)
-            timing['section_validation_ms'] = (time.time() - step_start) * 1000
-            logger.info(f"Sections after validation: {len(corrected_sections)} in {timing['section_validation_ms']:.1f}ms")
+            logger.info(f"Sections after validation: {len(corrected_sections)}")
         except ImportError as e:
             logger.warning(f"spaCy not available: {e}, skipping validation")
             corrected_sections = all_sections
@@ -1621,7 +1499,6 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
             validation_metadata['warnings'].append(f'Validation failed: {str(e)}')
         
         # Build response
-        step_start = time.time()
         standard_sections = ['summary', 'experience', 'education', 'skills', 'certifications', 'projects', 'contact']
         
         sections_dict = {}
@@ -1638,7 +1515,6 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
         
         # Find missing standard sections
         missing_sections = [s for s in standard_sections if s not in detected_sections]
-        timing['response_build_ms'] = (time.time() - step_start) * 1000
         
         response = SectionPreviewResponse(
             filename=file.filename,
@@ -1649,8 +1525,7 @@ async def preview_sections(file: UploadFile = File(...), force_ocr: bool = Form(
             sections=sections_dict,
             detected_sections=detected_sections,
             missing_sections=missing_sections,
-            validation_metadata=validation_metadata,
-            processing_time_ms=(time.time() - start_time) * 1000
+            validation_metadata=validation_metadata
         )
         
         logger.info(f"Section preview complete for {file.filename}")
@@ -1685,27 +1560,6 @@ async def startup_event():
         logger.info("Loading MasterParser...")
         master_parser = MasterParser()
         logger.info("✅ MasterParser loaded successfully")
-
-        # Pre-load lightweight parsers so each request doesn't re-initialize them
-        global _cached_text_extractor, _cached_section_splitter, _cached_section_validator, _cached_deberta_parser
-        logger.info("Pre-loading section and extraction parsers...")
-        from parsers.text_extractor import TextExtractor
-        from parsers.section_splitter import SectionSplitter
-        from parsers.section_validator import SectionValidator
-        from parsers.deberta_ner_parser import DeBERTaNerParser
-        _cached_text_extractor = TextExtractor()
-        _cached_section_splitter = SectionSplitter()
-        try:
-            _cached_section_validator = SectionValidator()
-        except Exception as e:
-            logger.warning(f"SectionValidator not available: {e}")
-            _cached_section_validator = None
-        try:
-            _cached_deberta_parser = DeBERTaNerParser()
-        except Exception as e:
-            logger.warning(f"DeBERTaNerParser not available: {e}")
-            _cached_deberta_parser = None
-        logger.info("✅ Lightweight parsers pre-loaded")
         
         logger.info("🎉 All models loaded — service ready!")
         
@@ -1787,6 +1641,64 @@ async def extract_skills(request: Request):
     except Exception as e:
         logger.error(f"Error extracting skills: {e}")
         raise HTTPException(status_code=500, detail=f"Skill extraction failed: {str(e)}")
+
+# Skills Taxonomy Management Endpoints (work without NER model)
+try:
+    from database_skills_loader import get_database_skills_loader
+    SKILLS_LOADER_AVAILABLE = True
+except ImportError as e:
+    SKILLS_LOADER_AVAILABLE = False
+    logger.warning(f"Database skills loader not available: {e}")
+
+@app.post("/admin/skills/reload")
+async def reload_skills_cache():
+    """
+    Reload the skills taxonomy cache from database.
+    This endpoint triggers a fresh load of skills from the database.
+    Called by the backend after bulk skill insertions.
+    """
+    if not SKILLS_LOADER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Skills database loader not available"
+        )
+    
+    try:
+        loader = get_database_skills_loader()
+        loader.refresh_cache()
+        return {
+            "status": "success",
+            "message": "Skills cache reloaded successfully",
+            "cache_info": loader.get_cache_info()
+        }
+    except Exception as e:
+        logger.error(f"Failed to reload skills cache: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reload skills cache: {str(e)}"
+        )
+
+@app.get("/admin/skills/cache-info")
+async def get_skills_cache_info():
+    """
+    Get information about the current skills taxonomy cache.
+    Returns cache statistics including total skills, domains, and last refresh time.
+    """
+    if not SKILLS_LOADER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Skills database loader not available"
+        )
+    
+    try:
+        loader = get_database_skills_loader()
+        return loader.get_cache_info()
+    except Exception as e:
+        logger.error(f"Failed to get skills cache info: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get cache info: {str(e)}"
+        )
 
 @app.on_event("shutdown")
 async def shutdown_event():

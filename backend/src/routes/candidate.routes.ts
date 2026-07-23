@@ -4,18 +4,13 @@ import {
   getAllCandidates,
   getCandidateById,
   updateCandidate,
-  updateCandidateWithFullData,
   deleteCandidate,
   getCandidateParsingStatus,
   importCandidatesFromCSV,
   getDuplicates,
   mergeCandidates,
   ignoreDuplicate,
-  importExternalCandidate,
-  saveApplicationProgress,
-  loadApplicationProgress,
 } from "../controllers/candidate.controller";
-import { searchCandidatesByFilters, getFilterOptions, generateXRaySearch, booleanSearchCandidates } from "../controllers/candidate-search.controller";
 import { authenticateToken, requireRole } from "../middleware/auth.middleware";
 import multer from "multer";
 
@@ -81,10 +76,6 @@ router.post("/", createCandidate);
 // Import candidates in bulk using CSV file
 router.post("/import-csv", uploadCSV.single("file"), importCandidatesFromCSV);
 
-// POST /api/candidates/import-external
-// Import external candidate from LinkedIn, GitHub, etc.
-router.post("/import-external", importExternalCandidate);
-
 // Duplicate resume management routes
 router.get("/duplicates", getDuplicates);
 router.post("/merge", mergeCandidates);
@@ -149,153 +140,6 @@ router.post("/ignore-duplicate", ignoreDuplicate);
  *         description: Unauthorized
  */
 router.get("/", getAllCandidates);
-
-/**
- * @swagger
- * /api/candidates/filter-options:
- *   get:
- *     summary: Get available filter options from database
- *     tags: [Candidates]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Filter options retrieved successfully
- *       401:
- *         description: Unauthorized
- */
-router.get("/filter-options", getFilterOptions);
-
-/**
- * @swagger
- * /api/candidates/search/filters:
- *   post:
- *     summary: Search candidates by structured filters
- *     tags: [Candidates]
- *     security: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               role:
- *                 type: string
- *               skills:
- *                 type: array
- *                 items:
- *                   type: string
- *               minExperience:
- *                 type: number
- *               maxExperience:
- *                 type: number
- *               locations:
- *                 type: array
- *                 items:
- *                   type: string
- *               education:
- *                 type: array
- *                 items:
- *                   type: string
- *               noticePeriod:
- *                 type: array
- *                 items:
- *                   type: string
- *               currentCompany:
- *                 type: array
- *                 items:
- *                   type: string
- *               employmentType:
- *                 type: array
- *                 items:
- *                   type: string
- *               page:
- *                 type: integer
- *               limit:
- *                 type: integer
- *     responses:
- *       200:
- *         description: Candidates searched successfully
- *       401:
- *         description: Unauthorized
- */
-router.post("/search/filters", searchCandidatesByFilters);
-
-/**
- * @swagger
- * /api/candidates/xray-search:
- *   post:
- *     summary: Generate X-Ray search queries for multiple platforms
- *     tags: [Candidates]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               role:
- *                 type: string
- *               skills:
- *                 type: array
- *                 items:
- *                   type: string
- *               locations:
- *                 type: array
- *                 items:
- *                   type: string
- *               minExperience:
- *                 type: number
- *               maxExperience:
- *                 type: number
- *               currentCompany:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       200:
- *         description: X-Ray search queries generated successfully
- *       401:
- *         description: Unauthorized
- */
-router.post("/xray-search", generateXRaySearch);
-
-/**
- * @swagger
- * /api/candidates/boolean-search:
- *   post:
- *     summary: Search candidates using Boolean query syntax
- *     tags: [Candidates]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               query:
- *                 type: string
- *                 description: Boolean search query (e.g., "React AND (Redux OR TypeScript)")
- *               page:
- *                 type: integer
- *                 default: 1
- *               limit:
- *                 type: integer
- *                 default: 20
- *     responses:
- *       200:
- *         description: Candidates searched successfully
- *       400:
- *         description: Invalid query syntax
- *       401:
- *         description: Unauthorized
- */
-router.post("/boolean-search", booleanSearchCandidates);
 
 /**
  * @swagger
@@ -375,68 +219,6 @@ router.put("/:id", updateCandidate);
 
 /**
  * @swagger
- * /api/candidates/{id}/update-full:
- *   put:
- *     summary: Update a candidate with full resume data (skills, work history, education, etc.)
- *     tags: [Candidates]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Candidate ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               phone:
- *                 type: string
- *               summary:
- *                 type: string
- *               skills:
- *                 type: array
- *                 items:
- *                   type: string
- *               work_history:
- *                 type: array
- *                 items:
- *                   type: object
- *               education:
- *                 type: array
- *                 items:
- *                   type: object
- *               certifications:
- *                 type: array
- *                 items:
- *                   type: string
- *               projects:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       200:
- *         description: Candidate updated successfully with all related data
- *       400:
- *         description: Bad request
- *       404:
- *         description: Candidate not found
- *       401:
- *         description: Unauthorized
- */
-router.put("/:id/update-full", updateCandidateWithFullData);
-
-/**
- * @swagger
  * /api/candidates/{id}:
  *   delete:
  *     summary: Soft delete a candidate
@@ -484,82 +266,5 @@ router.delete("/:id", deleteCandidate);
  *         description: Unauthorized
  */
 router.get("/:id/parsing-status", getCandidateParsingStatus);
-
-/**
- * @swagger
- * /api/candidates/{id}/application-progress:
- *   post:
- *     summary: Save application progress for a candidate
- *     tags: [Candidates]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Candidate ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               application_data:
- *                 type: object
- *                 description: Application progress data
- *               last_updated:
- *                 type: string
- *                 format: date-time
- *                 description: Last update timestamp
- *     responses:
- *       200:
- *         description: Application progress saved successfully
- *       400:
- *         description: Bad request
- *       404:
- *         description: Candidate not found
- *       401:
- *         description: Unauthorized
- */
-router.post("/:id/application-progress", saveApplicationProgress);
-
-/**
- * @swagger
- * /api/candidates/{id}/application-progress:
- *   get:
- *     summary: Load application progress for a candidate
- *     tags: [Candidates]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Candidate ID
- *     responses:
- *       200:
- *         description: Application progress retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 application_data:
- *                   type: object
- *                 last_updated:
- *                   type: string
- *                   format: date-time
- *       404:
- *         description: No application progress found or candidate not found
- *       401:
- *         description: Unauthorized
- */
-router.get("/:id/application-progress", loadApplicationProgress);
-
 
 export default router;

@@ -2,7 +2,7 @@
  * Service for calling AI service endpoints
  */
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
 
 export const callAIService = async (
   endpoint: string,

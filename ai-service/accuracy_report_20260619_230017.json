@@ -1,0 +1,234 @@
+{
+  "timestamp": "2026-06-19T23:00:17.807299",
+  "total_tests": 13,
+  "average_accuracy": 0.11538461538461539,
+  "per_field_accuracy": {
+    "name": 0.15384615384615385,
+    "email": 0.15384615384615385,
+    "phone": 0.15384615384615385,
+    "skills": 0.0
+  },
+  "detailed_results": [
+    {
+      "test_name": "resume_9.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    },
+    {
+      "test_name": "resume_8.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    },
+    {
+      "test_name": "resume_6.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    },
+    {
+      "test_name": "resume_7.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    },
+    {
+      "test_name": "resume_5.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    },
+    {
+      "test_name": "resume_4.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    },
+    {
+      "test_name": "resume1.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 1.0,
+        "email": 1.0,
+        "phone": 1.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.75,
+      "errors": []
+    },
+    {
+      "test_name": "resume_1.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 1.0,
+        "email": 1.0,
+        "phone": 1.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.75,
+      "errors": []
+    },
+    {
+      "test_name": "resume2.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    },
+    {
+      "test_name": "resume_3.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    },
+    {
+      "test_name": "resume_2.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    },
+    {
+      "test_name": "resume3.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    },
+    {
+      "test_name": "resume_10.txt",
+      "fields_tested": [
+        "name",
+        "email",
+        "phone",
+        "skills"
+      ],
+      "field_accuracies": {
+        "name": 0.0,
+        "email": 0.0,
+        "phone": 0.0,
+        "skills": 0.0
+      },
+      "overall_accuracy": 0.0,
+      "errors": []
+    }
+  ]
+}

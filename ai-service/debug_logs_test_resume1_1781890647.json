@@ -1,0 +1,843 @@
+{
+  "request_id": "test_resume1",
+  "start_time": "2026-06-19T23:07:24.924380",
+  "end_time": "2026-06-19T17:37:27.749783",
+  "total_duration_ms": 2825.404167175293,
+  "total_logs": 11,
+  "logs": [
+    {
+      "timestamp": "2026-06-19T17:37:24.924403",
+      "request_id": "test_resume1",
+      "stage": "file_input",
+      "log_type": "input",
+      "data": {
+        "file_path": "tests/sample_resumes/resume1.txt",
+        "candidate_id": "test_resume1",
+        "llm_provider": null,
+        "force_ocr": false
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.030279159545898438
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.925924",
+      "request_id": "test_resume1",
+      "stage": "text_extraction",
+      "log_type": "output",
+      "data": {
+        "method": "direct",
+        "text_length": 2577,
+        "quality_score": 0.7284279635258359,
+        "duration_ms": 1.4340877532958984
+      },
+      "metadata": {},
+      "elapsed_time_ms": 1.556396484375
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.931239",
+      "request_id": "test_resume1",
+      "stage": "section_splitting",
+      "operation": "section_extraction",
+      "log_type": "processing",
+      "data": {
+        "sections_detected": [
+          "summary",
+          "experience",
+          "education",
+          "skills"
+        ],
+        "section_count": 4,
+        "section_sizes": {
+          "summary": 298,
+          "experience": 1263,
+          "education": 385,
+          "skills": 403
+        },
+        "has_experience": true,
+        "has_education": true,
+        "has_skills": true
+      },
+      "metadata": {
+        "duration_ms": 4.862785339355469,
+        "text_length": 2577
+      },
+      "elapsed_time_ms": 6.867170333862305
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.931267",
+      "request_id": "test_resume1",
+      "stage": "section_splitting",
+      "operation": "section_summary",
+      "log_type": "processing",
+      "data": {
+        "section_name": "summary",
+        "content_length": 298,
+        "content_preview": "Experienced Senior Software Engineer with 8 years of expertise in full-stack development, cloud architecture, and team leadership. Proven track record of delivering scalable solutions\nand mentoring development teams. Passionate about clean code, performance optimization, and emerging technologies."
+      },
+      "metadata": {},
+      "elapsed_time_ms": 6.890058517456055
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.931281",
+      "request_id": "test_resume1",
+      "stage": "section_splitting",
+      "operation": "section_experience",
+      "log_type": "processing",
+      "data": {
+        "section_name": "experience",
+        "content_length": 1263,
+        "content_preview": "Senior\nSoftware Engineer\nTechCorp Solutions Inc. San Francisco, CA  January 2020 - Present\n Led development of microservices architecture serving 1M users\n Implemented CICD pipelines reducing deployment time by 60\n Mentored team of 5 junior developers through code reviews and pair programming\n Desig"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 6.903171539306641
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.931293",
+      "request_id": "test_resume1",
+      "stage": "section_splitting",
+      "operation": "section_education",
+      "log_type": "processing",
+      "data": {
+        "section_name": "education",
+        "content_length": 385,
+        "content_preview": "Master of Science in\nComputer Science\nStanford University\nStanford, CA  2016 - 2018\nGPA: 3.84.0\nThesis: \"Machine Learning Approaches to Code Optimization\"\n\nBachelor of Science in\nSoftware Engineering\nUniversity of California, Berkeley Berkeley, CA  2012 - 2016\nGPA: 3.64.0 Dean's List: 2014, 2015\nRel"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 6.915092468261719
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.931304",
+      "request_id": "test_resume1",
+      "stage": "section_splitting",
+      "operation": "section_skills",
+      "log_type": "processing",
+      "data": {
+        "section_name": "skills",
+        "content_length": 403,
+        "content_preview": "Programming Languages: Python, JavaScript, TypeScript, Java, C, Go\nFrontend: React, Angular, Vue.js, HTML5, CSS3, SASS, Tailwind CSS\nBackend: Node.js, Express, Django, Flask, Spring Boot,.NET Core\nDatabases: PostgreSQL, MySQL, MongoDB, Redis, Elasticsearch\nCloud  DevOps: AWS, Azure, Google Cloud, Do"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 6.926059722900391
+    },
+    {
+      "timestamp": "2026-06-19T17:37:27.609775",
+      "request_id": "test_resume1",
+      "stage": "model_input",
+      "model_name": "deberta-v3",
+      "log_type": "input",
+      "input_text_length": 2577,
+      "input_text_hash": "70ef0cc767220c4f",
+      "input_text_preview": "JOHN MICHAEL DOE Senior Software Engineer\n john.doe@email.com   1 (555) 123-4567   San Francisco, CA\n linkedin.cominjohndoe   github.comjohndoe   johndoe.dev\n\nPROFESSIONAL SUMMARY\nExperienced Senior Software Engineer with 8 years of expertise in full-stack development, cloud architecture, and team leadership. Proven track record of delivering scalable solutions\nand mentoring development teams. Passionate about clean code, performance optimization, and emerging technologies. WORK EXPERIENCE Senio",
+      "prompt": null,
+      "prompt_length": 0,
+      "metadata": {
+        "model_type": "NER",
+        "text_length": 2577
+      },
+      "elapsed_time_ms": 2685.434103012085
+    },
+    {
+      "timestamp": "2026-06-19T17:37:27.609838",
+      "request_id": "test_resume1",
+      "stage": "model_output",
+      "model_name": "deberta-v3",
+      "log_type": "output",
+      "raw_output": null,
+      "parsed_output": {
+        "companies": [
+          "TechCorp Solutions Inc.",
+          "Digital Innovations Lab",
+          "RESTful APIs",
+          "Mountain View"
+        ],
+        "locations": [
+          "San Francisco, CA",
+          "Palo Alto, CA",
+          "Mountain View, CA"
+        ],
+        "work_experience": [
+          {
+            "company": "TechCorp Solutions Inc.",
+            "company_name": "TechCorp Solutions Inc.",
+            "role": "",
+            "job_title": "",
+            "location": "San Francisco, CA",
+            "start_date": "01/01/2020",
+            "end_date": null,
+            "is_current": true,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "",
+            "company_name": "",
+            "role": "",
+            "job_title": "",
+            "location": "Palo Alto, CA",
+            "start_date": "01/06/2018",
+            "end_date": "01/12/2019",
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "Digital Innovations Lab",
+            "company_name": "Digital Innovations Lab",
+            "role": "Junior Developer Customerfacing Web Applications Bugs",
+            "job_title": "Junior Developer Customerfacing Web Applications Bugs",
+            "location": "Mountain View, CA",
+            "start_date": "01/07/2016",
+            "end_date": "01/05/2018",
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "RESTful APIs",
+            "company_name": "RESTful APIs",
+            "role": "Junior Developers Code Reviews Programming",
+            "job_title": "Junior Developers Code Reviews Programming",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "Mountain View",
+            "company_name": "Mountain View",
+            "role": "",
+            "job_title": "",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          }
+        ],
+        "education": [
+          {
+            "institution": "University of California",
+            "degree": "Master of Science",
+            "field_of_study": "Computer Science",
+            "start_year": "2016",
+            "end_year": "2018",
+            "grade": "3.84/4.0",
+            "source": "deberta_ner"
+          },
+          {
+            "institution": "",
+            "degree": "Bachelor of Science",
+            "field_of_study": "Machine Learning Approaches to Code Optimization",
+            "start_year": "2012",
+            "end_year": "2016",
+            "grade": "3.64/4.0",
+            "source": "deberta_ner"
+          }
+        ],
+        "job_titles": [
+          "Junior Developer Customerfacing Web Applications Bugs",
+          "Junior Developers Code Reviews Programming"
+        ],
+        "clients": [
+          "Kafka"
+        ],
+        "dates": [],
+        "degrees": [
+          "Master of Science",
+          "Bachelor of Science"
+        ],
+        "institutions": [
+          "University of California"
+        ],
+        "fields_of_study": [
+          "Computer Science",
+          "Machine Learning Approaches to Code Optimization",
+          "Software Engineering",
+          "Data Structures, Algorithms",
+          "Systems, Software Engineering"
+        ],
+        "source": "deberta_ner",
+        "confidence": {
+          "deberta_confidence": 0.85,
+          "entities_found": 7
+        }
+      },
+      "output_size": 2656,
+      "metadata": {
+        "duration_ms": 2605.901002883911,
+        "entities_extracted": 6
+      },
+      "elapsed_time_ms": 2685.551166534424
+    },
+    {
+      "timestamp": "2026-06-19T17:37:27.749284",
+      "request_id": "test_resume1",
+      "stage": "final_output",
+      "log_type": "output",
+      "data": {
+        "candidate_id": "test_resume1",
+        "status": "success",
+        "name": "JOHN MICHAEL DOE Senior Software Engineer",
+        "email": "jo**************om",
+        "phone": "1 ************67",
+        "work_experience_count": 5,
+        "education_count": 2,
+        "skills_count": 35,
+        "confidence_score": 0.845,
+        "processing_metrics": {
+          "timing_ms": {
+            "text_extraction_ms": 1.4340877532958984,
+            "name_extraction_ms": 0.16999244689941406,
+            "section_splitting_ms": 4.862785339355469,
+            "rule_parsing_ms": 72.01170921325684,
+            "deberta_parsing_ms": 2605.901002883911,
+            "ai_parsing_ms": 0.02193450927734375,
+            "ai_skipped": true,
+            "experience_extraction_ms": 0.06508827209472656,
+            "education_extraction_ms": 6.776094436645508,
+            "summary_extraction_ms": 0.25391578674316406,
+            "merging_ms": 2.3119449615478516,
+            "confidence_scoring_ms": 0.07796287536621094,
+            "quality_analysis_ms": 5.877971649169922,
+            "total_ms": 2824.8908519744873
+          },
+          "total_processing_time_ms": 0,
+          "pipeline_steps_completed": 13
+        },
+        "needs_review": false
+      },
+      "metadata": {
+        "processing_time_ms": 2824.8908519744873,
+        "pipeline_stages": [
+          "text_extraction_ms",
+          "name_extraction_ms",
+          "section_splitting_ms",
+          "rule_parsing_ms",
+          "deberta_parsing_ms",
+          "ai_parsing_ms",
+          "ai_skipped",
+          "experience_extraction_ms",
+          "education_extraction_ms",
+          "summary_extraction_ms",
+          "merging_ms",
+          "confidence_scoring_ms",
+          "quality_analysis_ms",
+          "total_ms"
+        ]
+      },
+      "elapsed_time_ms": 2824.921131134033
+    },
+    {
+      "timestamp": "2026-06-19T17:37:27.749559",
+      "request_id": "test_resume1",
+      "stage": "final_output",
+      "operation": "complete_result",
+      "log_type": "processing",
+      "data": {
+        "full_result": {
+          "candidate_id": "test_resume1",
+          "status": "success",
+          "parsing_timestamp": 1781890647.749163,
+          "name": "JOHN MICHAEL DOE Senior Software Engineer",
+          "email": "jo**************om",
+          "phone": "1 ************67",
+          "linkedin": null,
+          "github": null,
+          "websites": [
+            "https://john.doe",
+            "https://email.com",
+            "https://johndoe.dev",
+            "https://node.js",
+            "https://vue.js"
+          ],
+          "summary": "Experienced Senior Software Engineer with 8 years of expertise in full-stack development, cloud architecture, and team leadership. Proven track record of delivering scalable solutions and mentoring development teams. Passionate about clean code, performance optimization, and emerging technologies.",
+          "skills": [
+            "AWS",
+            "Angular",
+            "Azure",
+            "CI/CD",
+            "CSS",
+            "DevOps",
+            "Django",
+            "Docker",
+            "Elasticsearch",
+            "Express",
+            "Flask",
+            "GCP",
+            "Git",
+            "Go",
+            "GraphQL",
+            "HTML",
+            "Java",
+            "JavaScript",
+            "Jenkins",
+            "Kubernetes",
+            "Linux",
+            "Microservices",
+            "MongoDB",
+            "MySQL",
+            "Node.js",
+            "PostgreSQL",
+            "Python",
+            "REST APIs",
+            "React",
+            "Redis",
+            "Sass",
+            "Spring Boot",
+            "Tailwind CSS",
+            "TypeScript",
+            "Vue.js"
+          ],
+          "work_experience": [
+            {
+              "company": "TechCorp Solutions Inc.",
+              "company_name": "TechCorp Solutions Inc.",
+              "role": "",
+              "job_title": "",
+              "location": "San Francisco, CA",
+              "start_date": "01/01/2020",
+              "end_date": null,
+              "is_current": true,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "",
+              "job_title": "",
+              "location": "Palo Alto, CA",
+              "start_date": "01/06/2018",
+              "end_date": "01/12/2019",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Digital Innovations Lab",
+              "company_name": "Digital Innovations Lab",
+              "role": "Junior Developer Customerfacing Web Applications Bugs",
+              "job_title": "Junior Developer Customerfacing Web Applications Bugs",
+              "location": "Mountain View, CA",
+              "start_date": "01/07/2016",
+              "end_date": "01/05/2018",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "RESTful APIs",
+              "company_name": "RESTful APIs",
+              "role": "Junior Developers Code Reviews Programming",
+              "job_title": "Junior Developers Code Reviews Programming",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Mountain View",
+              "company_name": "Mountain View",
+              "role": "",
+              "job_title": "",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            }
+          ],
+          "work_history": [
+            {
+              "company": "TechCorp Solutions Inc.",
+              "company_name": "TechCorp Solutions Inc.",
+              "role": "",
+              "job_title": "",
+              "location": "San Francisco, CA",
+              "start_date": "01/01/2020",
+              "end_date": null,
+              "is_current": true,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "",
+              "job_title": "",
+              "location": "Palo Alto, CA",
+              "start_date": "01/06/2018",
+              "end_date": "01/12/2019",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Digital Innovations Lab",
+              "company_name": "Digital Innovations Lab",
+              "role": "Junior Developer Customerfacing Web Applications Bugs",
+              "job_title": "Junior Developer Customerfacing Web Applications Bugs",
+              "location": "Mountain View, CA",
+              "start_date": "01/07/2016",
+              "end_date": "01/05/2018",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "RESTful APIs",
+              "company_name": "RESTful APIs",
+              "role": "Junior Developers Code Reviews Programming",
+              "job_title": "Junior Developers Code Reviews Programming",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Mountain View",
+              "company_name": "Mountain View",
+              "role": "",
+              "job_title": "",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            }
+          ],
+          "education": [
+            {
+              "institution": "University of California",
+              "degree": "Master of Science",
+              "field_of_study": "Computer Science",
+              "start_year": "2016",
+              "end_year": "2018",
+              "grade": "3.84/4.0",
+              "source": "deberta_ner"
+            },
+            {
+              "institution": "",
+              "degree": "Bachelor of Science",
+              "field_of_study": "Machine Learning Approaches to Code Optimization",
+              "start_year": "2012",
+              "end_year": "2016",
+              "grade": "3.64/4.0",
+              "source": "deberta_ner"
+            }
+          ],
+          "job_titles": [
+            "Junior Developer Customerfacing Web Applications Bugs",
+            "Junior Developers Code Reviews Programming"
+          ],
+          "companies": [
+            "TechCorp Solutions",
+            "Digital Innovations Lab",
+            "RESTful APIs",
+            "Mountain View"
+          ],
+          "locations": [
+            "San Francisco, CA",
+            "Palo Alto, CA",
+            "Mountain View, CA"
+          ],
+          "dates": [],
+          "years_of_experience": 0.0,
+          "misc_entities": [],
+          "confidence": {
+            "overall": 0.845,
+            "fields": {
+              "email": "***",
+              "phone": "***",
+              "name": 0.5,
+              "skills": 1.0,
+              "experience": 0.8,
+              "education": 0.95
+            },
+            "needs_review": false,
+            "missing_critical": [],
+            "quality_level": "good",
+            "quality_score": 0.9,
+            "recommendations": [
+              "Ensure full name is clearly visible"
+            ],
+            "field_weights": {
+              "email": "****",
+              "phone": "***",
+              "name": 0.2,
+              "skills": 0.25,
+              "experience": 0.2,
+              "education": 0.1
+            }
+          },
+          "needs_review": false,
+          "quality_level": "good",
+          "processing_metrics": {
+            "timing_ms": {
+              "text_extraction_ms": 1.4340877532958984,
+              "name_extraction_ms": 0.16999244689941406,
+              "section_splitting_ms": 4.862785339355469,
+              "rule_parsing_ms": 72.01170921325684,
+              "deberta_parsing_ms": 2605.901002883911,
+              "ai_parsing_ms": 0.02193450927734375,
+              "ai_skipped": true,
+              "experience_extraction_ms": 0.06508827209472656,
+              "education_extraction_ms": 6.776094436645508,
+              "summary_extraction_ms": 0.25391578674316406,
+              "merging_ms": 2.3119449615478516,
+              "confidence_scoring_ms": 0.07796287536621094,
+              "quality_analysis_ms": 5.877971649169922,
+              "total_ms": 2824.8908519744873
+            },
+            "total_processing_time_ms": 0,
+            "pipeline_steps_completed": 13
+          },
+          "source_info": {
+            "file_path": "tests/sample_resumes/resume1.txt",
+            "extraction_method": "direct",
+            "quality_score": 0.7284279635258359
+          },
+          "extraction_quality": {
+            "extraction_quality_percentage": 0.0,
+            "text_similarity_percentage": 12.23,
+            "missing_keywords": [
+              "professional",
+              "cominjohndoe",
+              "collaborated",
+              "participated",
+              "application",
+              "implemented",
+              "engineering",
+              "environment",
+              "algorithms",
+              "structures",
+              "functional",
+              "experience",
+              "comjohndoe",
+              "processing",
+              "startupxyz",
+              "deployment",
+              "coursework",
+              "responsive",
+              "optimized",
+              "bootstrap"
+            ],
+            "missing_sections": [
+              "work experience",
+              "technical skills"
+            ],
+            "structure_loss": [
+              "Bullet points lost: 10",
+              "Paragraph structure simplified",
+              "Date information lost: 7 dates missing",
+              "Phone number lost"
+            ],
+            "text_loss_percentage": 87.77,
+            "recommendation": "Poor extraction quality. High text loss - use OCR for scanned documents. Severe structure loss detected.",
+            "metrics": {
+              "original_text_length": 2577,
+              "reconstructed_text_length": 993,
+              "original_word_count": 329,
+              "reconstructed_word_count": 132,
+              "missing_word_count": 93
+            }
+          },
+          "model_results": {
+            "deberta_extraction": {
+              "work_experience": [
+                {
+                  "company": "TechCorp Solutions Inc.",
+                  "company_name": "TechCorp Solutions Inc.",
+                  "role": "",
+                  "job_title": "",
+                  "location": "San Francisco, CA",
+                  "start_date": "01/01/2020",
+                  "end_date": null,
+                  "is_current": true,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "",
+                  "company_name": "",
+                  "role": "",
+                  "job_title": "",
+                  "location": "Palo Alto, CA",
+                  "start_date": "01/06/2018",
+                  "end_date": "01/12/2019",
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "Digital Innovations Lab",
+                  "company_name": "Digital Innovations Lab",
+                  "role": "Junior Developer Customerfacing Web Applications Bugs",
+                  "job_title": "Junior Developer Customerfacing Web Applications Bugs",
+                  "location": "Mountain View, CA",
+                  "start_date": "01/07/2016",
+                  "end_date": "01/05/2018",
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "RESTful APIs",
+                  "company_name": "RESTful APIs",
+                  "role": "Junior Developers Code Reviews Programming",
+                  "job_title": "Junior Developers Code Reviews Programming",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "Mountain View",
+                  "company_name": "Mountain View",
+                  "role": "",
+                  "job_title": "",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                }
+              ],
+              "education": [
+                {
+                  "institution": "University of California",
+                  "degree": "Master of Science",
+                  "field_of_study": "Computer Science",
+                  "start_year": "2016",
+                  "end_year": "2018",
+                  "grade": "3.84/4.0",
+                  "source": "deberta_ner"
+                },
+                {
+                  "institution": "",
+                  "degree": "Bachelor of Science",
+                  "field_of_study": "Machine Learning Approaches to Code Optimization",
+                  "start_year": "2012",
+                  "end_year": "2016",
+                  "grade": "3.64/4.0",
+                  "source": "deberta_ner"
+                }
+              ],
+              "companies": [
+                "TechCorp Solutions Inc.",
+                "Digital Innovations Lab",
+                "RESTful APIs",
+                "Mountain View"
+              ],
+              "job_titles": [
+                "Junior Developer Customerfacing Web Applications Bugs",
+                "Junior Developers Code Reviews Programming"
+              ],
+              "institutions": [
+                "University of California"
+              ],
+              "degrees": [
+                "Master of Science",
+                "Bachelor of Science"
+              ],
+              "source": "deberta_ner"
+            }
+          },
+          "merge_metadata": {
+            "conflict_resolution_used": true,
+            "sources_available": {
+              "rules": true,
+              "ner": true,
+              "deberta": true,
+              "llm": true
+            },
+            "deberta_entities_found": 7,
+            "total_fields_merged": 23
+          },
+          "raw_text": "JOHN MICHAEL DOE Senior Software Engineer\n john.doe@email.com   1 (555) 123-4567   San Francisco, CA\n linkedin.cominjohndoe   github.comjohndoe   johndoe.dev\n\nPROFESSIONAL SUMMARY\nExperienced Senior Software Engineer with 8 years of expertise in full-stack development, cloud architecture, and team leadership. Proven track record of delivering scalable solutions\nand mentoring development teams. Passionate about clean code, performance optimization, and emerging technologies. WORK EXPERIENCE Senior Software Engineer\nTechCorp Solutions Inc. San Francisco, CA  January 2020 - Present\n Led development of microservices architecture serving 1M users\n Implemented CICD pipelines reducing deployment time by 60\n Mentored team of 5 junior developers through code reviews and pair programming\n Designed and built RESTful APIs using Node.js, Express, and PostgreSQL\n Optimized database queries improving application performance by 40\n Technologies: React, Node.js, TypeScript, Docker, AWS, Kubernetes, Pos...[truncated]",
+          "raw_resume_text": "JOHN MICHAEL DOE Senior Software Engineer\n john.doe@email.com   1 (555) 123-4567   San Francisco, CA\n linkedin.cominjohndoe   github.comjohndoe   johndoe.dev\n\nPROFESSIONAL SUMMARY\nExperienced Senior Software Engineer with 8 years of expertise in full-stack development, cloud architecture, and team leadership. Proven track record of delivering scalable solutions\nand mentoring development teams. Passionate about clean code, performance optimization, and emerging technologies. WORK EXPERIENCE Senior Software Engineer\nTechCorp Solutions Inc. San Francisco, CA  January 2020 - Present\n Led development of microservices architecture serving 1M users\n Implemented CICD pipelines reducing deployment time by 60\n Mentored team of 5 junior developers through code reviews and pair programming\n Designed and built RESTful APIs using Node.js, Express, and PostgreSQL\n Optimized database queries improving application performance by 40\n Technologies: React, Node.js, TypeScript, Docker, AWS, Kubernetes, PostgreSQL\n\nSoftware Engineer StartupXYZ Technologies\nPalo Alto, CA  June 2018 - December 2019\n Developed full-stack web applications using React and Python\n Built real-time data processing pipelines with Apache Kafka\n Collaborated with cross-functional teams in Agile environment\n Implemented automated testing with Jest and pytest\n Stack: JavaScript, Python, Django, React, Redis, AWS\n\nJunior Developer Digital Innovations Lab\nMountain View, CA  July 2016 - May 2018\n Assisted in development of customer-facing web applications\n Fixed bugs and implemented new features in existing codebase\n Participated in daily stand-ups and sprint planning\n Gained experience with Git, JavaScript, and responsive design\n Tools: HTML, CSS, JavaScript, jQuery, Bootstrap, Git\n\nEDUCATION\nMaster of Science in Computer Science Stanford University\nStanford, CA  2016 - 2018\nGPA: 3.84.0\nThesis: \"Machine Learning Approaches to Code Optimization\"\n\nBachelor of Science in Software Engineering\nUniversity of California, Berk...[truncated]",
+          "file_info": {
+            "file_path": "tests/sample_resumes/resume1.txt",
+            "file_name": "resume1.txt",
+            "extraction_method": "direct",
+            "text_quality_score": 0.7284279635258359,
+            "word_count": 329
+          }
+        },
+        "result_size": 15075
+      },
+      "metadata": {
+        "processing_time_ms": 2824.8908519744873,
+        "pipeline_stages": [
+          "text_extraction_ms",
+          "name_extraction_ms",
+          "section_splitting_ms",
+          "rule_parsing_ms",
+          "deberta_parsing_ms",
+          "ai_parsing_ms",
+          "ai_skipped",
+          "experience_extraction_ms",
+          "education_extraction_ms",
+          "summary_extraction_ms",
+          "merging_ms",
+          "confidence_scoring_ms",
+          "quality_analysis_ms",
+          "total_ms"
+        ]
+      },
+      "elapsed_time_ms": 2825.3040313720703
+    }
+  ]
+}

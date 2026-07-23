@@ -217,7 +217,6 @@ class MasterParser:
         Returns:
             Complete parsed resume data with confidence scores and metrics
         """
-        self.logger.info(f"🔧🔧🔧 parse_file called for {file_path} with llm_provider={llm_provider}")
         start_time = time.time()
         metrics = {}
         
@@ -818,7 +817,6 @@ Example: {{"name": "John Smith", "email": "john@example.com"}}"""
         Returns:
             Parsed result dictionary
         """
-        self.logger.info(f"🔧 _parse_text_pipeline called with llm_provider: {llm_provider}")
         # Get request logger
         if not request_id:
             request_id = generate_request_id()
@@ -913,9 +911,7 @@ Example: {{"name": "John Smith", "email": "john@example.com"}}"""
         
         # Step 3: Rule-based parsing (pass sections for skills extraction)
         step_start = time.time()
-        self.logger.info("🔧 _parse_text_pipeline: About to call _run_rule_parsing")
         rule_results = self._run_rule_parsing(text, sections)
-        self.logger.info(f"✅ _parse_text_pipeline: _run_rule_parsing returned {len(rule_results) if rule_results else 0} keys")
         metrics['rule_parsing_ms'] = (time.time() - step_start) * 1000
         
         # Step 3b: DeBERTa NER parsing (if available)
@@ -1068,12 +1064,9 @@ Example: {{"name": "John Smith", "email": "john@example.com"}}"""
     
     def _run_rule_parsing(self, text: str, sections: Dict[str, str] = None) -> Dict[str, Any]:
         """Run rule-based parsing on text."""
-        self.logger.info("🔧 _run_rule_parsing called")
-        self.logger.info(f"🔧 rule_parser type: {type(self.rule_parser).__name__ if self.rule_parser else None}")
         if not self.rule_parser:
             self.logger.warning("RuleBasedParser not available, returning empty results")
             return {}
-        self.logger.info(f"✅ RuleBasedParser is available: {type(self.rule_parser)}")
         
         result = {
             'email': self.rule_parser.extract_email(text),
@@ -1090,12 +1083,7 @@ Example: {{"name": "John Smith", "email": "john@example.com"}}"""
             result['locations'] = self.rule_parser.extract_locations(text)
         
         # Add skills extraction if available - use skills section if present
-        # TODO: This code block is currently unreachable due to a workaround in main.py (2026-07-08)
-        # The domain/license extraction was moved to main.py's /parse endpoint as a workaround
-        # because _run_rule_parsing was not being called in the active code path.
-        # Root cause not yet identified - see main.py lines 386-390 for the workaround.
         if hasattr(self.rule_parser, 'extract_skills'):
-            self.logger.info("🔧 SKILLS EXTRACTION: extract_skills method exists, proceeding")
             skills_text = text
             if sections and sections.get('skills'):
                 skills_text = sections.get('skills')
@@ -1103,32 +1091,6 @@ Example: {{"name": "John Smith", "email": "john@example.com"}}"""
             else:
                 self.logger.warning("No skills section found, using full text for skills extraction")
             result['skills'] = self.rule_parser.extract_skills(skills_text)
-            self.logger.info(f"✅ SKILLS EXTRACTION: Extracted {len(result['skills']) if result['skills'] else 0} skills")
-            
-            # Add domain detection if available
-            self.logger.info("🔧 DOMAIN DETECTION: Checking for detect_domain method")
-            if hasattr(self.rule_parser, 'detect_domain'):
-                self.logger.info(f"🔧 DOMAIN DETECTION: detect_domain method exists, calling with {len(result['skills']) if result['skills'] else 0} skills")
-                domain_info = self.rule_parser.detect_domain(result['skills'])
-                result['domain'] = domain_info
-                self.logger.info(f"Detected domain: {domain_info['primary_domain']} (confidence: {domain_info['confidence']:.2f})")
-            else:
-                self.logger.warning("⚠️ DOMAIN DETECTION: detect_domain method NOT found on rule_parser")
-            
-            # Add license extraction if available
-            self.logger.info("🔧 LICENSE EXTRACTION: Checking for extract_licenses method")
-            if hasattr(self.rule_parser, 'extract_licenses'):
-                self.logger.info("🔧 LICENSE EXTRACTION: extract_licenses method exists, calling")
-                licenses = self.rule_parser.extract_licenses(text)
-                result['licenses'] = licenses
-                if licenses:
-                    self.logger.info(f"Extracted licenses: {licenses}")
-                else:
-                    self.logger.info("✅ LICENSE EXTRACTION: No licenses found")
-            else:
-                self.logger.warning("⚠️ LICENSE EXTRACTION: extract_licenses method NOT found on rule_parser")
-        else:
-            self.logger.warning("⚠️ SKILLS EXTRACTION: extract_skills method NOT found on rule_parser")
         
         # Add name extraction if available
         if hasattr(self.rule_parser, 'extract_name'):
@@ -1295,72 +1257,37 @@ Example: {{"name": "John Smith", "email": "john@example.com"}}"""
                 'ai_entities': entities
             }
     
-    @staticmethod
-    def _get_section_text(sections: Dict[str, str], category: str) -> str:
-        """
-        Look up section text by trying all known alias keys for the category.
-        This fixes the case where SectionSplitter stores 'professional experience'
-        but code only checks for 'experience'.
-        """
-        ALIASES = {
-            'experience': [
-                'experience', 'work experience', 'professional experience',
-                'employment history', 'career history', 'work history',
-                'employment', 'relevant experience', 'related experience',
-                'professional background', 'job history', 'positions held',
-                'career summary', 'career profile', 'career overview',
-                'consulting experience', 'internship experience', 'internships',
-                'project experience',
-            ],
-            'education': [
-                'education', 'academic background', 'educational background',
-                'educational qualifications', 'academic qualifications',
-                'academic history', 'qualifications', 'degrees',
-            ],
-            'skills': [
-                'skills', 'technical skills', 'key skills', 'core competencies',
-                'competencies', 'expertise', 'technologies', 'technology stack',
-            ],
-            'summary': [
-                'summary', 'professional summary', 'career summary', 'profile',
-                'objective', 'career objective', 'overview', 'about me',
-            ],
-        }
-        for key in ALIASES.get(category, [category]):
-            text = sections.get(key, '').strip()
-            if text:
-                return text
-        return ''
-
     def _extract_experience(self, sections: Dict[str, str], full_text: str = '', llm_provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Extract structured work experience using HYBRID approach:
         1. PRIMARY: Custom NER Model + Rule-based extraction
         2. FALLBACK: Gemini LLM (only if API key is valid and primary methods fail)
-
-        NOTE: Only used as a fallback when DeBERTa returns 0 results.
-        DeBERTa results take priority in _merge_results().
+        
+        NOTE: This method is DEPRECATED when DeBERTa/Structured parser is available.
+        It should only be used as a last resort fallback.
         """
         self.logger.info("=" * 80)
-        self.logger.info("🔍 HYBRID EXPERIENCE EXTRACTION (fallback)")
+        self.logger.info("🔍 HYBRID EXPERIENCE EXTRACTION")
         self.logger.info("=" * 80)
-
-        # FIX 2: Removed early-return guard. ExperienceExtractor now always runs
-        # as a fallback. _merge_results() suppresses its output when DeBERTa
-        # has produced non-empty work_experience results.
+        
+        # CRITICAL: Return empty if DeBERTa parser is available
+        # DeBERTa/Structured parser is more accurate than old ExperienceExtractor
+        if self.deberta_parser and self.deberta_parser.is_available():
+            self.logger.info("⚠️  DeBERTa parser available - skipping old ExperienceExtractor entirely")
+            self.logger.info("💡 Work experience will be extracted by DeBERTa/Structured parser instead")
+            return {'work_experience': [], 'job_titles': [], 'companies': [], 'locations': []}
+        
         if not self.exp_extractor:
             self.logger.warning("ExperienceExtractor not available, returning empty results")
             return {'work_experience': [], 'job_titles': []}
-
-        # FIX 1: Use alias-aware lookup so 'work experience' / 'professional experience'
-        # section headers are found even though they differ from the canonical key.
-        experience_text = self._get_section_text(sections, 'experience')
+        
+        experience_text = sections.get('experience', '').strip()
         if not experience_text:
-            self.logger.warning("No experience section detected via any alias key, falling back to full text")
+            self.logger.warning("No experience section detected, falling back to full text")
             experience_text = full_text
         if not experience_text:
             return {'work_experience': [], 'job_titles': []}
-
+        
         self.logger.info(f"📝 Experience text length: {len(experience_text)} chars")
         self.logger.info(f"📝 Experience text preview: {experience_text[:300]}...")
         
@@ -1505,11 +1432,10 @@ Example: {{"name": "John Smith", "email": "john@example.com"}}"""
         if not self.edu_extractor:
             self.logger.warning("EducationExtractor not available, returning empty results")
             return {'education': [], 'education_institutions': [], 'degrees': []}
-
-        # FIX 1: Use alias-aware lookup so 'academic background' etc. are found.
-        education_text = self._get_section_text(sections, 'education')
+        
+        education_text = sections.get('education', '').strip()
         if not education_text:
-            self.logger.warning("No education section detected via any alias key, skipping education extraction")
+            self.logger.warning("No education section detected, skipping education extraction")
             return {'education': [], 'education_institutions': [], 'degrees': []}
         
         education = self.edu_extractor.extract_education(education_text)
@@ -1533,8 +1459,7 @@ Example: {{"name": "John Smith", "email": "john@example.com"}}"""
         """Merge all parsing results using HybridMerger with resolve_conflicts."""
         if not self.hybrid_merger:
             self.logger.warning("HybridMerger not available, using simple combination")
-            # FIX 3: Pass deberta_results — was previously missing, causing wrong merge priorities
-            return self._simple_merge(rule_results, ai_results, deberta_results, experience_results, education_results)
+            return self._simple_merge(rule_results, ai_results, experience_results, education_results)
         
         self.logger.debug("Using HybridMerger with resolve_conflicts for merging results")
         

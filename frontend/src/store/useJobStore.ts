@@ -9,7 +9,6 @@ interface Job {
   min_experience_years?: number;
   max_experience_years?: number;
   education_requirement?: string;
-  education_level?: string;
   employment_type?: string;
   seniority_level?: string;
   location?: string;
@@ -69,22 +68,13 @@ interface JobState {
   isMatching: boolean;
   matchingProgress: number;
   error: string | null;
-  pagination: {
-    current_page: number;
-    total_pages: number;
-    total_items: number;
-    items_per_page: number;
-    has_next_page: boolean;
-    has_prev_page: boolean;
-  } | null;
 }
 
 interface JobActions {
-  fetchJobs: (params?: { page?: number; limit?: number; search?: string; department?: string; location?: string; adminView?: boolean }) => Promise<void>;
+  fetchJobs: () => Promise<void>;
   fetchJob: (id: string) => Promise<void>;
   createJob: (jobData: Partial<Job>) => Promise<Job>;
   updateJob: (id: string, jobData: Partial<Job>) => Promise<Job>;
-  clarifyJob: (id: string, jobData: Partial<Job>) => Promise<Job>;
   deleteJob: (id: string) => Promise<void>;
   runMatching: (jobId: string, limit?: number) => Promise<void>;
   fetchMatchResults: (jobId: string) => Promise<void>;
@@ -103,24 +93,16 @@ export const useJobStore = create<JobState & JobActions>((set) => ({
   isMatching: false,
   matchingProgress: 0,
   error: null,
-  pagination: null,
 
   // Actions
-  fetchJobs: async (params = {}) => {
+  fetchJobs: async () => {
     set({ isLoading: true, error: null });
     try {
-      const queryParams = new URLSearchParams();
-      if (params.page) queryParams.append('page', params.page.toString());
-      if (params.limit) queryParams.append('limit', params.limit.toString());
-      if (params.search) queryParams.append('search', params.search);
-      if (params.department) queryParams.append('department', params.department);
-      if (params.location) queryParams.append('location', params.location);
-      if (params.adminView) queryParams.append('adminView', 'true');
-
-      const response = await api.get(`/jobs?${queryParams.toString()}`);
-      set({ jobs: response.data.jobs || [], pagination: response.data.pagination || null, isLoading: false });
+      const response = await api.get("/jobs");
+      set({ jobs: response.data.jobs || [], isLoading: false });
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Failed to fetch jobs";
+      const errorMessage =
+        error.response?.data?.message || "Failed to fetch jobs";
       set({ error: errorMessage, isLoading: false, jobs: [] });
       toast.error(errorMessage);
     }
@@ -181,27 +163,6 @@ export const useJobStore = create<JobState & JobActions>((set) => ({
     }
   },
 
-  clarifyJob: async (id: string, jobData: Partial<Job>) => {
-    try {
-      const response = await api.patch(`/jobs/${id}/clarify`, jobData);
-      const updatedJob = response.data.job;
-
-      set((state) => ({
-        jobs: state.jobs.map((job) => (job.id === id ? updatedJob : job)),
-        currentJob: state.currentJob?.id === id ? updatedJob : state.currentJob,
-      }));
-
-      toast.success("Job requirements clarified successfully");
-      return updatedJob;
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message || "Failed to clarify job requirements";
-      set({ error: errorMessage });
-      toast.error(errorMessage);
-      throw error;
-    }
-  },
-
   deleteJob: async (id: string) => {
     try {
       await api.delete(`/jobs/${id}`);
@@ -236,7 +197,7 @@ export const useJobStore = create<JobState & JobActions>((set) => ({
       });
 
       toast.success(
-        `Matching completed for ${response.data.matches?.length || 0} candidates`,
+        `Matching completed for ${response.data.total_candidates} candidates`,
       );
     } catch (error: any) {
       const errorMessage =

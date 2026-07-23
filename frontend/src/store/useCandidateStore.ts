@@ -10,15 +10,11 @@ interface Candidate {
   location?: string;
   linkedin_url?: string;
   github_url?: string;
-  portfolio_url?: string;
   summary?: string;
   raw_resume_text?: string;
   created_at: string;
   updated_at: string;
   match_score?: number;
-  total_experience_years?: number;
-  total_years_exp?: any;
-  years_experience?: number;
   skills?: Array<{
     id: string;
     skill_name: string;
@@ -27,7 +23,7 @@ interface Candidate {
     years_experience?: number;
     confidence_score?: number;
   }>;
-  work_history?: Array<{
+  work_experience?: Array<{
     id: string;
     job_title: string;
     company_name: string;
@@ -36,7 +32,6 @@ interface Candidate {
     is_current: boolean;
     description?: string;
     location?: string;
-    duration_string?: string | null;
   }>;
   education?: Array<{
     id: string;
@@ -73,7 +68,7 @@ interface CandidateState {
 }
 
 interface CandidateActions {
-  fetchCandidates: (page?: number, limit?: number, search?: string, company?: string, jobTitle?: string, certification?: string, salaryMin?: number | null, salaryMax?: number | null, myCandidates?: boolean) => Promise<void>;
+  fetchCandidates: (page?: number, limit?: number, search?: string, company?: string, jobTitle?: string, certification?: string, salaryMin?: number | null, salaryMax?: number | null) => Promise<void>;
   fetchCandidate: (id: string) => Promise<void>;
   uploadResume: (file: File, llmProvider?: string, candidateId?: string) => Promise<Candidate>;
   deleteCandidate: (id: string) => Promise<void>;
@@ -95,14 +90,12 @@ export const useCandidateStore = create<CandidateState & CandidateActions>(
     pagination: null,
 
     // Actions
-    fetchCandidates: async (page = 1, limit = 20, search = "", company = "", jobTitle = "", certification = "", salaryMin = null, salaryMax = null, myCandidates = false) => {
+    fetchCandidates: async (page = 1, limit = 20, search = "", company = "", jobTitle = "", certification = "", salaryMin = null, salaryMax = null) => {
       set({ isLoading: true, error: null });
       try {
         const params = new URLSearchParams();
         params.append("page", page.toString());
-        // Cap limit at 100 for production compatibility
-        const safeLimit = Math.min(limit, 100);
-        params.append("limit", safeLimit.toString());
+        params.append("limit", limit.toString());
         if (search) {
           params.append("search", search);
         }
@@ -121,33 +114,21 @@ export const useCandidateStore = create<CandidateState & CandidateActions>(
         if (salaryMax !== null) {
           params.append("salary_max", salaryMax.toString());
         }
-        if (myCandidates) {
-          params.append("myCandidates", "true");
-        }
-
+        
         const response = await api.get(`/candidates?${params.toString()}`);
         console.log("📊 API Response:", response.data);
         console.log("📄 Pagination data:", response.data.pagination);
         console.log("👥 Candidates count:", response.data.candidates?.length || 0);
-
-        set({
-          candidates: response.data.candidates || [],
+        
+        set({ 
+          candidates: response.data.candidates || [], 
           pagination: response.data.pagination || null,
-          isLoading: false
+          isLoading: false 
         });
       } catch (error: any) {
         const errorMessage =
           error.response?.data?.message || "Failed to fetch candidates";
         console.error("❌ Fetch candidates error:", error);
-        
-        // Handle authentication errors
-        if (error.response?.status === 401 || error.response?.status === 400) {
-          if (error.response?.data?.error === "Access token required" || error.response?.data?.error === "Invalid or expired token") {
-            // Clear auth and let the auth interceptor handle redirect
-            errorMessage;
-          }
-        }
-        
         set({ error: errorMessage, isLoading: false, candidates: [], pagination: null });
         toast.error(errorMessage);
       }

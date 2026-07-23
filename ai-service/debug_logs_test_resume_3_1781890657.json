@@ -1,0 +1,988 @@
+{
+  "request_id": "test_resume_3",
+  "start_time": "2026-06-19T23:07:35.265377",
+  "end_time": "2026-06-19T17:37:37.460349",
+  "total_duration_ms": 2194.9729919433594,
+  "total_logs": 11,
+  "logs": [
+    {
+      "timestamp": "2026-06-19T17:37:35.265392",
+      "request_id": "test_resume_3",
+      "stage": "file_input",
+      "log_type": "input",
+      "data": {
+        "file_path": "tests/sample_resumes/resume_3.txt",
+        "candidate_id": "test_resume_3",
+        "llm_provider": null,
+        "force_ocr": false
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.023126602172851562
+    },
+    {
+      "timestamp": "2026-06-19T17:37:35.266285",
+      "request_id": "test_resume_3",
+      "stage": "text_extraction",
+      "log_type": "output",
+      "data": {
+        "method": "direct",
+        "text_length": 1282,
+        "quality_score": 0.5857142857142856,
+        "duration_ms": 0.827789306640625
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.9148120880126953
+    },
+    {
+      "timestamp": "2026-06-19T17:37:35.269760",
+      "request_id": "test_resume_3",
+      "stage": "section_splitting",
+      "operation": "section_extraction",
+      "log_type": "processing",
+      "data": {
+        "sections_detected": [
+          "summary",
+          "experience",
+          "education",
+          "skills"
+        ],
+        "section_count": 4,
+        "section_sizes": {
+          "summary": 208,
+          "experience": 631,
+          "education": 141,
+          "skills": 136
+        },
+        "has_experience": true,
+        "has_education": true,
+        "has_skills": true
+      },
+      "metadata": {
+        "duration_ms": 2.933979034423828,
+        "text_length": 1282
+      },
+      "elapsed_time_ms": 4.430055618286133
+    },
+    {
+      "timestamp": "2026-06-19T17:37:35.269832",
+      "request_id": "test_resume_3",
+      "stage": "section_splitting",
+      "operation": "section_summary",
+      "log_type": "processing",
+      "data": {
+        "section_name": "summary",
+        "content_length": 208,
+        "content_preview": "Results-driven Marketing Manager with 7 years of experience in brand strategy, digital\ncampaigns, and team leadership. Skilled at turning data into actionable marketing plans\nthat grow revenue and engagement."
+      },
+      "metadata": {},
+      "elapsed_time_ms": 4.458904266357422
+    },
+    {
+      "timestamp": "2026-06-19T17:37:35.269847",
+      "request_id": "test_resume_3",
+      "stage": "section_splitting",
+      "operation": "section_experience",
+      "log_type": "processing",
+      "data": {
+        "section_name": "experience",
+        "content_length": 631,
+        "content_preview": "Marketing Manager  BrightWave Media, Chicago, IL (March 2021  Present)\n- Directed multi-channel marketing campaigns increasing lead generation by 35\n- Managed a team of 4 marketing specialists and 2 external agencies\n- Owned the annual marketing budget of 1.2M\n- Launched a content strategy that grew"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 4.472970962524414
+    },
+    {
+      "timestamp": "2026-06-19T17:37:35.269859",
+      "request_id": "test_resume_3",
+      "stage": "section_splitting",
+      "operation": "section_education",
+      "log_type": "processing",
+      "data": {
+        "section_name": "education",
+        "content_length": 141,
+        "content_preview": "MBA, Marketing  University of Chicago Booth School of Business (2016  2018)\nB.A., Communications  Indiana University Bloomington (2012  2016)"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 4.4841766357421875
+    },
+    {
+      "timestamp": "2026-06-19T17:37:35.269871",
+      "request_id": "test_resume_3",
+      "stage": "section_splitting",
+      "operation": "section_skills",
+      "log_type": "processing",
+      "data": {
+        "section_name": "skills",
+        "content_length": 136,
+        "content_preview": "Google Analytics, HubSpot, Salesforce, SEOSEM, Adobe Creative Suite, Campaign Strategy, Budget Management, AB Testing, Content Marketing"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 4.495859146118164
+    },
+    {
+      "timestamp": "2026-06-19T17:37:37.041312",
+      "request_id": "test_resume_3",
+      "stage": "model_input",
+      "model_name": "deberta-v3",
+      "log_type": "input",
+      "input_text_length": 1282,
+      "input_text_hash": "cd1091a23b89f329",
+      "input_text_preview": "Michael Anderson Marketing Manager\nmichael.anderson@example.com  (312) 555-0198  Chicago, IL\nlinkedin.cominmichaelanderson\n\nSUMMARY\nResults-driven Marketing Manager with 7 years of experience in brand strategy, digital\ncampaigns, and team leadership. Skilled at turning data into actionable marketing plans\nthat grow revenue and engagement. EXPERIENCE\n\nMarketing Manager  BrightWave Media, Chicago, IL (March 2021  Present)\n- Directed multi-channel marketing campaigns increasing lead generation by 3",
+      "prompt": null,
+      "prompt_length": 0,
+      "metadata": {
+        "model_type": "NER",
+        "text_length": 1282
+      },
+      "elapsed_time_ms": 1776.0059833526611
+    },
+    {
+      "timestamp": "2026-06-19T17:37:37.041401",
+      "request_id": "test_resume_3",
+      "stage": "model_output",
+      "model_name": "deberta-v3",
+      "log_type": "output",
+      "raw_output": null,
+      "parsed_output": {
+        "companies": [
+          "BrightWave Media",
+          "Northgate Retail Group",
+          "com",
+          "linkedin.cominmichaelanderson"
+        ],
+        "locations": [
+          "Chicago, IL",
+          "Chicago, IL",
+          "(312) 5550198 Chicago, IL"
+        ],
+        "work_experience": [
+          {
+            "company": "BrightWave Media",
+            "company_name": "BrightWave Media",
+            "role": "multichannel marketing",
+            "job_title": "multichannel marketing",
+            "location": "Chicago, IL",
+            "start_date": "01/03/2021",
+            "end_date": null,
+            "is_current": true,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "Northgate Retail Group",
+            "company_name": "Northgate Retail Group",
+            "role": "Marketing Specialist",
+            "job_title": "Marketing Specialist",
+            "location": "Chicago, IL",
+            "start_date": "01/08/2018",
+            "end_date": "2012",
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "com",
+            "company_name": "com",
+            "role": "Marketing Manager",
+            "job_title": "Marketing Manager",
+            "location": "(312) 5550198 Chicago, IL",
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "linkedin.cominmichaelanderson",
+            "company_name": "linkedin.cominmichaelanderson",
+            "role": "",
+            "job_title": "",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "",
+            "company_name": "",
+            "role": "Resultsdriven Marketing Manager Strategy",
+            "job_title": "Resultsdriven Marketing Manager Strategy",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "",
+            "company_name": "",
+            "role": "Plans Marketing Manager",
+            "job_title": "Plans Marketing Manager",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "",
+            "company_name": "",
+            "role": "Marketing Specialists",
+            "job_title": "Marketing Specialists",
+            "location": null,
+            "start_date": null,
+            "end_date": "01/02/2021",
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "",
+            "company_name": "",
+            "role": "email marketing",
+            "job_title": "email marketing",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          }
+        ],
+        "education": [
+          {
+            "institution": "Marketing  University of Chicago Booth School of Business (2016  2018)",
+            "degree": "MBA",
+            "field_of_study": "Marketing",
+            "start_year": "(2016",
+            "end_year": "2018",
+            "grade": null,
+            "source": "deberta_ner"
+          },
+          {
+            "institution": "Communications  Indiana University Bloomington (2012  2016)",
+            "degree": "B.A",
+            "field_of_study": "Communications",
+            "start_year": "(2012",
+            "end_year": "(2016 2018",
+            "grade": null,
+            "source": "deberta_ner"
+          }
+        ],
+        "job_titles": [
+          "multichannel marketing",
+          "Marketing Specialist",
+          "Marketing Manager",
+          "Resultsdriven Marketing Manager Strategy",
+          "Plans Marketing Manager",
+          "Marketing Specialists",
+          "email marketing"
+        ],
+        "clients": [],
+        "dates": [],
+        "degrees": [
+          "MBA",
+          "B.A"
+        ],
+        "institutions": [
+          "Marketing  University of Chicago Booth School of Business (2016  2018)",
+          "Communications  Indiana University Bloomington (2012  2016)"
+        ],
+        "fields_of_study": [
+          "Marketing",
+          "Communications"
+        ],
+        "source": "deberta_ner",
+        "confidence": {
+          "deberta_confidence": 0.85,
+          "entities_found": 13
+        }
+      },
+      "output_size": 3476,
+      "metadata": {
+        "duration_ms": 1695.8048343658447,
+        "entities_extracted": 11
+      },
+      "elapsed_time_ms": 1776.1008739471436
+    },
+    {
+      "timestamp": "2026-06-19T17:37:37.459751",
+      "request_id": "test_resume_3",
+      "stage": "final_output",
+      "log_type": "output",
+      "data": {
+        "candidate_id": "test_resume_3",
+        "status": "success",
+        "name": "Michael Anderson Marketing Manager",
+        "email": "mi************************om",
+        "phone": "31*********98",
+        "work_experience_count": 8,
+        "education_count": 2,
+        "skills_count": 9,
+        "confidence_score": 0.93,
+        "processing_metrics": {
+          "timing_ms": {
+            "text_extraction_ms": 0.827789306640625,
+            "name_extraction_ms": 0.14901161193847656,
+            "section_splitting_ms": 2.933979034423828,
+            "rule_parsing_ms": 74.69582557678223,
+            "deberta_parsing_ms": 1695.8048343658447,
+            "ai_parsing_ms": 0.02574920654296875,
+            "ai_skipped": true,
+            "experience_extraction_ms": 0.046253204345703125,
+            "education_extraction_ms": 4.359245300292969,
+            "summary_extraction_ms": 0.1499652862548828,
+            "merging_ms": 1.4128684997558594,
+            "confidence_scoring_ms": 0.0591278076171875,
+            "quality_analysis_ms": 2.5396347045898438,
+            "total_ms": 2194.35715675354
+          },
+          "total_processing_time_ms": 0,
+          "pipeline_steps_completed": 13
+        },
+        "needs_review": false
+      },
+      "metadata": {
+        "processing_time_ms": 2194.35715675354,
+        "pipeline_stages": [
+          "text_extraction_ms",
+          "name_extraction_ms",
+          "section_splitting_ms",
+          "rule_parsing_ms",
+          "deberta_parsing_ms",
+          "ai_parsing_ms",
+          "ai_skipped",
+          "experience_extraction_ms",
+          "education_extraction_ms",
+          "summary_extraction_ms",
+          "merging_ms",
+          "confidence_scoring_ms",
+          "quality_analysis_ms",
+          "total_ms"
+        ]
+      },
+      "elapsed_time_ms": 2194.391965866089
+    },
+    {
+      "timestamp": "2026-06-19T17:37:37.460076",
+      "request_id": "test_resume_3",
+      "stage": "final_output",
+      "operation": "complete_result",
+      "log_type": "processing",
+      "data": {
+        "full_result": {
+          "candidate_id": "test_resume_3",
+          "status": "success",
+          "parsing_timestamp": 1781890657.459641,
+          "name": "Michael Anderson Marketing Manager",
+          "email": "mi************************om",
+          "phone": "31*********98",
+          "linkedin": null,
+          "github": null,
+          "websites": [
+            "https://michael.anderson",
+            "https://example.com"
+          ],
+          "summary": "Results-driven Marketing Manager with 7 years of experience in brand strategy, digital campaigns, and team leadership. Skilled at turning data into actionable marketing plans that grow revenue and engagement.",
+          "skills": [
+            "A/B Testing",
+            "Adobe Creative Suite",
+            "Budget Management",
+            "Content Marketing",
+            "Google Analytics",
+            "HubSpot",
+            "Management",
+            "Salesforce",
+            "Email Marketing"
+          ],
+          "work_experience": [
+            {
+              "company": "BrightWave Media",
+              "company_name": "BrightWave Media",
+              "role": "multichannel marketing",
+              "job_title": "multichannel marketing",
+              "location": "Chicago, IL",
+              "start_date": "01/03/2021",
+              "end_date": null,
+              "is_current": true,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Northgate Retail Group",
+              "company_name": "Northgate Retail Group",
+              "role": "Marketing Specialist",
+              "job_title": "Marketing Specialist",
+              "location": "Chicago, IL",
+              "start_date": "01/08/2018",
+              "end_date": "2012",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "com",
+              "company_name": "com",
+              "role": "Marketing Manager",
+              "job_title": "Marketing Manager",
+              "location": "(312) 5550198 Chicago, IL",
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "linkedin.cominmichaelanderson",
+              "company_name": "linkedin.cominmichaelanderson",
+              "role": "",
+              "job_title": "",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "Resultsdriven Marketing Manager Strategy",
+              "job_title": "Resultsdriven Marketing Manager Strategy",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "Plans Marketing Manager",
+              "job_title": "Plans Marketing Manager",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "Marketing Specialists",
+              "job_title": "Marketing Specialists",
+              "location": null,
+              "start_date": null,
+              "end_date": "01/02/2021",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "email marketing",
+              "job_title": "email marketing",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            }
+          ],
+          "work_history": [
+            {
+              "company": "BrightWave Media",
+              "company_name": "BrightWave Media",
+              "role": "multichannel marketing",
+              "job_title": "multichannel marketing",
+              "location": "Chicago, IL",
+              "start_date": "01/03/2021",
+              "end_date": null,
+              "is_current": true,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Northgate Retail Group",
+              "company_name": "Northgate Retail Group",
+              "role": "Marketing Specialist",
+              "job_title": "Marketing Specialist",
+              "location": "Chicago, IL",
+              "start_date": "01/08/2018",
+              "end_date": "2012",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "com",
+              "company_name": "com",
+              "role": "Marketing Manager",
+              "job_title": "Marketing Manager",
+              "location": "(312) 5550198 Chicago, IL",
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "linkedin.cominmichaelanderson",
+              "company_name": "linkedin.cominmichaelanderson",
+              "role": "",
+              "job_title": "",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "Resultsdriven Marketing Manager Strategy",
+              "job_title": "Resultsdriven Marketing Manager Strategy",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "Plans Marketing Manager",
+              "job_title": "Plans Marketing Manager",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "Marketing Specialists",
+              "job_title": "Marketing Specialists",
+              "location": null,
+              "start_date": null,
+              "end_date": "01/02/2021",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "email marketing",
+              "job_title": "email marketing",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            }
+          ],
+          "education": [
+            {
+              "institution": "Marketing  University of Chicago Booth School of Business (2016  2018)",
+              "degree": "MBA",
+              "field_of_study": "Marketing",
+              "start_year": "(2016",
+              "end_year": "2018",
+              "grade": null,
+              "source": "deberta_ner"
+            },
+            {
+              "institution": "Communications  Indiana University Bloomington (2012  2016)",
+              "degree": "B.A",
+              "field_of_study": "Communications",
+              "start_year": "(2012",
+              "end_year": "(2016 2018",
+              "grade": null,
+              "source": "deberta_ner"
+            }
+          ],
+          "job_titles": [
+            "multichannel marketing",
+            "Marketing Specialist",
+            "Marketing Manager",
+            "Resultsdriven Marketing Manager Strategy",
+            "Plans Marketing Manager",
+            "Marketing Specialists",
+            "email marketing"
+          ],
+          "companies": [
+            "BrightWave Media",
+            "Northgate Retail Group",
+            "com",
+            "linkedin.cominmichaelanderson"
+          ],
+          "locations": [
+            "Chicago, IL",
+            "Chicago, IL",
+            "(312) 5550198 Chicago, IL"
+          ],
+          "dates": [],
+          "years_of_experience": 0.0,
+          "misc_entities": [],
+          "confidence": {
+            "overall": 0.93,
+            "fields": {
+              "email": "***",
+              "phone": "***",
+              "name": 0.7,
+              "skills": 1.0,
+              "experience": 1.0,
+              "education": 1.0
+            },
+            "needs_review": false,
+            "missing_critical": [],
+            "quality_level": "excellent",
+            "quality_score": 0.9,
+            "recommendations": [],
+            "field_weights": {
+              "email": "****",
+              "phone": "***",
+              "name": 0.2,
+              "skills": 0.25,
+              "experience": 0.2,
+              "education": 0.1
+            }
+          },
+          "needs_review": false,
+          "quality_level": "excellent",
+          "processing_metrics": {
+            "timing_ms": {
+              "text_extraction_ms": 0.827789306640625,
+              "name_extraction_ms": 0.14901161193847656,
+              "section_splitting_ms": 2.933979034423828,
+              "rule_parsing_ms": 74.69582557678223,
+              "deberta_parsing_ms": 1695.8048343658447,
+              "ai_parsing_ms": 0.02574920654296875,
+              "ai_skipped": true,
+              "experience_extraction_ms": 0.046253204345703125,
+              "education_extraction_ms": 4.359245300292969,
+              "summary_extraction_ms": 0.1499652862548828,
+              "merging_ms": 1.4128684997558594,
+              "confidence_scoring_ms": 0.0591278076171875,
+              "quality_analysis_ms": 2.5396347045898438,
+              "total_ms": 2194.35715675354
+            },
+            "total_processing_time_ms": 0,
+            "pipeline_steps_completed": 13
+          },
+          "source_info": {
+            "file_path": "tests/sample_resumes/resume_3.txt",
+            "extraction_method": "direct",
+            "quality_score": 0.5857142857142856
+          },
+          "extraction_quality": {
+            "extraction_quality_percentage": 26.03,
+            "text_similarity_percentage": 43.63,
+            "missing_keywords": [
+              "coordinated",
+              "increasing",
+              "generation",
+              "maintained",
+              "education",
+              "platforms",
+              "executed",
+              "february",
+              "presence",
+              "directed",
+              "campaign",
+              "external",
+              "launched",
+              "national",
+              "agencies",
+              "average",
+              "channel",
+              "managed",
+              "organic",
+              "traffic"
+            ],
+            "missing_sections": [],
+            "structure_loss": [
+              "Bullet points lost: 8",
+              "Paragraph structure simplified",
+              "Date information lost: 3 dates missing"
+            ],
+            "text_loss_percentage": 56.37,
+            "recommendation": "Poor extraction quality. High text loss - use OCR for scanned documents.",
+            "metrics": {
+              "original_text_length": 1282,
+              "reconstructed_text_length": 855,
+              "original_word_count": 175,
+              "reconstructed_word_count": 102,
+              "missing_word_count": 43
+            }
+          },
+          "model_results": {
+            "deberta_extraction": {
+              "work_experience": [
+                {
+                  "company": "BrightWave Media",
+                  "company_name": "BrightWave Media",
+                  "role": "multichannel marketing",
+                  "job_title": "multichannel marketing",
+                  "location": "Chicago, IL",
+                  "start_date": "01/03/2021",
+                  "end_date": null,
+                  "is_current": true,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "Northgate Retail Group",
+                  "company_name": "Northgate Retail Group",
+                  "role": "Marketing Specialist",
+                  "job_title": "Marketing Specialist",
+                  "location": "Chicago, IL",
+                  "start_date": "01/08/2018",
+                  "end_date": "2012",
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "com",
+                  "company_name": "com",
+                  "role": "Marketing Manager",
+                  "job_title": "Marketing Manager",
+                  "location": "(312) 5550198 Chicago, IL",
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "linkedin.cominmichaelanderson",
+                  "company_name": "linkedin.cominmichaelanderson",
+                  "role": "",
+                  "job_title": "",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "",
+                  "company_name": "",
+                  "role": "Resultsdriven Marketing Manager Strategy",
+                  "job_title": "Resultsdriven Marketing Manager Strategy",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "",
+                  "company_name": "",
+                  "role": "Plans Marketing Manager",
+                  "job_title": "Plans Marketing Manager",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "",
+                  "company_name": "",
+                  "role": "Marketing Specialists",
+                  "job_title": "Marketing Specialists",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": "01/02/2021",
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "",
+                  "company_name": "",
+                  "role": "email marketing",
+                  "job_title": "email marketing",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                }
+              ],
+              "education": [
+                {
+                  "institution": "Marketing  University of Chicago Booth School of Business (2016  2018)",
+                  "degree": "MBA",
+                  "field_of_study": "Marketing",
+                  "start_year": "(2016",
+                  "end_year": "2018",
+                  "grade": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "institution": "Communications  Indiana University Bloomington (2012  2016)",
+                  "degree": "B.A",
+                  "field_of_study": "Communications",
+                  "start_year": "(2012",
+                  "end_year": "(2016 2018",
+                  "grade": null,
+                  "source": "deberta_ner"
+                }
+              ],
+              "companies": [
+                "BrightWave Media",
+                "Northgate Retail Group",
+                "com",
+                "linkedin.cominmichaelanderson"
+              ],
+              "job_titles": [
+                "multichannel marketing",
+                "Marketing Specialist",
+                "Marketing Manager",
+                "Resultsdriven Marketing Manager Strategy",
+                "Plans Marketing Manager",
+                "Marketing Specialists",
+                "email marketing"
+              ],
+              "institutions": [
+                "Marketing  University of Chicago Booth School of Business (2016  2018)",
+                "Communications  Indiana University Bloomington (2012  2016)"
+              ],
+              "degrees": [
+                "MBA",
+                "B.A"
+              ],
+              "source": "deberta_ner"
+            }
+          },
+          "merge_metadata": {
+            "conflict_resolution_used": true,
+            "sources_available": {
+              "rules": true,
+              "ner": true,
+              "deberta": true,
+              "llm": true
+            },
+            "deberta_entities_found": 13,
+            "total_fields_merged": 23
+          },
+          "raw_text": "Michael Anderson Marketing Manager\nmichael.anderson@example.com  (312) 555-0198  Chicago, IL\nlinkedin.cominmichaelanderson\n\nSUMMARY\nResults-driven Marketing Manager with 7 years of experience in brand strategy, digital\ncampaigns, and team leadership. Skilled at turning data into actionable marketing plans\nthat grow revenue and engagement. EXPERIENCE\n\nMarketing Manager  BrightWave Media, Chicago, IL (March 2021  Present)\n- Directed multi-channel marketing campaigns increasing lead generation by 35\n- Managed a team of 4 marketing specialists and 2 external agencies\n- Owned the annual marketing budget of 1.2M\n- Launched a content strategy that grew organic traffic by 50 in 12 months\n\nMarketing Specialist  Northgate Retail Group, Chicago, IL (August 2018  February 2021)\n- Executed email marketing campaigns with average open rate of 28\n- Coordinated trade show presence at 6 national events per year\n- Built and maintained the company's social media presence across 4 platforms\n\nEDUCATION\nMBA,...[truncated]",
+          "raw_resume_text": "Michael Anderson Marketing Manager\nmichael.anderson@example.com  (312) 555-0198  Chicago, IL\nlinkedin.cominmichaelanderson\n\nSUMMARY\nResults-driven Marketing Manager with 7 years of experience in brand strategy, digital\ncampaigns, and team leadership. Skilled at turning data into actionable marketing plans\nthat grow revenue and engagement. EXPERIENCE\n\nMarketing Manager  BrightWave Media, Chicago, IL (March 2021  Present)\n- Directed multi-channel marketing campaigns increasing lead generation by 35\n- Managed a team of 4 marketing specialists and 2 external agencies\n- Owned the annual marketing budget of 1.2M\n- Launched a content strategy that grew organic traffic by 50 in 12 months\n\nMarketing Specialist  Northgate Retail Group, Chicago, IL (August 2018  February 2021)\n- Executed email marketing campaigns with average open rate of 28\n- Coordinated trade show presence at 6 national events per year\n- Built and maintained the company's social media presence across 4 platforms\n\nEDUCATION\nMBA, Marketing  University of Chicago Booth School of Business (2016  2018)\nB.A., Communications  Indiana University Bloomington (2012  2016)\n\nSKILLS\nGoogle Analytics, HubSpot, Salesforce, SEOSEM, Adobe Creative Suite, Campaign Strategy, Budget Management, AB Testing, Content Marketing",
+          "file_info": {
+            "file_path": "tests/sample_resumes/resume_3.txt",
+            "file_name": "resume_3.txt",
+            "extraction_method": "direct",
+            "text_quality_score": 0.5857142857142856,
+            "word_count": 175
+          }
+        },
+        "result_size": 14524
+      },
+      "metadata": {
+        "processing_time_ms": 2194.35715675354,
+        "pipeline_stages": [
+          "text_extraction_ms",
+          "name_extraction_ms",
+          "section_splitting_ms",
+          "rule_parsing_ms",
+          "deberta_parsing_ms",
+          "ai_parsing_ms",
+          "ai_skipped",
+          "experience_extraction_ms",
+          "education_extraction_ms",
+          "summary_extraction_ms",
+          "merging_ms",
+          "confidence_scoring_ms",
+          "quality_analysis_ms",
+          "total_ms"
+        ]
+      },
+      "elapsed_time_ms": 2194.859027862549
+    }
+  ]
+}

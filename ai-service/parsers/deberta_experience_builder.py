@@ -68,11 +68,25 @@ class DeBERTaExperienceBuilder:
             'jwt', 'oauth', 'oauth2', 'saml', 'sso', 'soap', 'restful', 'grpc',
             # Generic/Noise keywords that get misidentified
             'platform', 'system', 'framework', 'library', 'integration', 'authentication', 'authorization',
-            # Additional technologies/skills to reject (generic descriptors only)
-            # FIX 7: Removed '*_engineering' and '*_development' entries — these are valid
-            # JOB TITLE modifiers (e.g. "Software Engineering Intern", "Data Engineering Lead").
-            # Role-like description phrases are already handled by _NON_HEADER_ROLE_PHRASES
-            # in _preprocess_text(), so they never reach entity extraction.
+            # Additional technologies/skills to reject
+            'backend development', 'frontend development', 'full stack development',
+            'api development', 'api engineering', 'microservices', 'release cycle',
+            'production support', 'monitoring', 'migration time', '3 developer',
+            'development team', 'engineering team', 'software development',
+            'application development', 'system development', 'platform development',
+            'cloud development', 'data development', 'test development',
+            'qa development', 'devops development', 'security development',
+            'mobile development', 'web development', 'database development',
+            'infrastructure development', 'network development',
+            'backend engineering', 'frontend engineering', 'full stack engineering',
+            'api engineering', 'microservices engineering', 'release engineering',
+            'production engineering', 'monitoring engineering', 'migration engineering',
+            'development engineering', 'engineering engineering', 'software engineering',
+            'application engineering', 'system engineering', 'platform engineering',
+            'cloud engineering', 'data engineering', 'test engineering',
+            'qa engineering', 'devops engineering', 'security engineering',
+            'mobile engineering', 'web engineering', 'database engineering',
+            'infrastructure engineering', 'network engineering',
             'release cycle', 'production support', 'monitoring',
             'migration time', '3 developer', 'python softtestlab',
             # ── STEP 15: Reject impossible companies (specific list from requirements) ──
@@ -151,14 +165,7 @@ class DeBERTaExperienceBuilder:
                 text, companies, roles, start_dates, end_dates, locations, clients
             )
         
-        # FIX 6: Remove null-company and null-title records — these are produced
-        # when the company text is rejected by _reject_technology_companies() but
-        # the experience dict was still appended without a clean-up pass.
-        experiences = [
-            exp for exp in experiences
-            if exp.get('company_name') or exp.get('job_title')
-        ]
-        self.logger.info(f"✅ Built {len(experiences)} work experiences from DeBERTa entities (after null-record cleanup)")
+        self.logger.info(f"✅ Built {len(experiences)} work experiences from DeBERTa entities")
         return experiences
 
     def _build_experiences_by_position(self, positions_data: List[Dict], text: str,
@@ -1249,73 +1256,72 @@ class DeBERTaExperienceBuilder:
     def _validate_role(self, role_text: str) -> bool:
         """
         Phase 16: Role Validation
-
-        Reject non-role entities misidentified as job titles:
-        - Pure technology keywords (from self.tech_keywords)
-        - Infrastructure/process-only terms (pipeline, migration, etc.)
-        - Description sentences (developed, implemented, ...)
-
-        Accept:
-        - Any text containing a job title keyword (engineer, developer, ...)
-        - Multi-word titles (usually legitimate)
-        - Known executive abbreviations (ceo, cto, vp, ...)
+        
+        Validate against role taxonomy. Reject:
+        - Pipeline
+        - Migration
+        - Storage
+        - Workflow
+        - API
+        - Deployment
+        - Backend Development
+        - Monitoring
+        - Description sentence
+        - Environment sentence
+        
+        Args:
+            role_text: Role name to validate
+            
+        Returns:
+            True if valid role, False otherwise
         """
         if not role_text or not role_text.strip():
             return False
-
+        
         role_lower = role_text.lower().strip()
-
-        # Reject pure technology keywords (from tech_keywords set)
+        
+        # Reject technology keywords
         if role_lower in self.tech_keywords:
-            self.logger.debug("[ValidateRole] Rejected tech keyword: '%s'", role_text)
+            self.logger.debug(f"🔧 Role validation rejected (tech keyword): '{role_text}'")
             return False
-
-        # Reject pure infrastructure/process terms that are NEVER job titles.
-        # NOTE: 'api', 'backend development', 'frontend development', 'full stack development'
-        # were removed from here because they appear inside valid titles like
-        # 'API Engineer', 'Backend Developer', 'Full Stack Developer'.
-        workflow_terms = [
-            'pipeline', 'migration', 'storage', 'workflow',
-            'deployment', 'monitoring', 'architecture', 'integration',
-        ]
-        if role_lower in workflow_terms:  # exact match only, not substring
-            self.logger.debug("[ValidateRole] Rejected workflow term (exact): '%s'", role_text)
+        
+        # Reject workflow/infrastructure terms
+        workflow_terms = ['pipeline', 'migration', 'storage', 'workflow', 'api',
+                        'deployment', 'monitoring', 'architecture', 'integration',
+                        'backend development', 'frontend development', 'full stack development']
+        
+        if any(term in role_lower for term in workflow_terms):
+            self.logger.debug(f"🔧 Role validation rejected (workflow term): '{role_text}'")
             return False
-
-        # Reject if it looks like a description sentence
-        sentence_patterns = [
-            'developed', 'implemented', 'designed', 'created', 'managed',
-            'built', 'enhanced', 'optimized', 'maintained', 'supported',
-            'responsible for', 'worked on', 'involved in',
-        ]
+        
+        # Reject if it's a description sentence
+        sentence_patterns = ['developed', 'implemented', 'designed', 'created', 'managed',
+                           'built', 'enhanced', 'optimized', 'maintained', 'supported',
+                           'responsible for', 'worked on', 'involved in']
+        
         if any(pattern in role_lower for pattern in sentence_patterns):
-            self.logger.debug("[ValidateRole] Rejected description sentence: '%s'", role_text)
+            self.logger.debug(f"🔧 Role validation rejected (sentence): '{role_text}'")
             return False
-
-        # Accept if it contains a known job title keyword
-        job_keywords = [
-            'developer', 'engineer', 'manager', 'architect', 'analyst',
-            'designer', 'consultant', 'specialist', 'lead', 'senior',
-            'junior', 'trainee', 'intern', 'director', 'coordinator',
-            'programmer', 'administrator', 'technician', 'principal',
-            'vp', 'president', 'founder', 'ceo', 'cto', 'cfo',
-            'full stack', 'fullstack', 'backend', 'frontend', 'devops',
-            'data scientist', 'data engineer', 'data analyst', 'ml engineer',
-            'scrum master', 'product owner', 'business analyst',
-        ]
+        
+        # Accept if it contains job title keywords
+        job_keywords = ['developer', 'engineer', 'manager', 'architect', 'analyst',
+                       'designer', 'consultant', 'specialist', 'lead', 'senior',
+                       'junior', 'trainee', 'intern', 'director', 'coordinator',
+                       'programmer', 'administrator', 'technician', 'principal',
+                       'vp', 'president', 'founder', 'ceo', 'cto', 'cfo']
+        
         if any(keyword in role_lower for keyword in job_keywords):
             return True
-
+        
         # Accept multi-word titles (likely legitimate)
         if len(role_text.split()) >= 2:
             return True
-
+        
         # Accept single-word professional titles
-        professional_titles = {'ceo', 'cto', 'cfo', 'vp', 'president', 'founder',
-                               'consultant', 'analyst', 'intern', 'technician'}
+        professional_titles = ['ceo', 'cto', 'cfo', 'vp', 'president', 'founder']
         if role_lower in professional_titles:
             return True
-
+        
         return False
     
     def _remove_duplicates(self, experiences: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

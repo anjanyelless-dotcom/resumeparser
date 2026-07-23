@@ -1,0 +1,445 @@
+{
+  "request_id": "test_resume_4",
+  "start_time": "2026-06-19T23:07:24.023364",
+  "end_time": "2026-06-19T17:37:24.923039",
+  "total_duration_ms": 899.6758460998535,
+  "total_logs": 12,
+  "logs": [
+    {
+      "timestamp": "2026-06-19T17:37:24.023380",
+      "request_id": "test_resume_4",
+      "stage": "file_input",
+      "log_type": "input",
+      "data": {
+        "file_path": "tests/sample_resumes/resume_4.txt",
+        "candidate_id": "test_resume_4",
+        "llm_provider": null,
+        "force_ocr": false
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.0209808349609375
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.024061",
+      "request_id": "test_resume_4",
+      "stage": "text_extraction",
+      "log_type": "output",
+      "data": {
+        "method": "direct",
+        "text_length": 1084,
+        "quality_score": 0.5813333333333333,
+        "duration_ms": 0.6351470947265625
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.7009506225585938
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.026885",
+      "request_id": "test_resume_4",
+      "stage": "section_splitting",
+      "operation": "section_extraction",
+      "log_type": "processing",
+      "data": {
+        "sections_detected": [
+          "contact",
+          "summary",
+          "experience",
+          "education",
+          "skills"
+        ],
+        "section_count": 5,
+        "section_sizes": {
+          "contact": 114,
+          "summary": 161,
+          "experience": 607,
+          "education": 83,
+          "skills": 70
+        },
+        "has_experience": true,
+        "has_education": true,
+        "has_skills": true
+      },
+      "metadata": {
+        "duration_ms": 2.534151077270508,
+        "text_length": 1084
+      },
+      "elapsed_time_ms": 3.529071807861328
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.026908",
+      "request_id": "test_resume_4",
+      "stage": "section_splitting",
+      "operation": "section_contact",
+      "log_type": "processing",
+      "data": {
+        "section_name": "contact",
+        "content_length": 114,
+        "content_preview": "RESUME\n\nName: Priya\nRaman\nTitle: Mechanical\nDesign Engineer\n\npriya.raman@mail.com  1-480-555-0173  Phoenix, AZ\n\n1."
+      },
+      "metadata": {},
+      "elapsed_time_ms": 3.545999526977539
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.026919",
+      "request_id": "test_resume_4",
+      "stage": "section_splitting",
+      "operation": "section_summary",
+      "log_type": "processing",
+      "data": {
+        "section_name": "summary",
+        "content_length": 161,
+        "content_preview": "Mechanical Design Engineer with 6 years of experience in CAD modeling, product\ndevelopment, and manufacturing process improvement within the aerospace sector. 2."
+      },
+      "metadata": {},
+      "elapsed_time_ms": 3.556966781616211
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.026929",
+      "request_id": "test_resume_4",
+      "stage": "section_splitting",
+      "operation": "section_experience",
+      "log_type": "processing",
+      "data": {
+        "section_name": "experience",
+        "content_length": 607,
+        "content_preview": "2.1 Mechanical Design Engineer, Skyline Aerospace Corp, Phoenix, AZ (2019 - Present)\n- Designed structural components for unmanned aerial systems using\nSolidWorks\n- Reduced part weight by 18 through topology optimization\n- Led FMEA reviews for 3 major product lines\n- Coordinated with suppliers to re"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 3.5669803619384766
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.026940",
+      "request_id": "test_resume_4",
+      "stage": "section_splitting",
+      "operation": "section_education",
+      "log_type": "processing",
+      "data": {
+        "section_name": "education",
+        "content_length": 83,
+        "content_preview": "B.S. Mechanical Engineering, Arizona State University (2013 - 2017), GPA 3.54.0\n\n4."
+      },
+      "metadata": {},
+      "elapsed_time_ms": 3.5779476165771484
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.026949",
+      "request_id": "test_resume_4",
+      "stage": "section_splitting",
+      "operation": "section_skills",
+      "log_type": "processing",
+      "data": {
+        "section_name": "skills",
+        "content_length": 70,
+        "content_preview": "SolidWorks, AutoCAD, ANSYS, GDT, Six Sigma, MATLAB, Lean Manufacturing"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 3.5867691040039062
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.910677",
+      "request_id": "test_resume_4",
+      "stage": "model_input",
+      "model_name": "deberta-v3",
+      "log_type": "input",
+      "input_text_length": 1084,
+      "input_text_hash": "9fbad198fa541165",
+      "input_text_preview": "RESUME\n\nName: Priya Raman\nTitle: Mechanical Design Engineer\nContact: priya.raman@mail.com  1-480-555-0173  Phoenix, AZ\n\n1. SUMMARY\nMechanical Design Engineer with 6 years of experience in CAD modeling, product\ndevelopment, and manufacturing process improvement within the aerospace sector. 2. EXPERIENCE\n\n2.1 Mechanical Design Engineer, Skyline Aerospace Corp, Phoenix, AZ (2019 - Present)\n- Designed structural components for unmanned aerial systems using SolidWorks\n- Reduced part weight by 18 thro",
+      "prompt": null,
+      "prompt_length": 0,
+      "metadata": {
+        "model_type": "NER",
+        "text_length": 1084
+      },
+      "elapsed_time_ms": 887.3517513275146
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.910736",
+      "request_id": "test_resume_4",
+      "stage": "model_output",
+      "model_name": "deberta-v3",
+      "log_type": "output",
+      "raw_output": null,
+      "parsed_output": {
+        "companies": [],
+        "locations": [],
+        "work_experience": [],
+        "education": [],
+        "job_titles": [],
+        "clients": [],
+        "dates": [],
+        "degrees": [],
+        "institutions": [],
+        "fields_of_study": [],
+        "source": "structured_parser",
+        "confidence": {
+          "deberta_confidence": 0.85,
+          "entities_found": 0
+        }
+      },
+      "output_size": 274,
+      "metadata": {
+        "duration_ms": 821.6578960418701,
+        "entities_extracted": 0
+      },
+      "elapsed_time_ms": 887.3879909515381
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.922724",
+      "request_id": "test_resume_4",
+      "stage": "final_output",
+      "log_type": "output",
+      "data": {
+        "candidate_id": "test_resume_4",
+        "status": "success",
+        "name": "RESUME",
+        "email": "pr****************om",
+        "phone": "1-**********73",
+        "work_experience_count": 0,
+        "education_count": 1,
+        "skills_count": 4,
+        "confidence_score": 0.64,
+        "processing_metrics": {
+          "timing_ms": {
+            "text_extraction_ms": 0.6351470947265625,
+            "name_extraction_ms": 0.13399124145507812,
+            "section_splitting_ms": 2.534151077270508,
+            "rule_parsing_ms": 61.73992156982422,
+            "deberta_parsing_ms": 821.6578960418701,
+            "ai_parsing_ms": 0.010013580322265625,
+            "ai_skipped": true,
+            "experience_extraction_ms": 0.0438690185546875,
+            "education_extraction_ms": 6.21485710144043,
+            "summary_extraction_ms": 0.1571178436279297,
+            "merging_ms": 0.5939006805419922,
+            "confidence_scoring_ms": 0.07510185241699219,
+            "quality_analysis_ms": 2.4089813232421875,
+            "total_ms": 899.3408679962158
+          },
+          "total_processing_time_ms": 0,
+          "pipeline_steps_completed": 13
+        },
+        "needs_review": false
+      },
+      "metadata": {
+        "processing_time_ms": 899.3408679962158,
+        "pipeline_stages": [
+          "text_extraction_ms",
+          "name_extraction_ms",
+          "section_splitting_ms",
+          "rule_parsing_ms",
+          "deberta_parsing_ms",
+          "ai_parsing_ms",
+          "ai_skipped",
+          "experience_extraction_ms",
+          "education_extraction_ms",
+          "summary_extraction_ms",
+          "merging_ms",
+          "confidence_scoring_ms",
+          "quality_analysis_ms",
+          "total_ms"
+        ]
+      },
+      "elapsed_time_ms": 899.3849754333496
+    },
+    {
+      "timestamp": "2026-06-19T17:37:24.922912",
+      "request_id": "test_resume_4",
+      "stage": "final_output",
+      "operation": "complete_result",
+      "log_type": "processing",
+      "data": {
+        "full_result": {
+          "candidate_id": "test_resume_4",
+          "status": "success",
+          "parsing_timestamp": 1781890644.922446,
+          "name": "RESUME",
+          "email": "pr****************om",
+          "phone": "1-**********73",
+          "linkedin": null,
+          "github": null,
+          "websites": [
+            "https://priya.raman",
+            "https://mail.com"
+          ],
+          "summary": "Mechanical Design Engineer with 6 years of experience in CAD modeling, product development, and manufacturing process improvement within the aerospace sector. 2.",
+          "skills": [
+            "Lean",
+            "Lean Manufacturing",
+            "MATLAB",
+            "Six Sigma"
+          ],
+          "work_experience": [],
+          "work_history": [],
+          "education": [
+            {
+              "degree": "Bachelor of Science",
+              "field_of_study": "Mechanical Engineering",
+              "institution": "Mechanical Engineering, Arizona State University",
+              "start_year": 2013,
+              "end_year": 2017,
+              "gpa": 3.54,
+              "is_highest_degree": true
+            }
+          ],
+          "job_titles": [],
+          "companies": [],
+          "locations": [
+            "Phoenix, AZ",
+            "Tempe, AZ"
+          ],
+          "dates": [],
+          "years_of_experience": 0.0,
+          "misc_entities": [],
+          "confidence": {
+            "overall": 0.64,
+            "fields": {
+              "email": "***",
+              "phone": "***",
+              "name": 0.5,
+              "skills": 0.8,
+              "experience": 0.0,
+              "education": 1.0
+            },
+            "needs_review": false,
+            "missing_critical": [],
+            "quality_level": "fair",
+            "quality_score": 0.6,
+            "recommendations": [
+              "Ensure full name is clearly visible",
+              "Add work experience with job titles and companies"
+            ],
+            "field_weights": {
+              "email": "****",
+              "phone": "***",
+              "name": 0.2,
+              "skills": 0.25,
+              "experience": 0.2,
+              "education": 0.1
+            }
+          },
+          "needs_review": false,
+          "quality_level": "fair",
+          "processing_metrics": {
+            "timing_ms": {
+              "text_extraction_ms": 0.6351470947265625,
+              "name_extraction_ms": 0.13399124145507812,
+              "section_splitting_ms": 2.534151077270508,
+              "rule_parsing_ms": 61.73992156982422,
+              "deberta_parsing_ms": 821.6578960418701,
+              "ai_parsing_ms": 0.010013580322265625,
+              "ai_skipped": true,
+              "experience_extraction_ms": 0.0438690185546875,
+              "education_extraction_ms": 6.21485710144043,
+              "summary_extraction_ms": 0.1571178436279297,
+              "merging_ms": 0.5939006805419922,
+              "confidence_scoring_ms": 0.07510185241699219,
+              "quality_analysis_ms": 2.4089813232421875,
+              "total_ms": 899.3408679962158
+            },
+            "total_processing_time_ms": 0,
+            "pipeline_steps_completed": 13
+          },
+          "source_info": {
+            "file_path": "tests/sample_resumes/resume_4.txt",
+            "extraction_method": "direct",
+            "quality_score": 0.5813333333333333
+          },
+          "extraction_quality": {
+            "extraction_quality_percentage": 7.58,
+            "text_similarity_percentage": 29.58,
+            "missing_keywords": [
+              "optimization",
+              "coordinated",
+              "solidworks",
+              "industrial",
+              "prototypes",
+              "components",
+              "structural",
+              "machinery",
+              "suppliers",
+              "performed",
+              "education",
+              "tolerance",
+              "engineers",
+              "assisted",
+              "unmanned",
+              "topology",
+              "analysis",
+              "drawings",
+              "detailed",
+              "designed"
+            ],
+            "missing_sections": [],
+            "structure_loss": [
+              "Bullet points lost: 10",
+              "Paragraph structure simplified",
+              "Date information lost: 3 dates missing",
+              "Phone number lost"
+            ],
+            "text_loss_percentage": 70.42,
+            "recommendation": "Poor extraction quality. High text loss - use OCR for scanned documents. Severe structure loss detected.",
+            "metrics": {
+              "original_text_length": 1084,
+              "reconstructed_text_length": 337,
+              "original_word_count": 150,
+              "reconstructed_word_count": 41,
+              "missing_word_count": 57
+            }
+          },
+          "model_results": {
+            "deberta_extraction": {
+              "work_experience": [],
+              "education": [],
+              "companies": [],
+              "job_titles": [],
+              "institutions": [],
+              "degrees": [],
+              "source": "deberta_ner"
+            }
+          },
+          "merge_metadata": {
+            "conflict_resolution_used": true,
+            "sources_available": {
+              "rules": true,
+              "ner": true,
+              "deberta": true,
+              "llm": true
+            },
+            "deberta_entities_found": 0,
+            "total_fields_merged": 21
+          },
+          "raw_text": "RESUME\n\nName: Priya Raman\nTitle: Mechanical Design Engineer\nContact: priya.raman@mail.com  1-480-555-0173  Phoenix, AZ\n\n1. SUMMARY\nMechanical Design Engineer with 6 years of experience in CAD modeling, product\ndevelopment, and manufacturing process improvement within the aerospace sector. 2. EXPERIENCE\n\n2.1 Mechanical Design Engineer, Skyline Aerospace Corp, Phoenix, AZ (2019 - Present)\n- Designed structural components for unmanned aerial systems using SolidWorks\n- Reduced part weight by 18 through topology optimization\n- Led FMEA reviews for 3 major product lines\n- Coordinated with suppliers to resolve manufacturing tolerance issues\n\n2.2 Junior Mechanical Engineer, Vantage Industrial Co, Tempe, AZ (2017 - 2019)\n- Created detailed manufacturing drawings and BOMs for custom machinery\n- Performed stress analysis using ANSYS for new product prototypes\n- Assisted senior engineers with DFMDFA reviews\n\n3. EDUCATION\nB.S. Mechanical Engineering, Arizona State University (2013 - 2017), GPA 3.54...[truncated]",
+          "raw_resume_text": "RESUME\n\nName: Priya Raman\nTitle: Mechanical Design Engineer\nContact: priya.raman@mail.com  1-480-555-0173  Phoenix, AZ\n\n1. SUMMARY\nMechanical Design Engineer with 6 years of experience in CAD modeling, product\ndevelopment, and manufacturing process improvement within the aerospace sector. 2. EXPERIENCE\n\n2.1 Mechanical Design Engineer, Skyline Aerospace Corp, Phoenix, AZ (2019 - Present)\n- Designed structural components for unmanned aerial systems using SolidWorks\n- Reduced part weight by 18 through topology optimization\n- Led FMEA reviews for 3 major product lines\n- Coordinated with suppliers to resolve manufacturing tolerance issues\n\n2.2 Junior Mechanical Engineer, Vantage Industrial Co, Tempe, AZ (2017 - 2019)\n- Created detailed manufacturing drawings and BOMs for custom machinery\n- Performed stress analysis using ANSYS for new product prototypes\n- Assisted senior engineers with DFMDFA reviews\n\n3. EDUCATION\nB.S. Mechanical Engineering, Arizona State University (2013 - 2017), GPA 3.54.0\n\n4. SKILLS\nSolidWorks, AutoCAD, ANSYS, GDT, Six Sigma, MATLAB, Lean Manufacturing",
+          "file_info": {
+            "file_path": "tests/sample_resumes/resume_4.txt",
+            "file_name": "resume_4.txt",
+            "extraction_method": "direct",
+            "text_quality_score": 0.5813333333333333,
+            "word_count": 150
+          }
+        },
+        "result_size": 5912
+      },
+      "metadata": {
+        "processing_time_ms": 899.3408679962158,
+        "pipeline_stages": [
+          "text_extraction_ms",
+          "name_extraction_ms",
+          "section_splitting_ms",
+          "rule_parsing_ms",
+          "deberta_parsing_ms",
+          "ai_parsing_ms",
+          "ai_skipped",
+          "experience_extraction_ms",
+          "education_extraction_ms",
+          "summary_extraction_ms",
+          "merging_ms",
+          "confidence_scoring_ms",
+          "quality_analysis_ms",
+          "total_ms"
+        ]
+      },
+      "elapsed_time_ms": 899.6028900146484
+    }
+  ]
+}

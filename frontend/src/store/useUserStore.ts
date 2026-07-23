@@ -37,12 +37,12 @@ export const useUserStore = create<UserState>((set) => ({
       const params = new URLSearchParams();
       params.append("skip", skip.toString());
       params.append("limit", limit.toString());
-
-      const response = await api.get(`/users?${params.toString()}`);
-      set({
-        users: response.data.users || [],
+      
+      const response = await api.get(`/api/v1/users?${params.toString()}`);
+      set({ 
+        users: response.data.users || [], 
         total: response.data.total || 0,
-        isLoading: false
+        isLoading: false 
       });
     } catch (error: any) {
       const errorMessage = error.response?.data?.detail || "Failed to fetch users";
@@ -64,7 +64,7 @@ export const useUserStore = create<UserState>((set) => ({
   },
 
   updateUser: async (userId, userData) => {
-    set({ isLoading: true, error: null }); 
+    set({ isLoading: true, error: null });
     try {
       const response = await api.put(`/users/${userId}`, userData);
       set({ isLoading: false });
@@ -91,7 +91,7 @@ export const useUserStore = create<UserState>((set) => ({
   updateUserRole: async (userId, role) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.put(`/users/${userId}/role`, { role });
+      const response = await api.put(`/api/v1/users/${userId}/role`, { role });
       set({ isLoading: false });
       return response.data;
     } catch (error: any) {
@@ -104,7 +104,7 @@ export const useUserStore = create<UserState>((set) => ({
   activateUser: async (userId) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.put(`/users/${userId}/activate`);
+      const response = await api.put(`/api/v1/users/${userId}/activate`);
       set({ isLoading: false });
       return response.data;
     } catch (error: any) {
@@ -117,7 +117,7 @@ export const useUserStore = create<UserState>((set) => ({
   deactivateUser: async (userId) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.put(`/users/${userId}/deactivate`);
+      const response = await api.put(`/api/v1/users/${userId}/deactivate`);
       set({ isLoading: false });
       return response.data;
     } catch (error: any) {

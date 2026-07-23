@@ -1,10 +1,7 @@
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 import torch
-import logging
 from pathlib import Path
 from typing import List, Dict, Any
-
-logger = logging.getLogger(__name__)
 
 # Module-level model cache to avoid fragile @lru_cache
 _MODEL_CACHE: dict = {}
@@ -32,10 +29,10 @@ class AINamedEntityParser:
         if use_custom_model:
             MODEL_PATH = Path(__file__).parent.parent / "models" / "resume-ner-deberta"
             if MODEL_PATH.exists():
-                logger.info("[AIParser] Loading custom trained model from %s", MODEL_PATH)
+                print(f"✅ Loading custom trained model from {MODEL_PATH}")
                 MODEL_NAME = str(MODEL_PATH)
             else:
-                logger.warning("[AIParser] Custom model not found at %s, falling back to default", MODEL_PATH)
+                print(f"⚠️ Custom model not found at {MODEL_PATH}, falling back to default")
                 MODEL_NAME = "jjzha/jobbert-base-cased"
         else:
             MODEL_NAME = "jjzha/jobbert-base-cased"

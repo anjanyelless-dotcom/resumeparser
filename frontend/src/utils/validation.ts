@@ -13,11 +13,11 @@ export const validateEmail = (val: string): string | undefined => {
 
   if (local.length > 64) return "Local part cannot exceed 64 characters.";
 
-  if (!/^[a-zA-Z0-9._+-]+$/.test(local)) return "Local part contains invalid characters.";
+  if (!/^[a-zA-Z0-9._\-+]+$/.test(local)) return "Local part contains invalid characters.";
   if (local.startsWith(".") || local.endsWith(".")) return "Local part cannot start or end with a dot.";
   if (local.includes("..")) return "Local part cannot contain consecutive dots.";
 
-  if (!/^[a-zA-Z0-9.-]+$/.test(domain)) return "Domain contains invalid characters.";
+  if (!/^[a-zA-Z0-9.\-]+$/.test(domain)) return "Domain contains invalid characters.";
   if (domain.startsWith(".") || domain.startsWith("-")) return "Domain cannot start with a dot or hyphen.";
   if (domain.endsWith(".") || domain.endsWith("-")) return "Domain cannot end with a dot or hyphen.";
   if (domain.includes("..")) return "Domain cannot contain consecutive dots.";

@@ -6,12 +6,8 @@ import {
   matchSingleCandidate,
   parseJDAndMatch,
 } from "../controllers/matching.controller";
-import { authenticateToken, requirePermission } from "../middleware/auth.middleware";
 
 const router = Router();
-
-// Apply authentication to all matching routes
-router.use(authenticateToken);
 
 /**
  * Matching Routes
@@ -20,23 +16,23 @@ router.use(authenticateToken);
 
 // POST /api/matching/jd/parse
 // Parse a raw JD and rank all candidates by ATS score (local engine, no external AI)
-router.post("/jd/parse", requirePermission("matching", "view"), parseJDAndMatch);
+router.post("/jd/parse", parseJDAndMatch);
 
 // POST /api/matching/job/:jobId/candidates
 // Match all candidates to a specific job
-router.post("/job/:jobId/candidates", requirePermission("matching", "view"), matchCandidatesToJob);
+router.post("/job/:jobId/candidates", matchCandidatesToJob);
 
 // GET /api/matching/job/:jobId/results
 // Get cached match results for a specific job
-router.get("/job/:jobId/results", requirePermission("matching", "view"), getMatchResultsForJob);
+router.get("/job/:jobId/results", getMatchResultsForJob);
 
 // GET /api/matching/results
 // Get all match results
-router.get("/results", requirePermission("matching", "view"), getAllMatchResults);
+router.get("/results", getAllMatchResults);
 
 // POST /api/matching/candidate/:candidateId/job/:jobId
 // Match a single candidate to a specific job
-router.post("/candidate/:candidateId/job/:jobId", requirePermission("matching", "view"), matchSingleCandidate);
+router.post("/candidate/:candidateId/job/:jobId", matchSingleCandidate);
 
 export default router;
 

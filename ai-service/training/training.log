@@ -1,0 +1,78 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+📊 Total labels: 25
+
+📁 Loading training data...
+✅ Train examples: 7379
+✅ Test examples: 1845
+
+📊 Dataset created:
+DatasetDict({
+    train: Dataset({
+        features: ['tokens', 'ner_tags'],
+        num_rows: 7379
+    })
+    test: Dataset({
+        features: ['tokens', 'ner_tags'],
+        num_rows: 1845
+    })
+})
+
+🤖 Loading DeBERTa v3 model...
+Loading weights:   0%|          | 0/198 [00:00<?, ?it/s]Loading weights: 100%|██████████| 198/198 [00:00<00:00, 8746.32it/s]
+[1mDebertaV2ForTokenClassification LOAD REPORT[0m from: microsoft/deberta-v3-base
+Key                                     | Status     | 
+----------------------------------------+------------+-
+mask_predictions.LayerNorm.bias         | UNEXPECTED | 
+lm_predictions.lm_head.bias             | UNEXPECTED | 
+mask_predictions.dense.weight           | UNEXPECTED | 
+mask_predictions.classifier.weight      | UNEXPECTED | 
+mask_predictions.dense.bias             | UNEXPECTED | 
+lm_predictions.lm_head.dense.bias       | UNEXPECTED | 
+mask_predictions.classifier.bias        | UNEXPECTED | 
+lm_predictions.lm_head.LayerNorm.weight | UNEXPECTED | 
+lm_predictions.lm_head.LayerNorm.bias   | UNEXPECTED | 
+mask_predictions.LayerNorm.weight       | UNEXPECTED | 
+lm_predictions.lm_head.dense.weight     | UNEXPECTED | 
+classifier.weight                       | MISSING    | 
+classifier.bias                         | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+✅ Loaded microsoft/deberta-v3-base
+📊 Model parameters: 183.9M
+
+🔄 Tokenizing dataset...
+Map:   0%|          | 0/7379 [00:00<?, ? examples/s]Map:  14%|█▎        | 1000/7379 [00:00<00:00, 6578.90 examples/s]Map:  27%|██▋       | 2000/7379 [00:00<00:00, 8184.77 examples/s]Map:  41%|████      | 3000/7379 [00:00<00:00, 7225.59 examples/s]Map:  68%|██████▊   | 5000/7379 [00:00<00:00, 8792.51 examples/s]Map:  95%|█████████▍| 7000/7379 [00:00<00:00, 10747.54 examples/s]Map: 100%|██████████| 7379/7379 [00:00<00:00, 9629.15 examples/s] 
+Map:   0%|          | 0/1845 [00:00<?, ? examples/s]Map: 100%|██████████| 1845/1845 [00:00<00:00, 12576.86 examples/s]Map: 100%|██████████| 1845/1845 [00:00<00:00, 12219.76 examples/s]
+✅ Tokenization complete
+
+🚀 Starting training...
+Total steps: 4611
+============================================================
+  0%|          | 0/4615 [00:00<?, ?it/s]/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+  0%|          | 1/4615 [00:01<1:59:09,  1.55s/it]  0%|          | 2/4615 [00:02<1:14:41,  1.03it/s]  0%|          | 3/4615 [00:02<1:09:15,  1.11it/s]  0%|          | 4/4615 [00:04<1:17:47,  1.01s/it]  0%|          | 5/4615 [00:05<1:16:01,  1.01it/s]  0%|          | 6/4615 [00:05<1:11:03,  1.08it/s]  0%|          | 7/4615 [00:06<1:10:16,  1.09it/s]  0%|          | 8/4615 [00:07<59:25,  1.29it/s]    0%|          | 9/4615 [00:08<1:00:42,  1.26it/s]  0%|          | 10/4615 [00:09<1:05:42,  1.17it/s]  0%|          | 11/4615 [00:10<1:11:33,  1.07it/s]  0%|          | 12/4615 [00:11<1:11:24,  1.07it/s]  0%|          | 13/4615 [00:12<1:12:17,  1.06it/s]  0%|          | 14/4615 [00:12<1:02:35,  1.23it/s]  0%|          | 15/4615 [00:13<1:05:24,  1.17it/s]  0%|          | 16/4615 [00:14<1:07:20,  1.14it/s]  0%|          | 17/4615 [00:15<1:10:43,  1.08it/s]  0%|          | 18/4615 [00:16<1:02:44,  1.22it/s]  0%|          | 19/4615 [00:17<1:05:26,  1.17it/s]  0%|          | 20/4615 [00:18<1:16:55,  1.00s/it]  0%|          | 21/4615 [00:18<1:07:10,  1.14it/s]  0%|          | 22/4615 [00:19<58:37,  1.31it/s]    0%|          | 23/4615 [00:19<52:45,  1.45it/s]  1%|          | 24/4615 [00:20<48:54,  1.56it/s]  1%|          | 25/4615 [00:20<45:55,  1.67it/s]  1%|          | 26/4615 [00:21<52:48,  1.45it/s]  1%|          | 27/4615 [00:22<48:58,  1.56it/s]  1%|          | 28/4615 [00:22<46:27,  1.65it/s]  1%|          | 29/4615 [00:23<42:11,  1.81it/s]  1%|          | 30/4615 [00:23<42:06,  1.81it/s]  1%|          | 31/4615 [00:24<38:13,  2.00it/s]Traceback (most recent call last):
+  File "/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/training/train_simple.py", line 205, in <module>
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/transformers/trainer.py", line 1424, in train
+    return inner_training_loop(
+        args=args,
+    ...<2 lines>...
+        ignore_keys_for_eval=ignore_keys_for_eval,
+    )
+  File "/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/transformers/trainer.py", line 1506, in _inner_training_loop
+    self._run_epoch(
+    ~~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<9 lines>...
+        steps_trained_in_current_epoch=steps_trained_in_current_epoch,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/transformers/trainer.py", line 1739, in _run_epoch
+    and (torch.isnan(tr_loss_step) or torch.isinf(tr_loss_step))
+         ~~~~~~~~~~~^^^^^^^^^^^^^^
+RuntimeError: MPS backend out of memory (MPS allocated: 2.15 GiB, other allocations: 7.04 GiB, max allowed: 9.07 GiB). Tried to allocate 256 bytes on shared pool. Use PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0 to disable upper limit for memory allocations (may cause system failure).

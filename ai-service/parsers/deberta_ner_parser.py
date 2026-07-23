@@ -343,12 +343,6 @@ class DeBERTaNerParser:
             'compliance'
         ]
 
-        # Regex for @ format job boundary detection (compiled once, used in loop)
-        _AT_JOB_BOUNDARY = re.compile(
-            r'^[A-Za-z][\w\s,./()-]{2,60}\s+@\s+[A-Za-z][\w\s,./()-]{1,60}',
-            re.IGNORECASE
-        )
-
         for line_idx, line in enumerate(lines):
             stripped = line.strip()
             stripped_lower = stripped.lower()
@@ -358,20 +352,7 @@ class DeBERTaNerParser:
                 skip_continuation = False
                 continue
 
-            # ── NEW: Reset header state on @ format job boundary ──────────────────
-            # e.g. "Senior Manager @ Infosys  Mumbai  2019  Present"
-            # When a new @-format job line is detected, reset the header sentinel
-            # so this job's title/company/dates are captured (not dropped because
-            # the previous job's Responsibilities: already set header_stop_detected).
-            if (_AT_JOB_BOUNDARY.match(stripped) and
-                    (re.search(r'(?:19|20)\d{2}', stripped) or
-                     re.search(r'\bpresent\b', stripped, re.IGNORECASE))):
-                in_header_section = True
-                header_stop_detected = False
-                logger.debug("[PREPROCESS] @ boundary reset: '%s'", stripped[:80])
-                # Fall through — the header-section block below keeps this line.
-
-            # ── STEP 3: Detect header stop keywords ───────────────────────────
+            # ── STEP 3: Detect header stop keywords ─────────────────────────
             # Once we hit these keywords, only description text follows
             if in_header_section and any(keyword in stripped_lower for keyword in header_stop_keywords):
                 header_stop_detected = True
@@ -379,13 +360,8 @@ class DeBERTaNerParser:
                 logger.debug(f"[PREPROCESS] Header stop keyword detected: '{stripped}'")
                 continue  # Skip the stop keyword line itself
 
-            # ── Track header section (until stop keyword is hit) ─────────────
-            # FIX 5: Removed 'line_idx < 10' limit — roles in long consulting
-            # blocks (with Client:/Duration:/Role: headers) often appear AFTER
-            # line 10 and were wrongly rejected. Now rely purely on the
-            # header_stop_detected sentinel (set when Responsibilities:/
-            # Environment:/Technologies: etc. are encountered).
-            if in_header_section and not header_stop_detected:
+            # ── Track header section (first 10 lines or until stop keyword) ───────
+            if line_idx < 10 and in_header_section and not header_stop_detected:
                 # Keep header lines as-is for role extraction
                 if not _NOISE_SENTINEL.match(stripped):
                     cleaned_line = line

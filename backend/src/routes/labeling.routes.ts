@@ -14,7 +14,7 @@ router.get("/next", async (req: AuthenticatedRequest, res) => {
       JOIN (
         SELECT DISTINCT ON (candidate_id) candidate_id, confidence_score
         FROM parsing_jobs
-        ORDER BY candidate_id, started_at DESC
+        ORDER BY candidate_id, updated_at DESC
       ) pj ON c.id = pj.candidate_id
       LEFT JOIN labeled_data ld ON c.id = ld.candidate_id
       WHERE pj.confidence_score < 0.90 
@@ -198,7 +198,7 @@ router.get("/progress", async (req: AuthenticatedRequest, res) => {
       JOIN (
         SELECT DISTINCT ON (candidate_id) candidate_id, confidence_score
         FROM parsing_jobs
-        ORDER BY candidate_id, started_at DESC
+        ORDER BY candidate_id, updated_at DESC
       ) pj ON ld.candidate_id = pj.candidate_id
       WHERE pj.confidence_score < 0.90
     `;

@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { usePermissionStore } from "./usePermissionStore";
 
 interface User {
   id: string;
@@ -21,7 +20,6 @@ interface AuthActions {
   logout: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
-  setAuth: (auth: { user: User; token: string; isAuthenticated: boolean }) => void;
   setLoading: (loading: boolean) => void;
   clearAuth: () => void;
 }
@@ -40,7 +38,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true });
         try {
           const response = await fetch(
-            `${import.meta.env.VITE_API_URL}/auth/login`,
+            `${import.meta.env.VITE_API_URL}/api/auth/login`,
             {
               method: "POST",
               headers: {
@@ -48,7 +46,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               },
               body: JSON.stringify({ email, password }),
             },
-          );    
+          );
+
           if (!response.ok) {
             const error = await response.json();
             throw new Error(error.detail || error.message || "Login failed");
@@ -71,14 +70,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             isAuthenticated: true,
             isLoading: false,
           });
-          
-          // Fetch user permissions after successful login
-          try {
-            await usePermissionStore.getState().fetchUserPermissions();
-          } catch (permissionError) {
-            console.error("Failed to fetch permissions after login:", permissionError);
-            // Don't throw error - login succeeded even if permission fetch failed
-          }
         } catch (error) {
           set({ isLoading: false });
           throw error;
@@ -86,36 +77,16 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       },
 
       logout: () => {
-        // Clear auth state
         set({
           user: null,
           token: null,
           isAuthenticated: false,
           isLoading: false,
         });
-        
-        // Clear any persisted data
-        localStorage.removeItem('applicant-portal-draft-v1');
-        
-        // Clear permissions on logout
-        usePermissionStore.getState().reset();
-        
-        // Redirect to login page
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
       },
 
       setUser: (user: User) => {
         set({ user });
-      },
-
-      setAuth: (auth: { user: User; token: string; isAuthenticated: boolean }) => {
-        set({
-          user: auth.user,
-          token: auth.token,
-          isAuthenticated: auth.isAuthenticated,
-        });
       },
 
       setToken: (token: string) => {

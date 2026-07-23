@@ -3,18 +3,6 @@ import { usePermissionStore } from "../store/usePermissionStore";
 import toast from "react-hot-toast";
 import { Shield, Check, X } from "lucide-react";
 
-interface RolePermission {
-  permission_id: string;
-  permission_name: string;
-}
-
-interface Permission {
-  id: string;
-  module_name: string;
-  action_name: string;
-  description?: string;
-}
-
 export default function PermissionsPage() {
   const { permissions, roles, rolePermissions, isLoading, error, fetchPermissions, fetchRoles, fetchRolePermissions, updateRolePermissions } = usePermissionStore();
   const [selectedRole, setSelectedRole] = useState<string>("recruiter");
@@ -27,14 +15,14 @@ export default function PermissionsPage() {
 
   useEffect(() => {
     if (selectedRole) {
-      fetchRolePermissions();
+      fetchRolePermissions(selectedRole);
     }
-  }, [selectedRole, fetchRolePermissions]);
+  }, [selectedRole]);
 
   useEffect(() => {
-    const currentPermissions = rolePermissions.filter((rp: RolePermission) => rp.permission_id).map((rp: RolePermission) => rp.permission_name);
-    setSelectedPermissions(currentPermissions);
-  }, [rolePermissions]);
+    const currentPermissions = rolePermissions[selectedRole] || [];
+    setSelectedPermissions(currentPermissions.map((p) => p.name));
+  }, [rolePermissions, selectedRole]);
 
   const handlePermissionToggle = (permissionName: string) => {
     setSelectedPermissions((prev) =>
@@ -48,19 +36,19 @@ export default function PermissionsPage() {
     try {
       await updateRolePermissions(selectedRole, selectedPermissions);
       toast.success("Permissions updated successfully");
-    } catch (_error) {
+    } catch (error) {
       toast.error("Failed to update permissions");
     }
   };
 
   // Group permissions by module
-  const groupedPermissions = permissions.reduce((acc: Record<string, Permission[]>, perm: Permission) => {
-    if (!acc[perm.module_name]) {
-      acc[perm.module_name] = [];
+  const groupedPermissions = permissions.reduce((acc, perm) => {
+    if (!acc[perm.module]) {
+      acc[perm.module] = [];
     }
-    acc[perm.module_name].push(perm);
+    acc[perm.module].push(perm);
     return acc;
-  }, {} as Record<string, Permission[]>);
+  }, {} as Record<string, typeof permissions>);
 
   const modules = Object.keys(groupedPermissions).sort();
 
@@ -82,17 +70,17 @@ export default function PermissionsPage() {
             Select Role
           </label>
           <div className="flex gap-2">
-            {roles.map((role: any) => (
+            {roles.map((role) => (
               <button
-                key={role.id || role}
-                onClick={() => setSelectedRole(role.id || role)}
+                key={role}
+                onClick={() => setSelectedRole(role)}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  selectedRole === (role.id || role)
+                  selectedRole === role
                     ? "bg-purple-600 text-white"
                     : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                 }`}
               >
-                {role.name ? role.name.charAt(0).toUpperCase() + role.name.slice(1) : (role.id || role).charAt(0).toUpperCase() + (role.id || role).slice(1)}
+                {role.charAt(0).toUpperCase() + role.slice(1)}
               </button>
             ))}
           </div>
@@ -117,14 +105,14 @@ export default function PermissionsPage() {
                     {module}
                   </h3>
                   <div className="space-y-3">
-                    {groupedPermissions[module].map((permission: Permission) => (
+                    {groupedPermissions[module].map((permission) => (
                       <div
                         key={permission.id}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                       >
                         <div className="flex-1">
                           <div className="font-medium text-gray-900">
-                            {permission.action_name}
+                            {permission.name}
                           </div>
                           {permission.description && (
                             <div className="text-sm text-gray-500">
@@ -133,22 +121,22 @@ export default function PermissionsPage() {
                           )}
                         </div>
                         <button
-                          onClick={() => handlePermissionToggle(permission.action_name)}
+                          onClick={() => handlePermissionToggle(permission.name)}
                           disabled={selectedRole === "admin"}
                           className={`p-2 rounded-full transition-colors ${
-                            selectedPermissions.includes(permission.action_name)
+                            selectedPermissions.includes(permission.name)
                               ? "bg-green-100 text-green-600 hover:bg-green-200"
                               : "bg-gray-200 text-gray-400 hover:bg-gray-300"
                           } ${selectedRole === "admin" ? "cursor-not-allowed opacity-50" : ""}`}
                           title={
                             selectedRole === "admin"
                               ? "Admin has all permissions"
-                              : selectedPermissions.includes(permission.action_name)
+                              : selectedPermissions.includes(permission.name)
                               ? "Revoke permission"
                               : "Grant permission"
                           }
                         >
-                          {selectedPermissions.includes(permission.action_name) ? (
+                          {selectedPermissions.includes(permission.name) ? (
                             <Check className="h-5 w-5" />
                           ) : (
                             <X className="h-5 w-5" />

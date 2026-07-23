@@ -13,7 +13,6 @@ import phonenumbers
 from phonenumbers import NumberParseException
 import dateparser
 from dateparser import DateDataParser
-from licenses import extract_licenses as extract_licenses_from_module
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -1044,83 +1043,32 @@ class RuleBasedParser:
     ]
     
     def _load_comprehensive_taxonomy(self):
-        """Load unified skills taxonomy from JSON file (IT + multi-domain)."""
-        taxonomy_path = os.path.join(os.path.dirname(__file__), '..', 'unified_skills.json')
+        """Load comprehensive 18,300+ skills taxonomy from JSON file."""
+        taxonomy_path = os.path.join(os.path.dirname(__file__), '..', 'worldwide_clean_18300_it_skills_domain_wise.json')
         
         try:
             with open(taxonomy_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 domains = data.get('domains', {})
                 
-                # Define IT sub-categories (all technical domains that should map to "IT")
-                it_subcategories = {
-                    'Programming Languages and Language Internals',
-                    'Frontend Web Development',
-                    'Backend Web Development',
-                    'Mobile Application Development',
-                    'DevOps SRE Platform Engineering',
-                    'Cloud Computing Platforms',
-                    'Data Engineering Big Data and Streaming',
-                    'Data Science Analytics and BI',
-                    'Databases Storage Search and Vector DB',
-                    'AI ML NLP and LLM Engineering',
-                    'Cybersecurity and Compliance',
-                    'System Design Architecture and Distributed Systems',
-                    'Blockchain Web3 IoT AR VR and Game Development',
-                    'Java Ecosystem',
-                    'Software Testing QA and Automation',
-                    'Networking Infrastructure and Operating Systems',
-                    'Enterprise Platforms ERP CRM ITSM and Low Code',
-                    'UI UX Product and Project Management',
-                    'Resume Parser HR Tech ATS and Document AI',
-                }
-                
-                # Define non-IT domains (should map to themselves)
-                non_it_domains = {'Healthcare', 'Finance', 'HR', 'Education', 'Sales', 'Legal', 'Engineering'}
-                
                 # Flatten all skills from all domains into a single list
                 all_skills = []
-                self.skill_to_domain = {}  # Map skill -> top-level domain for categorization
-                self.skill_to_subdomain = {}  # Optional: Map skill -> sub-category for IT
+                self.skill_to_domain = {}  # Map skill -> domain for categorization
                 
-                for domain, domain_data in domains.items():
-                    # Determine the top-level domain
-                    if domain in it_subcategories:
-                        top_level_domain = "IT"
-                    elif domain in non_it_domains:
-                        top_level_domain = domain
-                    else:
-                        # Default to the domain name itself if unknown
-                        top_level_domain = domain
-                    
-                    # Handle both nested (IT with sub-categories) and flat list structures
-                    if isinstance(domain_data, dict):
-                        # Nested structure: flatten all sub-category lists
-                        for sub_category, skills in domain_data.items():
-                            for skill in skills:
-                                all_skills.append(skill)
-                                self.skill_to_domain[skill.lower().strip()] = top_level_domain
-                                # Store sub-category info for IT skills
-                                if top_level_domain == "IT":
-                                    self.skill_to_subdomain[skill.lower().strip()] = sub_category
-                    elif isinstance(domain_data, list):
-                        # Flat list structure
-                        for skill in domain_data:
-                            all_skills.append(skill)
-                            self.skill_to_domain[skill.lower().strip()] = top_level_domain
-                            # Store sub-category info for IT skills
-                            if top_level_domain == "IT":
-                                self.skill_to_subdomain[skill.lower().strip()] = domain
+                for domain, skills in domains.items():
+                    for skill in skills:
+                        all_skills.append(skill)
+                        # Store mapping for categorization
+                        self.skill_to_domain[skill.lower().strip()] = domain
                 
                 # Replace SKILL_TAXONOMY with comprehensive list
                 self.SKILL_TAXONOMY = all_skills
-                self.logger.info(f"✅ Loaded {len(all_skills)} skills from unified taxonomy across {len(domains)} domains")
+                self.logger.info(f"✅ Loaded {len(all_skills)} skills from 18,300+ taxonomy across {len(domains)} domains")
                 
         except Exception as e:
-            self.logger.warning(f"⚠️ Could not load unified taxonomy, using built-in fallback: {e}")
+            self.logger.warning(f"⚠️ Could not load comprehensive taxonomy, using built-in fallback: {e}")
             # Keep the existing SKILL_TAXONOMY as fallback
             self.skill_to_domain = {}
-            self.skill_to_subdomain = {}
 
     def extract_skills_from_dictionary(self, text: str) -> Dict[str, Any]:
         """
@@ -1214,77 +1162,6 @@ class RuleBasedParser:
         No external taxonomy list required.
         """
         return self.extract_skills_from_list(text, self.SKILL_TAXONOMY)
-
-    def detect_domain(self, matched_skills: List[str], matched_role_domain: str = None) -> Dict[str, Any]:
-        """
-        Detect the primary domain based on matched skills.
-        
-        Args:
-            matched_skills: List of extracted skills
-            matched_role_domain: Domain from role validation (if available)
-            
-        Returns:
-            Dictionary with primary_domain, confidence, skill_domain, and role_domain
-        """
-        if not matched_skills:
-            return {
-                "primary_domain": "IT",
-                "confidence": 0.0,
-                "skill_domain": "IT",
-                "role_domain": matched_role_domain
-            }
-        
-        # Count skills per domain
-        domain_counts = {}
-        for skill in matched_skills:
-            domain = self.skill_to_domain.get(skill.lower(), "Unknown")
-            domain_counts[domain] = domain_counts.get(domain, 0) + 1
-        
-        # Find domain with highest count
-        if not domain_counts:
-            return {
-                "primary_domain": "IT",
-                "confidence": 0.0,
-                "skill_domain": "IT",
-                "role_domain": matched_role_domain
-            }
-        
-        top_domain = max(domain_counts, key=domain_counts.get)
-        top_count = domain_counts[top_domain]
-        total_skills = len(matched_skills)
-        confidence = top_count / total_skills if total_skills > 0 else 0.0
-        
-        # Determine primary domain (prefer role domain if it matches top skill domain)
-        primary_domain = top_domain
-        if matched_role_domain and matched_role_domain != "Unknown":
-            if matched_role_domain == top_domain:
-                primary_domain = matched_role_domain
-            # If role domain disagrees with skill domain, keep skill domain as primary
-            # but include both in output for review
-        
-        return {
-            "primary_domain": primary_domain,
-            "confidence": confidence,
-            "skill_domain": top_domain,
-            "role_domain": matched_role_domain,
-            "domain_counts": domain_counts
-        }
-
-    def extract_licenses(self, text: str) -> List[str]:
-        """
-        Extract licenses and certifications from resume text.
-        
-        Args:
-            text: Resume text to search for licenses/certifications
-            
-        Returns:
-            List of matched license/certification names (deduplicated)
-        """
-        try:
-            return extract_licenses_from_module(text)
-        except Exception as e:
-            self.logger.error(f"Error extracting licenses: {e}")
-            return []
 
     def extract_skills_from_list(self, text: str, skill_taxonomy: List[str]) -> List[str]:
         """

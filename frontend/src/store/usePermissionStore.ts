@@ -1,86 +1,44 @@
 import { create } from "zustand";
 import api from "../services/api";
 
-interface UserPermission {
-  module_name: string;
-  action_name: string;
-}
-
 interface Permission {
   id: string;
-  module_name: string;
-  action_name: string;
-  description?: string;
+  name: string;
+  description: string | null;
+  module: string;
+  created_at: string;
 }
 
 interface PermissionState {
-  userPermissions: UserPermission[];  // Current user's permissions
-  allPermissions: Permission[];        // Full permission catalog
-  permissions: Permission[];           // Alias for allPermissions
-  roles: any[];                        // Role management
-  rolePermissions: any[];              // Role permissions mapping
+  permissions: Permission[];
+  roles: string[];
+  rolePermissions: Record<string, Permission[]>;
   isLoading: boolean;
   error: string | null;
-  fetchUserPermissions: () => Promise<void>;
-  fetchAllPermissions: () => Promise<void>;
-  fetchPermissions: () => Promise<void>;  // Alias for fetchAllPermissions
+  fetchPermissions: () => Promise<void>;
   fetchRoles: () => Promise<void>;
-  fetchRolePermissions: () => Promise<void>;
-  updateRolePermissions: (roleId: string, permissions: string[]) => Promise<void>;
-  hasPermission: (module: string, action: string) => boolean;
+  fetchRolePermissions: (role: string) => Promise<void>;
+  updateRolePermissions: (role: string, permissions: string[]) => Promise<void>;
   clearError: () => void;
-  reset: () => void;
 }
 
-export const usePermissionStore = create<PermissionState>((set, get) => ({
-  userPermissions: [],
-  allPermissions: [],
+export const usePermissionStore = create<PermissionState>((set) => ({
   permissions: [],
   roles: [],
-  rolePermissions: [],
+  rolePermissions: {},
   isLoading: false,
   error: null,
-
-  fetchUserPermissions: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await api.get("/permissions/me");
-      set({ 
-        userPermissions: response.data.permissions || [], 
-        isLoading: false 
-      });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || "Failed to fetch user permissions";
-      set({ error: errorMessage, isLoading: false });
-    }
-  },
-
-  fetchAllPermissions: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await api.get("/permissions");
-      set({ 
-        allPermissions: response.data.permissions || [], 
-        permissions: response.data.permissions || [],
-        isLoading: false 
-      });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || "Failed to fetch permission catalog";
-      set({ error: errorMessage, isLoading: false });
-    }
-  },
 
   fetchPermissions: async () => {
     set({ isLoading: true, error: null });
     try {
       const response = await api.get("/permissions");
       set({ 
-        allPermissions: response.data.permissions || [], 
-        permissions: response.data.permissions || [],
+        permissions: response.data.permissions || [], 
         isLoading: false 
       });
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || "Failed to fetch permissions";
+      const errorMessage = error.response?.data?.detail || "Failed to fetch permissions";
       set({ error: errorMessage, isLoading: false });
     }
   },
@@ -94,55 +52,45 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
         isLoading: false 
       });
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || "Failed to fetch roles";
+      const errorMessage = error.response?.data?.detail || "Failed to fetch roles";
       set({ error: errorMessage, isLoading: false });
     }
   },
 
-  fetchRolePermissions: async () => {
+  fetchRolePermissions: async (role) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.get("/role-permissions");
-      set({ 
-        rolePermissions: response.data || [], 
-        isLoading: false 
-      });
+      const response = await api.get(`/roles/${role}/permissions`);
+      set((state) => ({
+        rolePermissions: {
+          ...state.rolePermissions,
+          [role]: response.data.permissions,
+        },
+        isLoading: false,
+      }));
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || "Failed to fetch role permissions";
+      const errorMessage = error.response?.data?.detail || "Failed to fetch role permissions";
       set({ error: errorMessage, isLoading: false });
     }
   },
 
-  updateRolePermissions: async (roleId: string, permissions: string[]) => {
+  updateRolePermissions: async (role, permissions) => {
     set({ isLoading: true, error: null });
     try {
-      await api.put(`/roles/${roleId}/permissions`, { permissions });
-      set({ isLoading: false });
+      const response = await api.put(`/roles/${role}/permissions`, { permissions });
+      set((state) => ({
+        rolePermissions: {
+          ...state.rolePermissions,
+          [role]: response.data.permissions,
+        },
+        isLoading: false,
+      }));
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || "Failed to update role permissions";
+      const errorMessage = error.response?.data?.detail || "Failed to update role permissions";
       set({ error: errorMessage, isLoading: false });
       throw error;
     }
   },
 
-  hasPermission: (module: string, action: string) => {
-    const { userPermissions } = get();
-    return userPermissions.some(
-      permission => 
-        permission.module_name === module && 
-        permission.action_name === action
-    );
-  },
-
   clearError: () => set({ error: null }),
-
-  reset: () => set({ 
-    userPermissions: [], 
-    allPermissions: [],
-    permissions: [],
-    roles: [],
-    rolePermissions: [],
-    isLoading: false, 
-    error: null 
-  }),
 }));

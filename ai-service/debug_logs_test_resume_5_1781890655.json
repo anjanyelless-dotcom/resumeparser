@@ -1,0 +1,808 @@
+{
+  "request_id": "test_resume_5",
+  "start_time": "2026-06-19T23:07:33.135316",
+  "end_time": "2026-06-19T17:37:35.204664",
+  "total_duration_ms": 2069.3492889404297,
+  "total_logs": 12,
+  "logs": [
+    {
+      "timestamp": "2026-06-19T17:37:33.135431",
+      "request_id": "test_resume_5",
+      "stage": "file_input",
+      "log_type": "input",
+      "data": {
+        "file_path": "tests/sample_resumes/resume_5.txt",
+        "candidate_id": "test_resume_5",
+        "llm_provider": null,
+        "force_ocr": false
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.141143798828125
+    },
+    {
+      "timestamp": "2026-06-19T17:37:33.139020",
+      "request_id": "test_resume_5",
+      "stage": "text_extraction",
+      "log_type": "output",
+      "data": {
+        "method": "direct",
+        "text_length": 1089,
+        "quality_score": 0.5865766233766234,
+        "duration_ms": 3.278017044067383
+      },
+      "metadata": {},
+      "elapsed_time_ms": 3.717184066772461
+    },
+    {
+      "timestamp": "2026-06-19T17:37:33.153462",
+      "request_id": "test_resume_5",
+      "stage": "section_splitting",
+      "operation": "section_extraction",
+      "log_type": "processing",
+      "data": {
+        "sections_detected": [
+          "contact",
+          "summary",
+          "experience",
+          "education",
+          "skills"
+        ],
+        "section_count": 5,
+        "section_sizes": {
+          "contact": 117,
+          "summary": 174,
+          "experience": 596,
+          "education": 28,
+          "skills": 112
+        },
+        "has_experience": true,
+        "has_education": true,
+        "has_skills": true
+      },
+      "metadata": {
+        "duration_ms": 13.273954391479492,
+        "text_length": 1089
+      },
+      "elapsed_time_ms": 18.156051635742188
+    },
+    {
+      "timestamp": "2026-06-19T17:37:33.153495",
+      "request_id": "test_resume_5",
+      "stage": "section_splitting",
+      "operation": "section_contact",
+      "log_type": "processing",
+      "data": {
+        "section_name": "contact",
+        "content_length": 117,
+        "content_preview": "Sarah Thompson\nRN BSN Registered\nNurse\nEmail sarah.thompson@hospitalmail.com Phone 615-555-0142\nLocation\nNashville\nTN"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 18.18227767944336
+    },
+    {
+      "timestamp": "2026-06-19T17:37:33.153507",
+      "request_id": "test_resume_5",
+      "stage": "section_splitting",
+      "operation": "section_summary",
+      "log_type": "processing",
+      "data": {
+        "section_name": "summary",
+        "content_length": 174,
+        "content_preview": "Compassionate Registered Nurse with 9 years of experience in emergency and critical care\nsettings. Strong clinical judgment and a calm presence in high pressure environments."
+      },
+      "metadata": {},
+      "elapsed_time_ms": 18.193960189819336
+    },
+    {
+      "timestamp": "2026-06-19T17:37:33.153519",
+      "request_id": "test_resume_5",
+      "stage": "section_splitting",
+      "operation": "section_experience",
+      "log_type": "processing",
+      "data": {
+        "section_name": "experience",
+        "content_length": 596,
+        "content_preview": "Emergency\nDepartment RN\nRiverside General Hospital, Nashville TN\n2016 to\nPresent\nTriage and treat 20 plus patients per shift in a level 2 trauma center\nTrain and mentor new graduate nurses during onboarding\nServe as charge nurse during night shifts\nMaintain certification in\nACLS PALS and TNCC\n\nMed\nS"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 18.204927444458008
+    },
+    {
+      "timestamp": "2026-06-19T17:37:33.153529",
+      "request_id": "test_resume_5",
+      "stage": "section_splitting",
+      "operation": "section_education",
+      "log_type": "processing",
+      "data": {
+        "section_name": "education",
+        "content_length": 28,
+        "content_preview": "Tennessee\nBLS ACLS PALS TNCC"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 18.214941024780273
+    },
+    {
+      "timestamp": "2026-06-19T17:37:33.153539",
+      "request_id": "test_resume_5",
+      "stage": "section_splitting",
+      "operation": "section_skills",
+      "log_type": "processing",
+      "data": {
+        "section_name": "skills",
+        "content_length": 112,
+        "content_preview": "Patient Assessment Triage IV Insertion\nElectronic Health\nRecords Epic Cerner\nCritical Thinking Crisis Management"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 18.22519302368164
+    },
+    {
+      "timestamp": "2026-06-19T17:37:34.889476",
+      "request_id": "test_resume_5",
+      "stage": "model_input",
+      "model_name": "deberta-v3",
+      "log_type": "input",
+      "input_text_length": 1089,
+      "input_text_hash": "abc50d74b1bf5315",
+      "input_text_preview": "Sarah Thompson RN BSN Registered Nurse\nEmail sarah.thompson@hospitalmail.com Phone 615-555-0142\nLocation Nashville TN\n\nABOUT ME\nCompassionate Registered Nurse with 9 years of experience in emergency and critical care\nsettings. Strong clinical judgment and a calm presence in high pressure environments. EXPERIENCE\n\nEmergency Department RN\nRiverside General Hospital, Nashville TN\n2016 to Present\nTriage and treat 20 plus patients per shift in a level 2 trauma center\nTrain and mentor new graduate nur",
+      "prompt": null,
+      "prompt_length": 0,
+      "metadata": {
+        "model_type": "NER",
+        "text_length": 1089
+      },
+      "elapsed_time_ms": 1754.2102336883545
+    },
+    {
+      "timestamp": "2026-06-19T17:37:34.889545",
+      "request_id": "test_resume_5",
+      "stage": "model_output",
+      "model_name": "deberta-v3",
+      "log_type": "output",
+      "raw_output": null,
+      "parsed_output": {
+        "companies": [
+          "Epic",
+          "physicians",
+          "hospitalmail.com",
+          "Sarah Thompson RN BSN Registered",
+          "Present\nTriage"
+        ],
+        "locations": [
+          "Nashville TN",
+          "Tennessee",
+          "6",
+          "Nashville TN"
+        ],
+        "work_experience": [
+          {
+            "company": "Epic",
+            "company_name": "Epic",
+            "role": "Assessment Triage IV",
+            "job_title": "Assessment Triage IV",
+            "location": "Nashville TN",
+            "start_date": "2016",
+            "end_date": null,
+            "is_current": true,
+            "client": "Cerner",
+            "clients": [
+              "Cerner"
+            ],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "physicians",
+            "company_name": "physicians",
+            "role": "post operative care",
+            "job_title": "post operative care",
+            "location": "Tennessee",
+            "start_date": "2014",
+            "end_date": "2016",
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "hospitalmail.com",
+            "company_name": "hospitalmail.com",
+            "role": "Nurse thompson",
+            "job_title": "Nurse thompson",
+            "location": "6",
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "Sarah Thompson RN BSN Registered",
+            "company_name": "Sarah Thompson RN BSN Registered",
+            "role": "Compassionate Registered Nurse",
+            "job_title": "Compassionate Registered Nurse",
+            "location": "Nashville TN",
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "Present\nTriage",
+            "company_name": "Present\nTriage",
+            "role": "new graduate nurses charge nurse",
+            "job_title": "new graduate nurses charge nurse",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          }
+        ],
+        "education": [
+          {
+            "institution": "Vanderbilt University School of Nursing",
+            "degree": "",
+            "field_of_study": null,
+            "start_year": "2010",
+            "end_year": "2014",
+            "grade": null,
+            "source": "deberta_ner"
+          }
+        ],
+        "job_titles": [
+          "Assessment Triage IV",
+          "post operative care",
+          "Nurse thompson",
+          "Compassionate Registered Nurse",
+          "new graduate nurses charge nurse"
+        ],
+        "clients": [
+          "physicians",
+          "Cerner",
+          "Thinking",
+          "Management"
+        ],
+        "dates": [],
+        "degrees": [],
+        "institutions": [
+          "Vanderbilt University School of Nursing"
+        ],
+        "fields_of_study": [],
+        "source": "deberta_ner",
+        "confidence": {
+          "deberta_confidence": 0.85,
+          "entities_found": 11
+        }
+      },
+      "output_size": 2329,
+      "metadata": {
+        "duration_ms": 1608.1211566925049,
+        "entities_extracted": 10
+      },
+      "elapsed_time_ms": 1754.289150238037
+    },
+    {
+      "timestamp": "2026-06-19T17:37:35.204192",
+      "request_id": "test_resume_5",
+      "stage": "final_output",
+      "log_type": "output",
+      "data": {
+        "candidate_id": "test_resume_5",
+        "status": "success",
+        "name": "Sarah Thompson RN BSN Registered Nurse",
+        "email": "sa***************************om",
+        "phone": "61********42",
+        "work_experience_count": 5,
+        "education_count": 1,
+        "skills_count": 3,
+        "confidence_score": 0.76,
+        "processing_metrics": {
+          "timing_ms": {
+            "text_extraction_ms": 3.278017044067383,
+            "name_extraction_ms": 0.7352828979492188,
+            "section_splitting_ms": 13.273954391479492,
+            "rule_parsing_ms": 127.34580039978027,
+            "deberta_parsing_ms": 1608.1211566925049,
+            "ai_parsing_ms": 0.008106231689453125,
+            "ai_skipped": true,
+            "experience_extraction_ms": 0.04029273986816406,
+            "education_extraction_ms": 3.9260387420654297,
+            "summary_extraction_ms": 0.11897087097167969,
+            "merging_ms": 0.9098052978515625,
+            "confidence_scoring_ms": 0.06723403930664062,
+            "quality_analysis_ms": 2.341032028198242,
+            "total_ms": 2068.871021270752
+          },
+          "total_processing_time_ms": 0,
+          "pipeline_steps_completed": 13
+        },
+        "needs_review": false
+      },
+      "metadata": {
+        "processing_time_ms": 2068.871021270752,
+        "pipeline_stages": [
+          "text_extraction_ms",
+          "name_extraction_ms",
+          "section_splitting_ms",
+          "rule_parsing_ms",
+          "deberta_parsing_ms",
+          "ai_parsing_ms",
+          "ai_skipped",
+          "experience_extraction_ms",
+          "education_extraction_ms",
+          "summary_extraction_ms",
+          "merging_ms",
+          "confidence_scoring_ms",
+          "quality_analysis_ms",
+          "total_ms"
+        ]
+      },
+      "elapsed_time_ms": 2068.8939094543457
+    },
+    {
+      "timestamp": "2026-06-19T17:37:35.204452",
+      "request_id": "test_resume_5",
+      "stage": "final_output",
+      "operation": "complete_result",
+      "log_type": "processing",
+      "data": {
+        "full_result": {
+          "candidate_id": "test_resume_5",
+          "status": "success",
+          "parsing_timestamp": 1781890655.204077,
+          "name": "Sarah Thompson RN BSN Registered Nurse",
+          "email": "sa***************************om",
+          "phone": "61********42",
+          "linkedin": null,
+          "github": null,
+          "websites": [
+            "https://sarah.thompson",
+            "https://hospitalmail.com"
+          ],
+          "summary": "Compassionate Registered Nurse with 9 years of experience in emergency and critical care settings. Strong clinical judgment and a calm presence in high pressure environments.",
+          "skills": [
+            "Crisis Management",
+            "Critical Thinking",
+            "Management"
+          ],
+          "work_experience": [
+            {
+              "company": "Epic",
+              "company_name": "Epic",
+              "role": "Assessment Triage IV",
+              "job_title": "Assessment Triage IV",
+              "location": "Nashville TN",
+              "start_date": "2016",
+              "end_date": null,
+              "is_current": true,
+              "client": "Cerner",
+              "clients": [
+                "Cerner"
+              ],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "physicians",
+              "company_name": "physicians",
+              "role": "post operative care",
+              "job_title": "post operative care",
+              "location": "Tennessee",
+              "start_date": "2014",
+              "end_date": "2016",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "hospitalmail.com",
+              "company_name": "hospitalmail.com",
+              "role": "Nurse thompson",
+              "job_title": "Nurse thompson",
+              "location": "6",
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Sarah Thompson RN BSN Registered",
+              "company_name": "Sarah Thompson RN BSN Registered",
+              "role": "Compassionate Registered Nurse",
+              "job_title": "Compassionate Registered Nurse",
+              "location": "Nashville TN",
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Present\nTriage",
+              "company_name": "Present\nTriage",
+              "role": "new graduate nurses charge nurse",
+              "job_title": "new graduate nurses charge nurse",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            }
+          ],
+          "work_history": [
+            {
+              "company": "Epic",
+              "company_name": "Epic",
+              "role": "Assessment Triage IV",
+              "job_title": "Assessment Triage IV",
+              "location": "Nashville TN",
+              "start_date": "2016",
+              "end_date": null,
+              "is_current": true,
+              "client": "Cerner",
+              "clients": [
+                "Cerner"
+              ],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "physicians",
+              "company_name": "physicians",
+              "role": "post operative care",
+              "job_title": "post operative care",
+              "location": "Tennessee",
+              "start_date": "2014",
+              "end_date": "2016",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "hospitalmail.com",
+              "company_name": "hospitalmail.com",
+              "role": "Nurse thompson",
+              "job_title": "Nurse thompson",
+              "location": "6",
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Sarah Thompson RN BSN Registered",
+              "company_name": "Sarah Thompson RN BSN Registered",
+              "role": "Compassionate Registered Nurse",
+              "job_title": "Compassionate Registered Nurse",
+              "location": "Nashville TN",
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Present\nTriage",
+              "company_name": "Present\nTriage",
+              "role": "new graduate nurses charge nurse",
+              "job_title": "new graduate nurses charge nurse",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            }
+          ],
+          "education": [
+            {
+              "institution": "Vanderbilt University School of Nursing",
+              "degree": "",
+              "field_of_study": null,
+              "start_year": "2010",
+              "end_year": "2014",
+              "grade": null,
+              "source": "deberta_ner"
+            }
+          ],
+          "job_titles": [
+            "Assessment Triage IV",
+            "post operative care",
+            "Nurse thompson",
+            "Compassionate Registered Nurse",
+            "new graduate nurses charge nurse"
+          ],
+          "companies": [
+            "Epic",
+            "physicians",
+            "hospitalmail.com",
+            "Sarah Thompson RN BSN Registered",
+            "Present\nTriage"
+          ],
+          "locations": [
+            "Nashville TN",
+            "Tennessee",
+            "6",
+            "Nashville TN"
+          ],
+          "dates": [],
+          "years_of_experience": 12.5,
+          "misc_entities": [],
+          "confidence": {
+            "overall": 0.76,
+            "fields": {
+              "email": "***",
+              "phone": "***",
+              "name": 0.5,
+              "skills": 0.6,
+              "experience": 1.0,
+              "education": 0.7
+            },
+            "needs_review": false,
+            "missing_critical": [],
+            "quality_level": "good",
+            "quality_score": 0.8,
+            "recommendations": [
+              "Ensure full name is clearly visible",
+              "Consider adding more diverse skills",
+              "Include graduation years for education entries"
+            ],
+            "field_weights": {
+              "email": "****",
+              "phone": "***",
+              "name": 0.2,
+              "skills": 0.25,
+              "experience": 0.2,
+              "education": 0.1
+            }
+          },
+          "needs_review": false,
+          "quality_level": "good",
+          "processing_metrics": {
+            "timing_ms": {
+              "text_extraction_ms": 3.278017044067383,
+              "name_extraction_ms": 0.7352828979492188,
+              "section_splitting_ms": 13.273954391479492,
+              "rule_parsing_ms": 127.34580039978027,
+              "deberta_parsing_ms": 1608.1211566925049,
+              "ai_parsing_ms": 0.008106231689453125,
+              "ai_skipped": true,
+              "experience_extraction_ms": 0.04029273986816406,
+              "education_extraction_ms": 3.9260387420654297,
+              "summary_extraction_ms": 0.11897087097167969,
+              "merging_ms": 0.9098052978515625,
+              "confidence_scoring_ms": 0.06723403930664062,
+              "quality_analysis_ms": 2.341032028198242,
+              "total_ms": 2068.871021270752
+            },
+            "total_processing_time_ms": 0,
+            "pipeline_steps_completed": 13
+          },
+          "source_info": {
+            "file_path": "tests/sample_resumes/resume_5.txt",
+            "extraction_method": "direct",
+            "quality_score": 0.5865766233766234
+          },
+          "extraction_quality": {
+            "extraction_quality_percentage": 0.0,
+            "text_similarity_percentage": 10.92,
+            "missing_keywords": [
+              "certifications",
+              "certification",
+              "administered",
+              "collaborated",
+              "medications",
+              "electronic",
+              "cumberland",
+              "onboarding",
+              "department",
+              "education",
+              "monitored",
+              "riverside",
+              "insertion",
+              "location",
+              "patients",
+              "hospital",
+              "surgical",
+              "provided",
+              "maintain",
+              "medical"
+            ],
+            "missing_sections": [
+              "certifications"
+            ],
+            "structure_loss": [
+              "Paragraph structure simplified"
+            ],
+            "text_loss_percentage": 89.08,
+            "recommendation": "Poor extraction quality. High text loss - use OCR for scanned documents.",
+            "metrics": {
+              "original_text_length": 1089,
+              "reconstructed_text_length": 584,
+              "original_word_count": 154,
+              "reconstructed_word_count": 75,
+              "missing_word_count": 53
+            }
+          },
+          "model_results": {
+            "deberta_extraction": {
+              "work_experience": [
+                {
+                  "company": "Epic",
+                  "company_name": "Epic",
+                  "role": "Assessment Triage IV",
+                  "job_title": "Assessment Triage IV",
+                  "location": "Nashville TN",
+                  "start_date": "2016",
+                  "end_date": null,
+                  "is_current": true,
+                  "client": "Cerner",
+                  "clients": [
+                    "Cerner"
+                  ],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "physicians",
+                  "company_name": "physicians",
+                  "role": "post operative care",
+                  "job_title": "post operative care",
+                  "location": "Tennessee",
+                  "start_date": "2014",
+                  "end_date": "2016",
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "hospitalmail.com",
+                  "company_name": "hospitalmail.com",
+                  "role": "Nurse thompson",
+                  "job_title": "Nurse thompson",
+                  "location": "6",
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "Sarah Thompson RN BSN Registered",
+                  "company_name": "Sarah Thompson RN BSN Registered",
+                  "role": "Compassionate Registered Nurse",
+                  "job_title": "Compassionate Registered Nurse",
+                  "location": "Nashville TN",
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "Present\nTriage",
+                  "company_name": "Present\nTriage",
+                  "role": "new graduate nurses charge nurse",
+                  "job_title": "new graduate nurses charge nurse",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                }
+              ],
+              "education": [
+                {
+                  "institution": "Vanderbilt University School of Nursing",
+                  "degree": "",
+                  "field_of_study": null,
+                  "start_year": "2010",
+                  "end_year": "2014",
+                  "grade": null,
+                  "source": "deberta_ner"
+                }
+              ],
+              "companies": [
+                "Epic",
+                "physicians",
+                "hospitalmail.com",
+                "Sarah Thompson RN BSN Registered",
+                "Present\nTriage"
+              ],
+              "job_titles": [
+                "Assessment Triage IV",
+                "post operative care",
+                "Nurse thompson",
+                "Compassionate Registered Nurse",
+                "new graduate nurses charge nurse"
+              ],
+              "institutions": [
+                "Vanderbilt University School of Nursing"
+              ],
+              "degrees": [],
+              "source": "deberta_ner"
+            }
+          },
+          "merge_metadata": {
+            "conflict_resolution_used": true,
+            "sources_available": {
+              "rules": true,
+              "ner": true,
+              "deberta": true,
+              "llm": true
+            },
+            "deberta_entities_found": 11,
+            "total_fields_merged": 21
+          },
+          "raw_text": "Sarah Thompson RN BSN Registered Nurse\nEmail sarah.thompson@hospitalmail.com Phone 615-555-0142\nLocation Nashville TN\n\nABOUT ME\nCompassionate Registered Nurse with 9 years of experience in emergency and critical care\nsettings. Strong clinical judgment and a calm presence in high pressure environments. EXPERIENCE\n\nEmergency Department RN\nRiverside General Hospital, Nashville TN\n2016 to Present\nTriage and treat 20 plus patients per shift in a level 2 trauma center\nTrain and mentor new graduate nurses during onboarding\nServe as charge nurse during night shifts\nMaintain certification in ACLS PALS and TNCC\n\nMed Surg RN\nCumberland Valley Medical Center, Nashville TN\n2014 to 2016\nProvided post operative care for surgical patients\nAdministered medications and monitored patient vitals\nCollaborated with physicians to adjust care plans\n\nEDUCATION BSN Nursing\nVanderbilt University School of Nursing\n2010 to 2014\n\nCERTIFICATIONS RN License Tennessee\nBLS ACLS PALS TNCC\n\nSKILLS\nPatient Assessment Tria...[truncated]",
+          "raw_resume_text": "Sarah Thompson RN BSN Registered Nurse\nEmail sarah.thompson@hospitalmail.com Phone 615-555-0142\nLocation Nashville TN\n\nABOUT ME\nCompassionate Registered Nurse with 9 years of experience in emergency and critical care\nsettings. Strong clinical judgment and a calm presence in high pressure environments. EXPERIENCE\n\nEmergency Department RN\nRiverside General Hospital, Nashville TN\n2016 to Present\nTriage and treat 20 plus patients per shift in a level 2 trauma center\nTrain and mentor new graduate nurses during onboarding\nServe as charge nurse during night shifts\nMaintain certification in ACLS PALS and TNCC\n\nMed Surg RN\nCumberland Valley Medical Center, Nashville TN\n2014 to 2016\nProvided post operative care for surgical patients\nAdministered medications and monitored patient vitals\nCollaborated with physicians to adjust care plans\n\nEDUCATION BSN Nursing\nVanderbilt University School of Nursing\n2010 to 2014\n\nCERTIFICATIONS RN License Tennessee\nBLS ACLS PALS TNCC\n\nSKILLS\nPatient Assessment Triage IV Insertion Electronic Health Records Epic Cerner\nCritical Thinking Crisis Management",
+          "file_info": {
+            "file_path": "tests/sample_resumes/resume_5.txt",
+            "file_name": "resume_5.txt",
+            "extraction_method": "direct",
+            "text_quality_score": 0.5865766233766234,
+            "word_count": 154
+          }
+        },
+        "result_size": 11154
+      },
+      "metadata": {
+        "processing_time_ms": 2068.871021270752,
+        "pipeline_stages": [
+          "text_extraction_ms",
+          "name_extraction_ms",
+          "section_splitting_ms",
+          "rule_parsing_ms",
+          "deberta_parsing_ms",
+          "ai_parsing_ms",
+          "ai_skipped",
+          "experience_extraction_ms",
+          "education_extraction_ms",
+          "summary_extraction_ms",
+          "merging_ms",
+          "confidence_scoring_ms",
+          "quality_analysis_ms",
+          "total_ms"
+        ]
+      },
+      "elapsed_time_ms": 2069.257974624634
+    }
+  ]
+}

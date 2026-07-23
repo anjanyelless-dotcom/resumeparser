@@ -16,7 +16,8 @@ class SocketService {
     }
 
     const token = useAuthStore.getState().token;
-    const serverUrl = import.meta.env.VITE_SOCKET_URL;
+    const serverUrl =
+      import.meta.env.VITE_SOCKET_URL || "http://localhost:3001";
 
     this.socket = io(serverUrl, {
       auth: {

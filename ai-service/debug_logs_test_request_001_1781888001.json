@@ -1,0 +1,97 @@
+{
+  "request_id": "test_request_001",
+  "start_time": "2026-06-19T22:23:21.768844",
+  "end_time": "2026-06-19T16:53:21.769622",
+  "total_duration_ms": 0.7789134979248047,
+  "total_logs": 6,
+  "logs": [
+    {
+      "timestamp": "2026-06-19T16:53:21.768850",
+      "request_id": "test_request_001",
+      "stage": "text_extraction",
+      "log_type": "input",
+      "data": {
+        "file_path": "test_resume.pdf",
+        "file_type": "pdf",
+        "file_size": 1024
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.2989768981933594
+    },
+    {
+      "timestamp": "2026-06-19T16:53:21.769170",
+      "request_id": "test_request_001",
+      "stage": "text_extraction",
+      "log_type": "output",
+      "data": {
+        "text_length": 2500,
+        "method": "pymupdf",
+        "quality_score": 0.95
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.3299713134765625
+    },
+    {
+      "timestamp": "2026-06-19T16:53:21.769192",
+      "request_id": "test_request_001",
+      "stage": "section_splitting",
+      "operation": "section_extraction",
+      "log_type": "processing",
+      "data": {
+        "sections_detected": [
+          "Experience",
+          "Education"
+        ],
+        "section_count": 2,
+        "section_sizes": {
+          "Experience": 33,
+          "Education": 34
+        },
+        "has_experience": true,
+        "has_education": true,
+        "has_skills": false
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.3540515899658203
+    },
+    {
+      "timestamp": "2026-06-19T16:53:21.769212",
+      "request_id": "test_request_001",
+      "stage": "section_splitting",
+      "operation": "section_Experience",
+      "log_type": "processing",
+      "data": {
+        "section_name": "Experience",
+        "content_length": 33,
+        "content_preview": "Software Engineer at Tech Corp..."
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.3707408905029297
+    },
+    {
+      "timestamp": "2026-06-19T16:53:21.769224",
+      "request_id": "test_request_001",
+      "stage": "section_splitting",
+      "operation": "section_Education",
+      "log_type": "processing",
+      "data": {
+        "section_name": "Education",
+        "content_length": 34,
+        "content_preview": "BS Computer Science, University..."
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.3819465637207031
+    },
+    {
+      "timestamp": "2026-06-19T16:53:21.769234",
+      "request_id": "test_request_001",
+      "stage": "test_stage",
+      "log_type": "error",
+      "error_type": "ValueError",
+      "error_message": "Test error for evaluation",
+      "stack_trace": "Traceback (most recent call last):\n  File \"/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/scripts/test_evaluation_integration.py\", line 53, in test_debug_logger\n    raise ValueError(\"Test error for evaluation\")\nValueError: Test error for evaluation\n",
+      "context": {},
+      "elapsed_time_ms": 0.6978511810302734
+    }
+  ]
+}

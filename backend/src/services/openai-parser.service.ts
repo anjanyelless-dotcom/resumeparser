@@ -24,7 +24,7 @@ interface Education {
 }
 
 interface OpenAIParseResult {
-  work_history: WorkExperience[];
+  work_experience: WorkExperience[];
   education: Education[];
   token_usage?: {
     prompt_tokens: number;
@@ -43,7 +43,7 @@ export class OpenAIParserService {
     if (!apiKey) {
       throw new Error("OPENAI_API_KEY is not set in environment variables");
     }
-    this.client = new OpenAI({ apiKey, timeout: 60000 });
+    this.client = new OpenAI({ apiKey });
   }
 
   /**
@@ -92,7 +92,7 @@ export class OpenAIParserService {
       const parsed = JSON.parse(content);
 
       return {
-        work_history: this.normalizeWorkExperience(parsed.work_history || []),
+        work_experience: this.normalizeWorkExperience(parsed.work_experience || []),
         education: this.normalizeEducation(parsed.education || []),
         token_usage: completion.usage
           ? {
@@ -191,7 +191,7 @@ ${educationText || "No education section provided"}
 
 Return ONLY valid JSON with this exact structure:
 {
-  "work_history": [...],
+  "work_experience": [...],
   "education": [...]
 }
 

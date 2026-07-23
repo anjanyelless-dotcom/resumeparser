@@ -1,7 +1,7 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from "axios";
-import { useAuthStore } from "../../store/useAuthStore";
+import { useAuthStore } from "../../store/authStore";
 
-const baseURL = import.meta.env.VITE_API_URL;
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export const apiClient = axios.create({
   baseURL,
@@ -11,13 +11,40 @@ export const apiClient = axios.create({
   },
 });
 
+const authClient = axios.create({
+  baseURL,
+  timeout: 15000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+let refreshingPromise: Promise<string> | null = null;
+
+const refreshToken = async () => {
+  const {
+    refreshToken: token,
+    setTokens,
+    clearTokens,
+  } = useAuthStore.getState();
+  if (!token) {
+    clearTokens();
+    throw new Error("Missing refresh token");
+  }
+  const response = await authClient.post("/api/auth/refresh", {
+    refresh_token: token,
+  });
+  const { access_token, refresh_token } = response.data;
+  setTokens(access_token, refresh_token);
+  return access_token as string;
+};
 
 apiClient.interceptors.request.use((config) => {
-  const { token } = useAuthStore.getState();
-  if (token) {
+  const { accessToken } = useAuthStore.getState();
+  if (accessToken) {
     config.headers = {
       ...config.headers,
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
     } as any;
   }
   return config;
@@ -31,17 +58,22 @@ apiClient.interceptors.response.use(
       _retryCount?: number;
     };
     const status = error.response?.status;
-    const errorMessage = (error.response?.data as { error?: string })?.error;
-    const isAuthError =
-      status === 401 ||
-      (status === 403 && errorMessage === "Invalid or expired token");
 
-    if (isAuthError) {
-      useAuthStore.getState().clearAuth();
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
+    if (status === 401 && !original?._retry) {
+      original._retry = true;
+      try {
+        refreshingPromise = refreshingPromise || refreshToken();
+        const newToken = await refreshingPromise;
+        refreshingPromise = null;
+        original.headers = {
+          ...original.headers,
+          Authorization: `Bearer ${newToken}`,
+        };
+        return apiClient(original);
+      } catch {
+        refreshingPromise = null;
+        useAuthStore.getState().clearTokens();
       }
-      return Promise.reject(new Error("Session expired. Please log in again."));
     }
 
     const shouldRetry = !status || status >= 500;
@@ -55,7 +87,6 @@ apiClient.interceptors.response.use(
 
     const message =
       (error.response?.data as { detail?: string })?.detail ||
-      (error.response?.data as { message?: string })?.message ||
       error.message ||
       "Unexpected API error";
     return Promise.reject(new Error(message));

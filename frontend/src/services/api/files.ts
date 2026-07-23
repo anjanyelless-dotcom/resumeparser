@@ -82,7 +82,7 @@ export const fetchFileAsBlobUrl = async (url: string) => {
 
 /** Fetch PDF converted to HTML for click-to-highlight preview. */
 export const fetchFileHtml = async (jobId: string): Promise<string> => {
-  const response = await apiClient.get(`/files/${jobId}/html`, {
+  const response = await apiClient.get(`/api/files/${jobId}/html`, {
     timeout: 60000,
     responseType: "text",
   });

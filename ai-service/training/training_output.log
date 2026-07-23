@@ -1,0 +1,248 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+================================================================================
+SIMPLE LOCAL TRAINING - Resume NER Model
+================================================================================
+
+✅ Data files found!
+
+📊 Training Configuration:
+   Model: microsoft/deberta-v3-base
+   Output: ./resume-ner-deberta-weighted
+   Batch size: 4
+   Epochs: 10
+   Learning rate: 2e-05
+
+📂 Loading dataset...
+   Train examples: 16
+   Test examples: 1
+
+🏷️  Extracting labels...
+   Found 27 unique labels
+   ✅ Label mappings saved to ./resume-ner-deberta-weighted/label_mappings.json
+
+⚖️  Computing class weights...
+   ✅ Class weights computed (I- tags weighted 2x)
+
+🔤 Loading tokenizer: microsoft/deberta-v3-base
+   ✅ Tokenizer loaded
+
+⚙️  Tokenizing dataset...
+Map:   0%|          | 0/16 [00:00<?, ? examples/s]Map: 100%|██████████| 16/16 [00:01<00:00, 13.58 examples/s]Map: 100%|██████████| 16/16 [00:01<00:00, 13.54 examples/s]
+Map:   0%|          | 0/1 [00:00<?, ? examples/s]Map: 100%|██████████| 1/1 [00:00<00:00,  5.22 examples/s]Map: 100%|██████████| 1/1 [00:00<00:00,  5.20 examples/s]
+   ✅ Tokenization complete
+
+🤖 Loading model: microsoft/deberta-v3-base
+Loading weights:   0%|          | 0/198 [00:00<?, ?it/s]Loading weights: 100%|██████████| 198/198 [00:00<00:00, 56521.62it/s]
+[transformers] [1mDebertaV2ForTokenClassification LOAD REPORT[0m from: microsoft/deberta-v3-base
+Key                                     | Status     | 
+----------------------------------------+------------+-
+mask_predictions.dense.weight           | UNEXPECTED | 
+mask_predictions.classifier.bias        | UNEXPECTED | 
+mask_predictions.LayerNorm.bias         | UNEXPECTED | 
+mask_predictions.LayerNorm.weight       | UNEXPECTED | 
+mask_predictions.dense.bias             | UNEXPECTED | 
+lm_predictions.lm_head.LayerNorm.weight | UNEXPECTED | 
+lm_predictions.lm_head.bias             | UNEXPECTED | 
+lm_predictions.lm_head.dense.bias       | UNEXPECTED | 
+lm_predictions.lm_head.LayerNorm.bias   | UNEXPECTED | 
+mask_predictions.classifier.weight      | UNEXPECTED | 
+lm_predictions.lm_head.dense.weight     | UNEXPECTED | 
+classifier.bias                         | MISSING    | 
+classifier.weight                       | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[transformers] `logging_dir` is deprecated and will be removed in v5.2. Please set `TENSORBOARD_LOGGING_DIR` instead.
+[transformers] The tokenizer has new PAD/BOS/EOS tokens that differ from the model config and generation config. The model config and generation config were aligned accordingly, being updated with the tokenizer's values. Updated tokens: {'eos_token_id': 2, 'bos_token_id': 1}.
+   ✅ Model loaded
+
+🏋️  Initializing trainer...
+   ✅ Trainer initialized
+
+================================================================================
+🚀 STARTING TRAINING
+================================================================================
+
+⏱️  This will take approximately 20-30 minutes on Mac...
+💡 You can monitor progress below
+
+  0%|          | 0/40 [00:00<?, ?it/s]/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+  2%|▎         | 1/40 [00:08<05:48,  8.95s/it]  5%|▌         | 2/40 [00:19<06:07,  9.67s/it]  8%|▊         | 3/40 [00:50<12:04, 19.59s/it] 10%|█         | 4/40 [01:08<11:23, 18.99s/it]
+  0%|          | 0/1 [00:00<?, ?it/s][A/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+                                              
+                                     [A 10%|█         | 4/40 [01:11<11:23, 18.99s/it]
+100%|██████████| 1/1 [00:00<00:00,  5.36it/s][A
+                                             [A{'eval_loss': '7.082', 'eval_precision': '0', 'eval_recall': '0', 'eval_f1': '0', 'eval_accuracy': '0.0545', 'eval_runtime': '2.833', 'eval_samples_per_second': '0.353', 'eval_steps_per_second': '0.353', 'epoch': '1'}
+
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s][A
+Writing model shards: 100%|██████████| 1/1 [00:04<00:00,  4.37s/it][AWriting model shards: 100%|██████████| 1/1 [00:04<00:00,  4.37s/it]
+/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+ 12%|█▎        | 5/40 [01:55<16:50, 28.87s/it] 15%|█▌        | 6/40 [02:38<19:11, 33.86s/it] 18%|█▊        | 7/40 [02:57<15:56, 28.99s/it] 20%|██        | 8/40 [03:22<14:46, 27.70s/it]
+  0%|          | 0/1 [00:00<?, ?it/s][A/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+                                              
+                                     [A 20%|██        | 8/40 [03:25<14:46, 27.70s/it]
+100%|██████████| 1/1 [00:00<00:00,  2.30it/s][A
+                                             [A{'eval_loss': '10.05', 'eval_precision': '0.02607', 'eval_recall': '0.08594', 'eval_f1': '0.04', 'eval_accuracy': '0.02607', 'eval_runtime': '3.058', 'eval_samples_per_second': '0.327', 'eval_steps_per_second': '0.327', 'epoch': '2'}
+
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s][A
+Writing model shards: 100%|██████████| 1/1 [00:04<00:00,  4.50s/it][AWriting model shards: 100%|██████████| 1/1 [00:04<00:00,  4.50s/it]
+/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+ 22%|██▎       | 9/40 [04:10<17:40, 34.20s/it] 25%|██▌       | 10/40 [04:38<15:59, 32.00s/it] 28%|██▊       | 11/40 [04:54<13:06, 27.12s/it] 30%|███       | 12/40 [05:07<10:46, 23.07s/it]
+  0%|          | 0/1 [00:00<?, ?it/s][A/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+                                               
+                                     [A 30%|███       | 12/40 [05:10<10:46, 23.07s/it]
+100%|██████████| 1/1 [00:00<00:00,  6.54it/s][A
+                                             [A{'eval_loss': '11.88', 'eval_precision': '0', 'eval_recall': '0', 'eval_f1': '0', 'eval_accuracy': '0.02133', 'eval_runtime': '2.864', 'eval_samples_per_second': '0.349', 'eval_steps_per_second': '0.349', 'epoch': '3'}
+
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s][A
+Writing model shards: 100%|██████████| 1/1 [00:06<00:00,  6.17s/it][AWriting model shards: 100%|██████████| 1/1 [00:06<00:00,  6.18s/it]
+/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+ 32%|███▎      | 13/40 [05:39<11:36, 25.81s/it] 35%|███▌      | 14/40 [06:01<10:36, 24.50s/it] 38%|███▊      | 15/40 [06:24<09:59, 23.99s/it] 40%|████      | 16/40 [06:44<09:09, 22.90s/it]
+  0%|          | 0/1 [00:00<?, ?it/s][A/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+                                               
+                                     [A 40%|████      | 16/40 [06:48<09:09, 22.90s/it]
+100%|██████████| 1/1 [00:00<00:00,  2.09it/s][A
+                                             [A{'eval_loss': '8.148', 'eval_precision': '0', 'eval_recall': '0', 'eval_f1': '0', 'eval_accuracy': '0.02607', 'eval_runtime': '3.547', 'eval_samples_per_second': '0.282', 'eval_steps_per_second': '0.282', 'epoch': '4'}
+
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s][A
+Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.40s/it][AWriting model shards: 100%|██████████| 1/1 [00:01<00:00,  1.40s/it]
+/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+ 42%|████▎     | 17/40 [07:36<12:05, 31.56s/it] 45%|████▌     | 18/40 [08:13<12:14, 33.39s/it] 48%|████▊     | 19/40 [08:37<10:35, 30.28s/it] 50%|█████     | 20/40 [08:52<08:38, 25.93s/it]
+  0%|          | 0/1 [00:00<?, ?it/s][A/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+                                               
+                                     [A 50%|█████     | 20/40 [09:00<08:38, 25.93s/it]
+100%|██████████| 1/1 [00:00<00:00,  5.74it/s][A
+                                             [A{'eval_loss': '9.586', 'eval_precision': '0.02607', 'eval_recall': '0.08594', 'eval_f1': '0.04', 'eval_accuracy': '0.02607', 'eval_runtime': '7.423', 'eval_samples_per_second': '0.135', 'eval_steps_per_second': '0.135', 'epoch': '5'}
+
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s][A
+Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.60s/it][AWriting model shards: 100%|██████████| 1/1 [00:01<00:00,  1.60s/it]
+/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+ 52%|█████▎    | 21/40 [09:29<09:16, 29.30s/it] 55%|█████▌    | 22/40 [09:47<07:43, 25.76s/it] 57%|█████▊    | 23/40 [09:59<06:10, 21.77s/it] 60%|██████    | 24/40 [10:23<05:56, 22.27s/it]
+  0%|          | 0/1 [00:00<?, ?it/s][A/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+                                               
+                                     [A 60%|██████    | 24/40 [10:27<05:56, 22.27s/it]
+100%|██████████| 1/1 [00:00<00:00,  1.95it/s][A
+                                             [A{'eval_loss': '10.23', 'eval_precision': '0.009479', 'eval_recall': '0.03125', 'eval_f1': '0.01455', 'eval_accuracy': '0.02607', 'eval_runtime': '3.852', 'eval_samples_per_second': '0.26', 'eval_steps_per_second': '0.26', 'epoch': '6'}
+
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s][A
+Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.69s/it][AWriting model shards: 100%|██████████| 1/1 [00:01<00:00,  1.69s/it]
+/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+ 62%|██████▎   | 25/40 [10:54<06:12, 24.82s/it] 65%|██████▌   | 26/40 [11:05<04:50, 20.78s/it] 68%|██████▊   | 27/40 [11:16<03:51, 17.82s/it] 70%|███████   | 28/40 [11:25<03:03, 15.26s/it]
+  0%|          | 0/1 [00:00<?, ?it/s][A/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+                                               
+                                     [A 70%|███████   | 28/40 [11:27<03:03, 15.26s/it]
+100%|██████████| 1/1 [00:00<00:00,  9.00it/s][A
+                                             [A{'eval_loss': '11.33', 'eval_precision': '0', 'eval_recall': '0', 'eval_f1': '0', 'eval_accuracy': '0.02133', 'eval_runtime': '1.28', 'eval_samples_per_second': '0.781', 'eval_steps_per_second': '0.781', 'epoch': '7'}
+
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s][A
+Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.67s/it][AWriting model shards: 100%|██████████| 1/1 [00:01<00:00,  1.67s/it]
+/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+ 72%|███████▎  | 29/40 [11:51<03:21, 18.28s/it] 75%|███████▌  | 30/40 [12:02<02:42, 16.26s/it] 78%|███████▊  | 31/40 [12:14<02:15, 15.00s/it] 80%|████████  | 32/40 [12:40<02:26, 18.33s/it]
+  0%|          | 0/1 [00:00<?, ?it/s][A/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+                                               
+                                     [A 80%|████████  | 32/40 [12:45<02:26, 18.33s/it]
+100%|██████████| 1/1 [00:00<00:00,  6.07it/s][A
+                                             [A{'eval_loss': '10.7', 'eval_precision': '0', 'eval_recall': '0', 'eval_f1': '0', 'eval_accuracy': '0.0545', 'eval_runtime': '4.449', 'eval_samples_per_second': '0.225', 'eval_steps_per_second': '0.225', 'epoch': '8'}
+
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s][A
+Writing model shards: 100%|██████████| 1/1 [00:03<00:00,  3.35s/it][AWriting model shards: 100%|██████████| 1/1 [00:03<00:00,  3.35s/it]
+/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+ 82%|████████▎ | 33/40 [13:11<02:33, 21.94s/it] 85%|████████▌ | 34/40 [13:21<01:50, 18.40s/it] 88%|████████▊ | 35/40 [13:31<01:19, 15.98s/it] 90%|█████████ | 36/40 [13:41<00:57, 14.30s/it]
+  0%|          | 0/1 [00:00<?, ?it/s][A/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+                                               
+                                     [A 90%|█████████ | 36/40 [13:44<00:57, 14.30s/it]
+100%|██████████| 1/1 [00:00<00:00,  9.55it/s][A
+                                             [A{'eval_loss': '10.04', 'eval_precision': '0.02607', 'eval_recall': '0.08594', 'eval_f1': '0.04', 'eval_accuracy': '0.02607', 'eval_runtime': '2.125', 'eval_samples_per_second': '0.471', 'eval_steps_per_second': '0.471', 'epoch': '9'}
+
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s][A
+Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.02s/it][AWriting model shards: 100%|██████████| 1/1 [00:02<00:00,  2.02s/it]
+/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+ 92%|█████████▎| 37/40 [14:05<00:51, 17.03s/it] 95%|█████████▌| 38/40 [14:14<00:29, 14.57s/it] 98%|█████████▊| 39/40 [14:30<00:15, 15.06s/it]100%|██████████| 40/40 [14:40<00:00, 13.64s/it]
+  0%|          | 0/1 [00:00<?, ?it/s][A/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+                                               
+                                     [A100%|██████████| 40/40 [14:42<00:00, 13.64s/it]
+100%|██████████| 1/1 [00:00<00:00, 10.19it/s][A
+                                             [A{'eval_loss': '11.21', 'eval_precision': '0', 'eval_recall': '0', 'eval_f1': '0', 'eval_accuracy': '0.02133', 'eval_runtime': '2.224', 'eval_samples_per_second': '0.45', 'eval_steps_per_second': '0.45', 'epoch': '10'}
+
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s][A
+Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.93s/it][AWriting model shards: 100%|██████████| 1/1 [00:02<00:00,  2.93s/it]
+                                               100%|██████████| 40/40 [14:57<00:00, 13.64s/it]100%|██████████| 40/40 [14:58<00:00, 22.46s/it]
+/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+{'train_runtime': '897.9', 'train_samples_per_second': '0.178', 'train_steps_per_second': '0.045', 'train_loss': '3.535', 'epoch': '10'}
+
+================================================================================
+✅ TRAINING COMPLETE!
+================================================================================
+
+📊 Final evaluation...
+  0%|          | 0/1 [00:00<?, ?it/s]/Users/anjanyelle/Desktop/untitled folder 3/Lakshya-LLM-Resume-Parser/ai-service/venv/lib/python3.13/site-packages/seqeval/metrics/v1.py:57: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+100%|██████████| 1/1 [00:00<00:00,  8.89it/s]
+
+📈 Final Results:
+   Precision: 0.0261
+   Recall:    0.0859
+   F1 Score:  0.0400
+   Accuracy:  0.0261
+
+💾 Saving model to ./resume-ner-deberta-weighted...
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.48s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.48s/it]
+   ✅ Model saved!
+   ✅ Training config saved!
+
+🧪 Testing model...
+
+📝 Input: I worked as a Senior Full Stack Developer at Google from Jan 2020 to Present
+
+🔍 Predictions:
+   GRADE          : I
+   GRADE          : worked
+   GRADE          : as
+   GRADE          : a
+   GRADE          : Senior
+   GRADE          : Full
+   GRADE          : Stack
+   GRADE          : Developer
+   GRADE          : at
+   GRADE          : Google
+   GRADE          : from
+   GRADE          : Jan
+   GRADE          : 2020
+   GRADE          : to
+   GRADE          : Present
+
+================================================================================
+🎉 ALL DONE!
+================================================================================
+
+✅ Model saved to: ./resume-ner-deberta-weighted
+
+📋 Next steps:
+   1. Copy the model to your ai-service:
+      cp -r ./resume-ner-deberta-weighted ../../models/resume-ner-deberta
+   2. Restart your AI service
+   3. Test with real resumes!
+
+================================================================================

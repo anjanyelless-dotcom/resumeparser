@@ -1,0 +1,873 @@
+{
+  "request_id": "test_resume_9",
+  "start_time": "2026-06-19T23:07:21.160553",
+  "end_time": "2026-06-19T17:37:23.970561",
+  "total_duration_ms": 2810.009002685547,
+  "total_logs": 8,
+  "logs": [
+    {
+      "timestamp": "2026-06-19T17:37:21.160590",
+      "request_id": "test_resume_9",
+      "stage": "file_input",
+      "log_type": "input",
+      "data": {
+        "file_path": "tests/sample_resumes/resume_9.txt",
+        "candidate_id": "test_resume_9",
+        "llm_provider": null,
+        "force_ocr": false
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.04601478576660156
+    },
+    {
+      "timestamp": "2026-06-19T17:37:21.161349",
+      "request_id": "test_resume_9",
+      "stage": "text_extraction",
+      "log_type": "output",
+      "data": {
+        "method": "direct",
+        "text_length": 1235,
+        "quality_score": 0.48572081031307557,
+        "duration_ms": 0.7090568542480469
+      },
+      "metadata": {},
+      "elapsed_time_ms": 0.80108642578125
+    },
+    {
+      "timestamp": "2026-06-19T17:37:21.164750",
+      "request_id": "test_resume_9",
+      "stage": "section_splitting",
+      "operation": "section_extraction",
+      "log_type": "processing",
+      "data": {
+        "sections_detected": [
+          "other"
+        ],
+        "section_count": 1,
+        "section_sizes": {
+          "other": 1227
+        },
+        "has_experience": false,
+        "has_education": false,
+        "has_skills": false
+      },
+      "metadata": {
+        "duration_ms": 2.914905548095703,
+        "text_length": 1235
+      },
+      "elapsed_time_ms": 4.204034805297852
+    },
+    {
+      "timestamp": "2026-06-19T17:37:21.164775",
+      "request_id": "test_resume_9",
+      "stage": "section_splitting",
+      "operation": "section_other",
+      "log_type": "processing",
+      "data": {
+        "section_name": "other",
+        "content_length": 1227,
+        "content_preview": "Lauren\nMitchell\nSales Executive\n\nlauren.mitchell@salesmail.com  (303) 555-0156  Denver, Colorado\n\nLauren Mitchell is a Sales Executive with over 8 years of experience in enterprise\nsoftware sales. She has consistently exceeded quota and has a strong track record of\nbuilding long-term client relation"
+      },
+      "metadata": {},
+      "elapsed_time_ms": 4.225015640258789
+    },
+    {
+      "timestamp": "2026-06-19T17:37:23.636239",
+      "request_id": "test_resume_9",
+      "stage": "model_input",
+      "model_name": "deberta-v3",
+      "log_type": "input",
+      "input_text_length": 1235,
+      "input_text_hash": "033853166a13e652",
+      "input_text_preview": "Lauren Mitchell Sales Executive\nContact: lauren.mitchell@salesmail.com  (303) 555-0156  Denver, Colorado\n\nLauren Mitchell is a Sales Executive with over 8 years of experience in enterprise\nsoftware sales. She has consistently exceeded quota and has a strong track record of\nbuilding long-term client relationships. From 2020 to present, Lauren has worked as a Senior Account Executive at Pinnacle\nSoftware Solutions in Denver, Colorado, where she closed over 5M in new annual recurring\nrevenue in 202",
+      "prompt": null,
+      "prompt_length": 0,
+      "metadata": {
+        "model_type": "NER",
+        "text_length": 1235
+      },
+      "elapsed_time_ms": 2475.748062133789
+    },
+    {
+      "timestamp": "2026-06-19T17:37:23.636323",
+      "request_id": "test_resume_9",
+      "stage": "model_output",
+      "model_name": "deberta-v3",
+      "log_type": "output",
+      "raw_output": null,
+      "parsed_output": {
+        "companies": [
+          "Pinnacle Software Solutions",
+          "lauren",
+          "salesmail.com",
+          "Lauren Mitchell",
+          "Pinnacle\nSoftware Solutions",
+          "Pinnacle\nSoftware Solutions",
+          "Pinnacle\nSoftware Solutions"
+        ],
+        "locations": [
+          "Denver, Colorado",
+          "Denver",
+          "(303) 5550156 Denver, Colorado"
+        ],
+        "work_experience": [
+          {
+            "company": "Pinnacle Software Solutions",
+            "company_name": "Pinnacle Software Solutions",
+            "role": "Senior Account Executive",
+            "job_title": "Senior Account Executive",
+            "location": "Denver, Colorado",
+            "start_date": "2020",
+            "end_date": null,
+            "is_current": true,
+            "client": "mid",
+            "clients": [
+              "mid"
+            ],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "",
+            "company_name": "",
+            "role": "Account Executive",
+            "job_title": "Account Executive",
+            "location": "Denver",
+            "start_date": "2017",
+            "end_date": "2020",
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "lauren",
+            "company_name": "lauren",
+            "role": "Sales Executive mitchell",
+            "job_title": "Sales Executive mitchell",
+            "location": "(303) 5550156 Denver, Colorado",
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "salesmail.com",
+            "company_name": "salesmail.com",
+            "role": "",
+            "job_title": "",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "Lauren Mitchell",
+            "company_name": "Lauren Mitchell",
+            "role": "Sales Executive software",
+            "job_title": "Sales Executive software",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "Pinnacle\nSoftware Solutions",
+            "company_name": "Pinnacle\nSoftware Solutions",
+            "role": "junior account executives",
+            "job_title": "junior account executives",
+            "location": null,
+            "start_date": null,
+            "end_date": "2023",
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "Pinnacle\nSoftware Solutions",
+            "company_name": "Pinnacle\nSoftware Solutions",
+            "role": "",
+            "job_title": "",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          },
+          {
+            "company": "Pinnacle\nSoftware Solutions",
+            "company_name": "Pinnacle\nSoftware Solutions",
+            "role": "Lead",
+            "job_title": "Lead",
+            "location": null,
+            "start_date": null,
+            "end_date": null,
+            "is_current": false,
+            "client": "",
+            "clients": [],
+            "description": null,
+            "source": "deberta_ner"
+          }
+        ],
+        "education": [],
+        "job_titles": [
+          "Senior Account Executive",
+          "Account Executive",
+          "Sales Executive mitchell",
+          "Sales Executive software",
+          "junior account executives",
+          "Lead"
+        ],
+        "clients": [
+          "mid"
+        ],
+        "dates": [],
+        "degrees": [],
+        "institutions": [],
+        "fields_of_study": [],
+        "source": "structured_parser",
+        "confidence": {
+          "deberta_confidence": 0.85,
+          "entities_found": 13
+        }
+      },
+      "output_size": 2982,
+      "metadata": {
+        "duration_ms": 2385.6558799743652,
+        "entities_extracted": 13
+      },
+      "elapsed_time_ms": 2475.8410453796387
+    },
+    {
+      "timestamp": "2026-06-19T17:37:23.970032",
+      "request_id": "test_resume_9",
+      "stage": "final_output",
+      "log_type": "output",
+      "data": {
+        "candidate_id": "test_resume_9",
+        "status": "success",
+        "name": "Lauren Mitchell Sales Executive",
+        "email": "la*************************om",
+        "phone": "30*********56",
+        "work_experience_count": 8,
+        "education_count": 0,
+        "skills_count": 9,
+        "confidence_score": 0.83,
+        "processing_metrics": {
+          "timing_ms": {
+            "text_extraction_ms": 0.7090568542480469,
+            "name_extraction_ms": 0.13327598571777344,
+            "section_splitting_ms": 2.914905548095703,
+            "rule_parsing_ms": 85.34812927246094,
+            "deberta_parsing_ms": 2385.6558799743652,
+            "ai_parsing_ms": 0.011682510375976562,
+            "ai_skipped": true,
+            "experience_extraction_ms": 0.041961669921875,
+            "education_extraction_ms": 0.04029273986816406,
+            "summary_extraction_ms": 0.6039142608642578,
+            "merging_ms": 0.965118408203125,
+            "confidence_scoring_ms": 0.06890296936035156,
+            "quality_analysis_ms": 1.99127197265625,
+            "total_ms": 2809.459924697876
+          },
+          "total_processing_time_ms": 0,
+          "pipeline_steps_completed": 13
+        },
+        "needs_review": false
+      },
+      "metadata": {
+        "processing_time_ms": 2809.459924697876,
+        "pipeline_stages": [
+          "text_extraction_ms",
+          "name_extraction_ms",
+          "section_splitting_ms",
+          "rule_parsing_ms",
+          "deberta_parsing_ms",
+          "ai_parsing_ms",
+          "ai_skipped",
+          "experience_extraction_ms",
+          "education_extraction_ms",
+          "summary_extraction_ms",
+          "merging_ms",
+          "confidence_scoring_ms",
+          "quality_analysis_ms",
+          "total_ms"
+        ]
+      },
+      "elapsed_time_ms": 2809.4990253448486
+    },
+    {
+      "timestamp": "2026-06-19T17:37:23.970321",
+      "request_id": "test_resume_9",
+      "stage": "final_output",
+      "operation": "complete_result",
+      "log_type": "processing",
+      "data": {
+        "full_result": {
+          "candidate_id": "test_resume_9",
+          "status": "success",
+          "parsing_timestamp": 1781890643.969889,
+          "name": "Lauren Mitchell Sales Executive",
+          "email": "la*************************om",
+          "phone": "30*********56",
+          "linkedin": null,
+          "github": null,
+          "websites": [
+            "https://lauren.mitchell",
+            "https://salesmail.com"
+          ],
+          "summary": "Lauren Mitchell is a Sales Executive with over 8 years of experience in enterprise\nsoftware sales. She has consistently exceeded quota and has a strong track record of\nbuilding long-term client relationships. From 2020 to present, Lauren has worked as a Senior Account Executive at Pinnacle\nSoftware Solutions in Denver, Colorado, where she closed over 5M in new annual recurring\nrevenue in 2023 alone, exceeded quota for 12 consecutive quarters, managed a portfolio of\n30 enterprise accounts, and mentored 3 junior account executives on deal strategy. Prior to that, from 2017 to 2020, she worked as an Account Executive at Summit Cloud\nSystems in Denver, where she grew a territory from 0 to 2.1M in annual revenue, negotiated and closed contracts with mid-market and enterprise clients, and collaborated\nwith marketing on lead generation campaigns. Lauren holds a Bachelor of Arts in Business Administration from the University of\nColorado Boulder, which she completed between 2013 and 2017. Her c",
+          "skills": [
+            "Account Executive",
+            "Account Management",
+            "Forecasting",
+            "Lead Generation",
+            "Management",
+            "Negotiation",
+            "Prospecting",
+            "Sales",
+            "Salesforce"
+          ],
+          "work_experience": [
+            {
+              "company": "Pinnacle Software Solutions",
+              "company_name": "Pinnacle Software Solutions",
+              "role": "Senior Account Executive",
+              "job_title": "Senior Account Executive",
+              "location": "Denver, Colorado",
+              "start_date": "2020",
+              "end_date": null,
+              "is_current": true,
+              "client": "mid",
+              "clients": [
+                "mid"
+              ],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "Account Executive",
+              "job_title": "Account Executive",
+              "location": "Denver",
+              "start_date": "2017",
+              "end_date": "2020",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "lauren",
+              "company_name": "lauren",
+              "role": "Sales Executive mitchell",
+              "job_title": "Sales Executive mitchell",
+              "location": "(303) 5550156 Denver, Colorado",
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "salesmail.com",
+              "company_name": "salesmail.com",
+              "role": "",
+              "job_title": "",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Lauren Mitchell",
+              "company_name": "Lauren Mitchell",
+              "role": "Sales Executive software",
+              "job_title": "Sales Executive software",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Pinnacle\nSoftware Solutions",
+              "company_name": "Pinnacle\nSoftware Solutions",
+              "role": "junior account executives",
+              "job_title": "junior account executives",
+              "location": null,
+              "start_date": null,
+              "end_date": "2023",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Pinnacle\nSoftware Solutions",
+              "company_name": "Pinnacle\nSoftware Solutions",
+              "role": "",
+              "job_title": "",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Pinnacle\nSoftware Solutions",
+              "company_name": "Pinnacle\nSoftware Solutions",
+              "role": "Lead",
+              "job_title": "Lead",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            }
+          ],
+          "work_history": [
+            {
+              "company": "Pinnacle Software Solutions",
+              "company_name": "Pinnacle Software Solutions",
+              "role": "Senior Account Executive",
+              "job_title": "Senior Account Executive",
+              "location": "Denver, Colorado",
+              "start_date": "2020",
+              "end_date": null,
+              "is_current": true,
+              "client": "mid",
+              "clients": [
+                "mid"
+              ],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "",
+              "company_name": "",
+              "role": "Account Executive",
+              "job_title": "Account Executive",
+              "location": "Denver",
+              "start_date": "2017",
+              "end_date": "2020",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "lauren",
+              "company_name": "lauren",
+              "role": "Sales Executive mitchell",
+              "job_title": "Sales Executive mitchell",
+              "location": "(303) 5550156 Denver, Colorado",
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "salesmail.com",
+              "company_name": "salesmail.com",
+              "role": "",
+              "job_title": "",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Lauren Mitchell",
+              "company_name": "Lauren Mitchell",
+              "role": "Sales Executive software",
+              "job_title": "Sales Executive software",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Pinnacle\nSoftware Solutions",
+              "company_name": "Pinnacle\nSoftware Solutions",
+              "role": "junior account executives",
+              "job_title": "junior account executives",
+              "location": null,
+              "start_date": null,
+              "end_date": "2023",
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Pinnacle\nSoftware Solutions",
+              "company_name": "Pinnacle\nSoftware Solutions",
+              "role": "",
+              "job_title": "",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            },
+            {
+              "company": "Pinnacle\nSoftware Solutions",
+              "company_name": "Pinnacle\nSoftware Solutions",
+              "role": "Lead",
+              "job_title": "Lead",
+              "location": null,
+              "start_date": null,
+              "end_date": null,
+              "is_current": false,
+              "client": "",
+              "clients": [],
+              "description": null,
+              "source": "deberta_ner"
+            }
+          ],
+          "education": [],
+          "job_titles": [
+            "Senior Account Executive",
+            "Account Executive",
+            "Sales Executive mitchell",
+            "Sales Executive software",
+            "junior account executives",
+            "Lead"
+          ],
+          "companies": [
+            "Pinnacle Software Solutions",
+            "lauren",
+            "salesmail.com",
+            "Lauren Mitchell",
+            "Pinnacle\nSoftware Solutions",
+            "Pinnacle\nSoftware Solutions",
+            "Pinnacle\nSoftware Solutions"
+          ],
+          "locations": [
+            "Denver, Colorado",
+            "Denver",
+            "(303) 5550156 Denver, Colorado"
+          ],
+          "dates": [],
+          "years_of_experience": 9.5,
+          "misc_entities": [],
+          "confidence": {
+            "overall": 0.83,
+            "fields": {
+              "email": "***",
+              "phone": "***",
+              "name": 0.7,
+              "skills": 1.0,
+              "experience": 1.0,
+              "education": 0.0
+            },
+            "needs_review": false,
+            "missing_critical": [],
+            "quality_level": "good",
+            "quality_score": 0.8,
+            "recommendations": [
+              "Add education information with degree and institution"
+            ],
+            "field_weights": {
+              "email": "****",
+              "phone": "***",
+              "name": 0.2,
+              "skills": 0.25,
+              "experience": 0.2,
+              "education": 0.1
+            }
+          },
+          "needs_review": false,
+          "quality_level": "good",
+          "processing_metrics": {
+            "timing_ms": {
+              "text_extraction_ms": 0.7090568542480469,
+              "name_extraction_ms": 0.13327598571777344,
+              "section_splitting_ms": 2.914905548095703,
+              "rule_parsing_ms": 85.34812927246094,
+              "deberta_parsing_ms": 2385.6558799743652,
+              "ai_parsing_ms": 0.011682510375976562,
+              "ai_skipped": true,
+              "experience_extraction_ms": 0.041961669921875,
+              "education_extraction_ms": 0.04029273986816406,
+              "summary_extraction_ms": 0.6039142608642578,
+              "merging_ms": 0.965118408203125,
+              "confidence_scoring_ms": 0.06890296936035156,
+              "quality_analysis_ms": 1.99127197265625,
+              "total_ms": 2809.459924697876
+            },
+            "total_processing_time_ms": 0,
+            "pipeline_steps_completed": 13
+          },
+          "source_info": {
+            "file_path": "tests/sample_resumes/resume_9.txt",
+            "extraction_method": "direct",
+            "quality_score": 0.48572081031307557
+          },
+          "extraction_quality": {
+            "extraction_quality_percentage": 66.93,
+            "text_similarity_percentage": 78.53,
+            "missing_keywords": [
+              "pipeline",
+              "outbound",
+              "solution",
+              "selling",
+              "contact",
+              "include",
+              "skills",
+              "core"
+            ],
+            "missing_sections": [
+              "experience",
+              "skills"
+            ],
+            "structure_loss": [],
+            "text_loss_percentage": 21.47,
+            "recommendation": "Moderate extraction quality. Missing sections: experience, skills.",
+            "metrics": {
+              "original_text_length": 1235,
+              "reconstructed_text_length": 1521,
+              "original_word_count": 181,
+              "reconstructed_word_count": 215,
+              "missing_word_count": 8
+            }
+          },
+          "model_results": {
+            "deberta_extraction": {
+              "work_experience": [
+                {
+                  "company": "Pinnacle Software Solutions",
+                  "company_name": "Pinnacle Software Solutions",
+                  "role": "Senior Account Executive",
+                  "job_title": "Senior Account Executive",
+                  "location": "Denver, Colorado",
+                  "start_date": "2020",
+                  "end_date": null,
+                  "is_current": true,
+                  "client": "mid",
+                  "clients": [
+                    "mid"
+                  ],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "",
+                  "company_name": "",
+                  "role": "Account Executive",
+                  "job_title": "Account Executive",
+                  "location": "Denver",
+                  "start_date": "2017",
+                  "end_date": "2020",
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "lauren",
+                  "company_name": "lauren",
+                  "role": "Sales Executive mitchell",
+                  "job_title": "Sales Executive mitchell",
+                  "location": "(303) 5550156 Denver, Colorado",
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "salesmail.com",
+                  "company_name": "salesmail.com",
+                  "role": "",
+                  "job_title": "",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "Lauren Mitchell",
+                  "company_name": "Lauren Mitchell",
+                  "role": "Sales Executive software",
+                  "job_title": "Sales Executive software",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "Pinnacle\nSoftware Solutions",
+                  "company_name": "Pinnacle\nSoftware Solutions",
+                  "role": "junior account executives",
+                  "job_title": "junior account executives",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": "2023",
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "Pinnacle\nSoftware Solutions",
+                  "company_name": "Pinnacle\nSoftware Solutions",
+                  "role": "",
+                  "job_title": "",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                },
+                {
+                  "company": "Pinnacle\nSoftware Solutions",
+                  "company_name": "Pinnacle\nSoftware Solutions",
+                  "role": "Lead",
+                  "job_title": "Lead",
+                  "location": null,
+                  "start_date": null,
+                  "end_date": null,
+                  "is_current": false,
+                  "client": "",
+                  "clients": [],
+                  "description": null,
+                  "source": "deberta_ner"
+                }
+              ],
+              "education": [],
+              "companies": [
+                "Pinnacle Software Solutions",
+                "lauren",
+                "salesmail.com",
+                "Lauren Mitchell",
+                "Pinnacle\nSoftware Solutions",
+                "Pinnacle\nSoftware Solutions",
+                "Pinnacle\nSoftware Solutions"
+              ],
+              "job_titles": [
+                "Senior Account Executive",
+                "Account Executive",
+                "Sales Executive mitchell",
+                "Sales Executive software",
+                "junior account executives",
+                "Lead"
+              ],
+              "institutions": [],
+              "degrees": [],
+              "source": "deberta_ner"
+            }
+          },
+          "merge_metadata": {
+            "conflict_resolution_used": true,
+            "sources_available": {
+              "rules": true,
+              "ner": true,
+              "deberta": true,
+              "llm": true
+            },
+            "deberta_entities_found": 13,
+            "total_fields_merged": 20
+          },
+          "raw_text": "Lauren Mitchell Sales Executive\nContact: lauren.mitchell@salesmail.com  (303) 555-0156  Denver, Colorado\n\nLauren Mitchell is a Sales Executive with over 8 years of experience in enterprise\nsoftware sales. She has consistently exceeded quota and has a strong track record of\nbuilding long-term client relationships. From 2020 to present, Lauren has worked as a Senior Account Executive at Pinnacle\nSoftware Solutions in Denver, Colorado, where she closed over 5M in new annual recurring\nrevenue in 2023 alone, exceeded quota for 12 consecutive quarters, managed a portfolio of\n30 enterprise accounts, and mentored 3 junior account executives on deal strategy. Prior to that, from 2017 to 2020, she worked as an Account Executive at Summit Cloud\nSystems in Denver, where she grew a territory from 0 to 2.1M in annual revenue, negotiated and closed contracts with mid-market and enterprise clients, and collaborated\nwith marketing on lead generation campaigns. Lauren holds a Bachelor of Arts in Busines...[truncated]",
+          "raw_resume_text": "Lauren Mitchell Sales Executive\nContact: lauren.mitchell@salesmail.com  (303) 555-0156  Denver, Colorado\n\nLauren Mitchell is a Sales Executive with over 8 years of experience in enterprise\nsoftware sales. She has consistently exceeded quota and has a strong track record of\nbuilding long-term client relationships. From 2020 to present, Lauren has worked as a Senior Account Executive at Pinnacle\nSoftware Solutions in Denver, Colorado, where she closed over 5M in new annual recurring\nrevenue in 2023 alone, exceeded quota for 12 consecutive quarters, managed a portfolio of\n30 enterprise accounts, and mentored 3 junior account executives on deal strategy. Prior to that, from 2017 to 2020, she worked as an Account Executive at Summit Cloud\nSystems in Denver, where she grew a territory from 0 to 2.1M in annual revenue, negotiated and closed contracts with mid-market and enterprise clients, and collaborated\nwith marketing on lead generation campaigns. Lauren holds a Bachelor of Arts in Business Administration from the University of\nColorado Boulder, which she completed between 2013 and 2017. Her core skills include Salesforce, Solution Selling, Negotiation, Account Management, Pipeline Forecasting, and Outbound Prospecting.",
+          "file_info": {
+            "file_path": "tests/sample_resumes/resume_9.txt",
+            "file_name": "resume_9.txt",
+            "extraction_method": "direct",
+            "text_quality_score": 0.48572081031307557,
+            "word_count": 181
+          }
+        },
+        "result_size": 14246
+      },
+      "metadata": {
+        "processing_time_ms": 2809.459924697876,
+        "pipeline_stages": [
+          "text_extraction_ms",
+          "name_extraction_ms",
+          "section_splitting_ms",
+          "rule_parsing_ms",
+          "deberta_parsing_ms",
+          "ai_parsing_ms",
+          "ai_skipped",
+          "experience_extraction_ms",
+          "education_extraction_ms",
+          "summary_extraction_ms",
+          "merging_ms",
+          "confidence_scoring_ms",
+          "quality_analysis_ms",
+          "total_ms"
+        ]
+      },
+      "elapsed_time_ms": 2809.911012649536
+    }
+  ]
+}

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserStore } from "../store/useUserStore";
 import toast from "react-hot-toast";
-import { Users, Shield, Edit, Trash2, Power, PowerOff, UserPlus } from "lucide-react";
+import { Users, Shield, UserPlus, Edit, Trash2, Power, PowerOff } from "lucide-react";
 
 export default function UsersPage() {
   const navigate = useNavigate();

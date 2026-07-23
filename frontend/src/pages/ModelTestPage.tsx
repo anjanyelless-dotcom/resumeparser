@@ -19,11 +19,10 @@ export default function ModelTestPage() {
     setResult(null);
 
     try {
-      // Use the correct backend endpoint
+      // Use relative URL - Vite proxy will forward to AI service on port 8000
       const response = await axios.post(
-        `/upload/parse-sections`,
+        `/parse-sections`,
         {
-          model: "own-model",
           experience_text: inputText,
           education_text: "" // Can be extended to have separate fields
         },

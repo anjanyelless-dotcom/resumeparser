@@ -264,8 +264,6 @@ export interface ExtractedJD {
   roleKeywords: string[];      // e.g. ["senior", "full stack", "backend"]
   certificationKeywords: string[];
   allKeywords: string[];       // full bag of normalized lowercase words for text-matching
-  locationKeywords?: string[]; // optional: e.g. ["Hyderabad", "Bangalore"]
-  employmentType?: string;     // optional: e.g. "full_time", "contract"
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

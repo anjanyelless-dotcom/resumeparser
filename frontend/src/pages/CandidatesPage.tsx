@@ -1,12 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCandidateStore } from "../store/useCandidateStore";
 import { useFilterStore } from "../store/filterStore";
 import toast from "react-hot-toast";
 import { Users, Search, RefreshCw, User, Award, X } from "lucide-react";
-import CandidateCard from "../components/candidates/CandidateCard";
-import CandidateViewToggle from "../components/candidates/CandidateViewToggle";
-import CandidateTable from "../components/candidates/CandidateTable";
 
 type FilterType = "all" | "high-confidence" | "needs-review";
 type SortType = "date-added" | "name" | "confidence-score" | "match-score";
@@ -15,14 +12,23 @@ export default function CandidatesPage() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [sort, setSort] = useState<SortType>("date-added");
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState<"grid" | "table">(() => {
-    const saved = localStorage.getItem('candidate_view');
-    return saved === 'table' ? 'table' : 'grid';
-  });
-  
+  const [expandedSkills, setExpandedSkills] = useState<Set<string>>(new Set());
+
   const { candidates, pagination, isLoading, fetchCandidates } = useCandidateStore();
   const { searchTerm, company, jobTitle, certification, salaryMin, salaryMax, setSearchTerm, setCompany, setJobTitle, setCertification, resetFilters } = useFilterStore();
   const navigate = useNavigate();
+
+  const toggleSkills = (candidateId: string) => {
+    setExpandedSkills((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(candidateId)) {
+        newSet.delete(candidateId);
+      } else {
+        newSet.add(candidateId);
+      }
+      return newSet;
+    });
+  };
 
   // Local input state — holds raw typed values before debounce commits them
   const [inputSearchTerm, setInputSearchTerm] = useState(searchTerm || "");
@@ -76,10 +82,10 @@ export default function CandidatesPage() {
     return null;
   };
 
-  const searchError = useMemo(() => validateNameEmailSkill(inputSearchTerm), [inputSearchTerm]);
-  const companyError = useMemo(() => validateCompany(inputCompany), [inputCompany]);
-  const jobTitleError = useMemo(() => validateJobTitle(inputJobTitle), [inputJobTitle]);
-  const certError = useMemo(() => validateCertification(inputCertification), [inputCertification]);
+  const searchError = validateNameEmailSkill(inputSearchTerm);
+  const companyError = validateCompany(inputCompany);
+  const jobTitleError = validateJobTitle(inputJobTitle);
+  const certError = validateCertification(inputCertification);
 
   // Debounce: commit local inputs to the filter store 400 ms after the user stops typing
   useEffect(() => {
@@ -115,10 +121,7 @@ export default function CandidatesPage() {
 
   const loadCandidates = async () => {
     try {
-      // Use higher limit when searching to show all matching results
-      const hasSearchFilter = searchTerm || company || jobTitle || certification || salaryMin || salaryMax;
-      const limit = hasSearchFilter ? 100 : itemsPerPage;
-      await fetchCandidates(currentPage, limit, searchTerm, company, jobTitle, certification, salaryMin, salaryMax);
+      await fetchCandidates(currentPage, itemsPerPage, searchTerm, company, jobTitle, certification, salaryMin, salaryMax);
     } catch (error) {
       toast.error("Failed to load candidates");
     }
@@ -141,59 +144,95 @@ export default function CandidatesPage() {
     inputSearchTerm || inputCompany || inputJobTitle || inputCertification;
 
   // Client-side filter and sort (search is handled server-side)
-  const filteredCandidates = useMemo(() => {
-    return candidates
-      .filter((candidate) => {
-        // Status filter (client-side)
-        const confidence = candidate.parsing_status?.confidence_score || 0;
-        const matchesFilter =
-          filter === "all" ||
-          (filter === "high-confidence" && confidence >= 0.8) ||
-          (filter === "needs-review" && confidence < 0.8);
+  const filteredCandidates = candidates
+    .filter((candidate) => {
+      // Status filter (client-side)
+      const confidence = candidate.parsing_status?.confidence_score || 0;
+      const matchesFilter =
+        filter === "all" ||
+        (filter === "high-confidence" && confidence >= 0.8) ||
+        (filter === "needs-review" && confidence < 0.8);
 
-        return matchesFilter;
-      })
-      .sort((a, b) => {
-        // Sort logic (client-side)
-        switch (sort) {
-          case "name":
-            return (a.full_name || "").localeCompare(b.full_name || "");
-          case "confidence-score":
-            const aConfidence = a.parsing_status?.confidence_score || 0;
-            const bConfidence = b.parsing_status?.confidence_score || 0;
-            return bConfidence - aConfidence;
-          case "match-score":
-            const aMatchScore = a.match_score || 0;
-            const bMatchScore = b.match_score || 0;
-            return bMatchScore - aMatchScore;
-          case "date-added":
-          default:
-            return (
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
-        }
-      });
-  }, [candidates, filter, sort]);
+      return matchesFilter;
+    })
+    .sort((a, b) => {
+      // Sort logic (client-side)
+      switch (sort) {
+        case "name":
+          return (a.full_name || "").localeCompare(b.full_name || "");
+        case "confidence-score":
+          const aConfidence = a.parsing_status?.confidence_score || 0;
+          const bConfidence = b.parsing_status?.confidence_score || 0;
+          return bConfidence - aConfidence;
+        case "match-score":
+          const aMatchScore = a.match_score || 0;
+          const bMatchScore = b.match_score || 0;
+          return bMatchScore - aMatchScore;
+        case "date-added":
+        default:
+          return (
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+      }
+    });
 
   // Use server-side pagination
   const paginatedCandidates = filteredCandidates;
 
+  // Debug: Log pagination state
+  console.log("🔍 Pagination state:", pagination);
+  console.log("🔍 Candidates count:", candidates.length);
+
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence >= 0.8) return "bg-purple-100 text-purple-800";
+    if (confidence >= 0.6) return "bg-purple-50 text-purple-700";
+    return "bg-gray-100 text-gray-600";
+  };
+
+  const getMatchScoreColor = (score: number) => {
+    if (score >= 0.8) return "bg-green-100 text-green-800";
+    if (score >= 0.6) return "bg-blue-100 text-blue-800";
+    if (score >= 0.4) return "bg-yellow-100 text-yellow-800";
+    return "bg-red-100 text-red-800";
+  };
+
+
+  const getExperienceSummary = (workExperience: any[]) => {
+    if (!workExperience || workExperience.length === 0) return "No experience";
+
+    const currentJob = workExperience.find((exp) => exp.is_current);
+    if (currentJob) {
+      return `${currentJob.job_title} at ${currentJob.company_name}`;
+    }
+
+    const latestJob = workExperience[0];
+    return `Previously ${latestJob.job_title} at ${latestJob.company_name}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   return (
-    <div className="p-6">
+    <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Candidates</h1>
-            <p className="text-gray-500 mt-1">
-              Manage and review candidate profiles with AI-powered resume parsing insights
-            </p>
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Users className="w-6 h-6 text-purple-600" />
+            <h1 className="text-2xl font-bold text-gray-900">Candidates</h1>
           </div>
-          <CandidateViewToggle onViewChange={setViewMode} />
+          <p className="text-gray-600">
+            Manage and review candidate profiles with AI-powered resume parsing insights
+          </p>
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex flex-col gap-4">
             {/* Search Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -205,9 +244,9 @@ export default function CandidatesPage() {
                     placeholder="Search by name, email, or skill..."
                     value={inputSearchTerm}
                     onChange={(e) => setInputSearchTerm(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border ${searchError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500`}
+                    className={`w-full pl-10 pr-4 py-3 border ${searchError ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none`}
                   />
-                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 </div>
                 {searchError && <p className="text-red-500 text-xs mt-1 absolute -bottom-5">{searchError}</p>}
               </div>
@@ -220,9 +259,9 @@ export default function CandidatesPage() {
                     placeholder="Search by company..."
                     value={inputCompany}
                     onChange={(e) => setInputCompany(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border ${companyError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500`}
+                    className={`w-full pl-10 pr-4 py-3 border ${companyError ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none`}
                   />
-                  <Users className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Users className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 </div>
                 {companyError && <p className="text-red-500 text-xs mt-1 absolute -bottom-5">{companyError}</p>}
               </div>
@@ -235,9 +274,9 @@ export default function CandidatesPage() {
                     placeholder="Search by job title..."
                     value={inputJobTitle}
                     onChange={(e) => setInputJobTitle(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border ${jobTitleError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500`}
+                    className={`w-full pl-10 pr-4 py-3 border ${jobTitleError ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none`}
                   />
-                  <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 </div>
                 {jobTitleError && <p className="text-red-500 text-xs mt-1 absolute -bottom-5">{jobTitleError}</p>}
               </div>
@@ -250,9 +289,9 @@ export default function CandidatesPage() {
                     placeholder="Search by certification..."
                     value={inputCertification}
                     onChange={(e) => setInputCertification(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border ${certError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500`}
+                    className={`w-full pl-10 pr-4 py-3 border ${certError ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none`}
                   />
-                  <Award className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Award className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 </div>
                 {certError && <p className="text-red-500 text-xs mt-1 absolute -bottom-5">{certError}</p>}
               </div>
@@ -264,8 +303,8 @@ export default function CandidatesPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setFilter("all")}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${filter === "all"
-                      ? "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700"
+                  className={`px-6 py-2.5 rounded-xl font-medium transition-colors ${filter === "all"
+                      ? "bg-purple-600 text-white hover:bg-purple-700"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                 >
@@ -273,8 +312,8 @@ export default function CandidatesPage() {
                 </button>
                 <button
                   onClick={() => setFilter("high-confidence")}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${filter === "high-confidence"
-                      ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                  className={`px-6 py-2.5 rounded-xl font-medium transition-colors ${filter === "high-confidence"
+                      ? "bg-purple-600 text-white hover:bg-purple-700"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                 >
@@ -282,8 +321,8 @@ export default function CandidatesPage() {
                 </button>
                 <button
                   onClick={() => setFilter("needs-review")}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${filter === "needs-review"
-                      ? "bg-amber-600 text-white shadow-sm hover:bg-amber-700"
+                  className={`px-6 py-2.5 rounded-xl font-medium transition-colors ${filter === "needs-review"
+                      ? "bg-purple-600 text-white hover:bg-purple-700"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                 >
@@ -298,7 +337,7 @@ export default function CandidatesPage() {
                   setSort(e.target.value as SortType);
                   setCurrentPage(1);
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="date-added">Date Added</option>
                 <option value="name">Name</option>
@@ -312,7 +351,7 @@ export default function CandidatesPage() {
               <div className="flex justify-end">
                 <button
                   onClick={handleClear}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
                   <X className="w-4 h-4" />
                   Clear Filters
@@ -333,35 +372,131 @@ export default function CandidatesPage() {
           <button
             onClick={loadCandidates}
             disabled={isLoading}
-            className="text-sm text-gray-600 hover:text-gray-700 disabled:opacity-50 flex items-center gap-2"
+            className="text-sm text-purple-600 hover:text-purple-700 disabled:opacity-50 flex items-center gap-2"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             {isLoading ? "Refreshing..." : "Refresh"}
           </button>
         </div>
 
-        {/* Candidates Grid or Table */}
+        {/* Candidates Grid */}
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
           </div>
         ) : paginatedCandidates.length > 0 ? (
-          viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-6">
-              {paginatedCandidates.map((candidate) => (
-                <CandidateCard
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+            {paginatedCandidates.map((candidate) => {
+              const fullName = candidate.full_name || (candidate as any).name || "Unnamed Candidate";
+              const displayName = fullName.length > 18 ? fullName.substring(0, 18) + "..." : fullName;
+              const email = candidate.email || "";
+              const displayEmail = email.length > 22 ? email.substring(0, 22) + "..." : email;
+
+              return (
+                <div
                   key={candidate.id}
-                  candidate={candidate as any}
-                  onViewProfile={(id) => navigate(`/candidates/${id}`)}
-                />
-              ))}
-            </div>
-          ) : (
-            <CandidateTable candidates={paginatedCandidates as any} />
-          )
+                  className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-200 p-6 border border-gray-100 hover:border-purple-200"
+                >
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center">
+                      <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <User className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div className="ml-3 min-w-0">
+                        <h3
+                          title={fullName}
+                          className="font-semibold text-gray-900 text-lg truncate cursor-pointer hover:text-purple-600 transition-colors"
+                        >
+                          {displayName}
+                        </h3>
+                        <p title={email} className="text-sm text-gray-600 truncate">{displayEmail || "No email"}</p>
+                      </div>
+                    </div>
+
+                    {/* Confidence Badge */}
+                    <div className="flex flex-col gap-1 items-end">
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${getConfidenceColor(candidate.parsing_status?.confidence_score || 0)}`}
+                      >
+                        Parse: {Math.round(
+                          (candidate.parsing_status?.confidence_score || 0) * 100,
+                        )}
+                        %
+                      </span>
+                      {candidate.match_score !== undefined && candidate.match_score !== null && candidate.match_score > 0 && (
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${getMatchScoreColor(candidate.match_score)}`}
+                        >
+                          Match: {Math.round(candidate.match_score * 100)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Skills */}
+                  {candidate.skills && candidate.skills.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Top Skills</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {expandedSkills.has(candidate.id)
+                          ? candidate.skills.map((skill, index) => (
+                              <span
+                                key={index}
+                                className="px-2.5 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-lg border border-purple-200"
+                              >
+                                {skill.skill_name}
+                              </span>
+                            ))
+                          : candidate.skills.slice(0, 4).map((skill, index) => (
+                              <span
+                                key={index}
+                                className="px-2.5 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-lg border border-purple-200"
+                              >
+                                {skill.skill_name}
+                              </span>
+                            ))}
+                        {candidate.skills.length > 4 && (
+                          <button
+                            onClick={() => toggleSkills(candidate.id)}
+                            className="px-2.5 py-1 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700 transition-colors cursor-pointer shadow-sm"
+                          >
+                            {expandedSkills.has(candidate.id)
+                              ? "Show less"
+                              : `+${candidate.skills.length - 4} more`}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Experience Summary */}
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-1">Experience</p>
+                    <p className="text-sm text-gray-900">
+                      {getExperienceSummary(candidate.work_experience || [])}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => navigate(`/candidates/${candidate.id}`)}
+                      className="flex-1 mr-2 px-4 py-2.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      View Profile
+                    </button>
+                    <div className="text-xs text-gray-500">
+                      Added {formatDate(candidate.created_at)}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-200">
-            <Users className="mx-auto h-12 w-12 text-gray-400" />
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <Users className="mx-auto h-12 w-12 text-purple-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">
               No candidates found
             </h3>
@@ -374,8 +509,8 @@ export default function CandidatesPage() {
         )}
 
         {/* Pagination */}
-        {pagination && pagination.total_pages > 1 && !(searchTerm || company || jobTitle || certification) && (
-          <div className="flex items-center justify-between mt-6 bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+        {pagination && pagination.total_pages > 1 && (
+          <div className="flex items-center justify-between mt-6 bg-white rounded-lg shadow-sm p-4">
             <div className="text-sm text-gray-600">
               Page {pagination.current_page} of {pagination.total_pages}
             </div>
@@ -383,7 +518,7 @@ export default function CandidatesPage() {
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={!pagination.has_prev_page}
-                className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 text-sm border border-purple-200 text-purple-700 rounded-md hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
@@ -405,9 +540,9 @@ export default function CandidatesPage() {
                   <button
                     key={idx}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-1 text-sm rounded-md ${pageNum === pagination.current_page
-                        ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                        : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                    className={`px-3 py-1 text-sm rounded-md transition-colors ${pageNum === pagination.current_page
+                        ? "bg-purple-600 text-white hover:bg-purple-700"
+                        : "border border-purple-200 text-purple-700 hover:bg-purple-50"
                       }`}
                   >
                     {pageNum}
@@ -420,7 +555,7 @@ export default function CandidatesPage() {
                   setCurrentPage((prev) => Math.min(pagination.total_pages, prev + 1))
                 }
                 disabled={!pagination.has_next_page}
-                className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 text-sm border border-purple-200 text-purple-700 rounded-md hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
               </button>

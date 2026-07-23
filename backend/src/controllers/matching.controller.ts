@@ -21,14 +21,14 @@ export const matchCandidatesToJob = async (
     try {
       // 1. Get job from database by jobId
       const jobQuery = `
-        SELECT j.id, j.title, j.description, j.location, j.min_experience_years, j.max_experience_years, j.salary_range, j.created_at, j.updated_at,
+        SELECT j.*, 
                array_agg(DISTINCT js.skill_name) as required_skills,
                array_agg(DISTINCT ps.skill_name) as preferred_skills
         FROM job_descriptions j
         LEFT JOIN job_skills js ON j.id = js.job_id AND js.skill_type = 'required'
         LEFT JOIN job_skills ps ON j.id = ps.job_id AND ps.skill_type = 'preferred'
         WHERE j.id = $1
-        GROUP BY j.id, j.title, j.description, j.location, j.min_experience_years, j.max_experience_years, j.salary_range, j.created_at, j.updated_at
+        GROUP BY j.id
       `;
 
       const jobResult = await client.query(jobQuery, [jobId]);
@@ -45,9 +45,9 @@ export const matchCandidatesToJob = async (
 
       // 2. Get all candidates from database
       const candidatesQuery = `
-        SELECT c.*,
+        SELECT c.*, 
                (
-                 SELECT array_agg(DISTINCT s.skill_name)
+                 SELECT array_agg(DISTINCT s.name)
                  FROM candidate_skills cs
                  JOIN skills s ON cs.skill_id = s.id
                  WHERE cs.candidate_id = c.id
@@ -56,17 +56,13 @@ export const matchCandidatesToJob = async (
                  SELECT json_agg(we.*)
                  FROM work_history we
                  WHERE we.candidate_id = c.id
-               ) as work_history,
+               ) as work_experience,
                (
                  SELECT json_agg(ed.*)
                  FROM education ed
                  WHERE ed.candidate_id = c.id
                ) as education,
-               (
-                 SELECT json_agg(cert.*)
-                 FROM certifications cert
-                 WHERE cert.candidate_id = c.id
-               ) as certifications
+               c.years_of_experience
         FROM candidates c
         ORDER BY c.created_at DESC
         LIMIT $1
@@ -95,7 +91,8 @@ export const matchCandidatesToJob = async (
         linkedin: candidate.linkedin_url,
         github: candidate.github_url,
         skills: candidate.skills || [],
-        work_history: candidate.work_history && candidate.work_history[0] !== null ? candidate.work_history : [],
+        years_of_experience: candidate.years_of_experience || undefined,
+        work_experience: candidate.work_experience && candidate.work_experience[0] !== null ? candidate.work_experience : [],
         education: candidate.education || [],
         parsed_data: candidate.parsed_data || null,
       }));
@@ -113,104 +110,63 @@ export const matchCandidatesToJob = async (
         seniority_level: job.seniority_level,
       };
 
-      console.log(`🔍 Job Data for ${jobId}:`, {
-        required_skills: jobData.required_skills,
-        preferred_skills: jobData.preferred_skills,
-        required_skills_type: typeof jobData.required_skills,
-        preferred_skills_type: typeof jobData.preferred_skills
-      });
-
       let matches: any[] = [];
-
-      // Use local ATS engine for matching (no external AI dependency)
       try {
-        console.log(`🔍 Using local ATS engine to match ${candidates.length} candidates`);
-
-        // Extract JD data using the JD extractor service
-        const requiredSkillsArray = Array.isArray(job.required_skills) ? job.required_skills : [];
-        const preferredSkillsArray = Array.isArray(job.preferred_skills) ? job.preferred_skills : [];
-        const jdText = `${job.title || ''}\n${job.description || ''}\nRequired Skills: ${requiredSkillsArray.filter(Boolean).join(', ')}\nPreferred Skills: ${preferredSkillsArray.filter(Boolean).join(', ')}`;
-        const jdData = extractJD(jdText);
-
-        // Convert candidates to ATS engine format
-        const atsCandidates: CandidateData[] = candidates.map((candidate) => {
-          const candidateSkills = Array.isArray(candidate.skills) ? candidate.skills.filter((s: any) => typeof s === 'string' && s.trim()) : [];
-
-          console.log(`🔍 Candidate ${candidate.id} skills:`, {
-            skills: candidateSkills,
-            skills_type: typeof candidate.skills,
-            skills_count: candidateSkills.length
-          });
-
-          return {
-            id: candidate.id,
-            full_name: candidate.full_name,
-            email: candidate.email,
-            phone: candidate.phone,
-            location: candidate.location,
-            summary: candidate.summary,
-            years_of_experience: candidate.years_of_experience,
-            skills: candidateSkills,
-            work_history: Array.isArray(candidate.work_history) && candidate.work_history[0] !== null ? candidate.work_history : [],
-            education: Array.isArray(candidate.education) ? candidate.education : [],
-            certifications: Array.isArray(candidate.certifications) ? candidate.certifications : [],
-            projects: candidate.projects,
-            parsed_data: candidate.parsed_data || null,
-          };
+        console.log(`🤖 Requesting batch match for ${candidates.length} candidates from AI service`);
+        const batchResponse = await callAIService("/match-batch", {
+          candidates_data: candidatesData,
+          job_data: jobData,
         });
 
-        // Use local ATS engine for ranking
-        const atsResults = await rankCandidates(jdData, atsCandidates);
-
-        // Map ATS results to expected format
-        matches = atsResults.map((atsResult) => {
-          const candidate = candidates.find((c) => c.id === atsResult.candidate_id);
+        // Map the results back to the expected structure
+        matches = batchResponse.results.map((matchResult: any) => {
+          const candidate = candidates.find((c) => c.id === matchResult.candidate_id);
           return {
-            candidate_id: atsResult.candidate_id,
-            candidate_name: atsResult.candidate_name,
-            candidate_email: atsResult.candidate_email,
-            candidate_location: atsResult.candidate_location,
-            overall_score: atsResult.overall_score,
-            skill_score: atsResult.skill_score,
-            experience_score: atsResult.experience_score,
-            education_score: atsResult.education_score,
-            role_score: atsResult.role_score,
-            project_score: atsResult.project_score,
-            certification_score: atsResult.certification_score,
-            matching_skills: atsResult.matched_skills,
-            missing_skills: atsResult.missing_skills,
-            extra_skills: [], // ATS engine doesn't provide this
-            experience_gap_years: (jdData.experienceYears || 0) - (atsResult.experience_years || 0),
-            recommendation: atsResult.match_label,
-            reason: atsResult.match_summary,
+            candidate_id: matchResult.candidate_id,
+            candidate_name: candidate?.full_name || "",
+            candidate_email: candidate?.email || "",
+            candidate_location: candidate?.location || "",
+            ...matchResult,
           };
         });
-
-        console.log(`✅ Successfully matched ${matches.length} candidates using local ATS engine`);
-
-      } catch (atsError) {
-        console.error("Error using local ATS engine:", atsError);
-        // Fallback: return zero-scored candidates if ATS engine fails
-        matches = candidates.map((candidate) => ({
-          candidate_id: candidate.id,
-          candidate_name: candidate.full_name,
-          candidate_email: candidate.email,
-          candidate_location: candidate.location,
-          overall_score: 0,
-          skill_score: 0,
-          experience_score: 0,
-          education_score: 0,
-          role_score: 0,
-          project_score: 0,
-          certification_score: 0,
-          matching_skills: [],
-          missing_skills: (jobData.required_skills || []).filter(Boolean),
-          extra_skills: [],
-          experience_gap_years: 0,
-          recommendation: "Not Recommended",
-          reason: "ATS engine unavailable",
-          error: true,
-        }));
+      } catch (batchError) {
+        console.error("Error calling batch matching API, falling back to individual calls:", batchError);
+        // Fallback to individual calls if batch fails
+        const matchPromises = candidates.map(async (candidate) => {
+          try {
+            const matchResult = await callAIService("/match", {
+              candidate_data: candidatesData.find((c) => c.id === candidate.id),
+              job_data: jobData,
+            });
+            return {
+              candidate_id: candidate.id,
+              candidate_name: candidate.full_name,
+              candidate_email: candidate.email,
+              candidate_location: candidate.location,
+              ...matchResult,
+            };
+          } catch (individualError) {
+            console.error(`Error matching candidate ${candidate.id}:`, individualError);
+            return {
+              candidate_id: candidate.id,
+              candidate_name: candidate.full_name,
+              candidate_email: candidate.email,
+              candidate_location: candidate.location,
+              overall_score: 0,
+              skill_score: 0,
+              experience_score: 0,
+              education_score: 0,
+              matching_skills: [],
+              missing_skills: [],
+              extra_skills: [],
+              experience_gap_years: 0,
+              recommendation: "Not Recommended",
+              reason: "Matching service unavailable",
+              error: true,
+            };
+          }
+        });
+        matches = await Promise.all(matchPromises);
       }
 
       // 4. Sort candidates by overall_score descending
@@ -225,21 +181,14 @@ export const matchCandidatesToJob = async (
       const insertScoreQuery = `
         INSERT INTO match_scores (
           job_id, candidate_id, overall_score, skill_score, 
-          experience_score, education_score, matched_skills, 
-          missing_skills, role_score, project_score, certification_score,
-          match_summary, jd_hash, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+          experience_score, education_score, matching_skills, 
+          missing_skills, extra_skills, experience_gap_years, 
+          recommendation, reason, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
       `;
 
       for (const match of sortedMatches) {
         if (!match.error) {
-          console.log(`🔍 Saving match for candidate ${match.candidate_id}:`, {
-            matched_skills: match.matched_skills,
-            missing_skills: match.missing_skills,
-            matched_skills_type: typeof match.matched_skills,
-            missing_skills_type: typeof match.missing_skills
-          });
-
           await client.query(insertScoreQuery, [
             jobId,
             match.candidate_id,
@@ -247,13 +196,12 @@ export const matchCandidatesToJob = async (
             match.skill_score,
             match.experience_score,
             match.education_score,
-            JSON.stringify(match.matched_skills || []),
-            JSON.stringify(match.missing_skills || []),
-            match.role_score || 0,
-            match.project_score || 0,
-            match.certification_score || 0,
-            match.reason || '',
-            '', // jd_hash
+            match.matching_skills || [],
+            match.missing_skills || [],
+            match.extra_skills || [],
+            match.experience_gap_years,
+            match.recommendation,
+            match.reason,
           ]);
 
           // Update candidate record's match_score column (scaled to 0-1)
@@ -281,7 +229,6 @@ export const matchCandidatesToJob = async (
     res.status(500).json({
       error: "INTERNAL_ERROR",
       message: "Failed to match candidates to job",
-      details: error instanceof Error ? error.message : String(error),
     });
   }
 };
@@ -317,26 +264,13 @@ export const getAllMatchResults = async (
         return;
       }
 
-      // Map match results safely and convert scores to numbers
-      const matches = result.rows.map((row) => {
-        const overallScore = parseFloat(row.overall_score);
-        let recommendation = "Not Recommended";
-        if (overallScore >= 80) recommendation = "Strong Match";
-        else if (overallScore >= 70) recommendation = "Good Match";
-        else if (overallScore >= 60) recommendation = "Partial Match";
-
-        return {
-          ...row,
-          overall_score: overallScore,
-          skill_score: parseFloat(row.skill_score),
-          experience_score: parseFloat(row.experience_score),
-          education_score: parseFloat(row.education_score),
-          recommendation,
-          matching_skills: row.matched_skills || [],
-          missing_skills: row.missing_skills || [],
-          extra_skills: [],
-        };
-      });
+      // Map match results safely
+      const matches = result.rows.map((row) => ({
+        ...row,
+        matching_skills: row.matching_skills || [],
+        missing_skills: row.missing_skills || [],
+        extra_skills: row.extra_skills || [],
+      }));
 
       res.json({ matches });
     } finally {
@@ -399,26 +333,13 @@ export const getMatchResultsForJob = async (
         return;
       }
 
-      // Map matching skills correctly and convert scores to numbers
-      const matches = result.rows.map((row) => {
-        const overallScore = parseFloat(row.overall_score);
-        let recommendation = "Not Recommended";
-        if (overallScore >= 80) recommendation = "Strong Match";
-        else if (overallScore >= 70) recommendation = "Good Match";
-        else if (overallScore >= 60) recommendation = "Partial Match";
-
-        return {
-          ...row,
-          overall_score: overallScore,
-          skill_score: parseFloat(row.skill_score),
-          experience_score: parseFloat(row.experience_score),
-          education_score: parseFloat(row.education_score),
-          recommendation,
-          matching_skills: row.matched_skills || [],
-          missing_skills: row.missing_skills || [],
-          extra_skills: [],
-        };
-      });
+      // Map matching skills correctly
+      const matches = result.rows.map((row) => ({
+        ...row,
+        matching_skills: row.matching_skills || [],
+        missing_skills: row.missing_skills || [],
+        extra_skills: row.extra_skills || [],
+      }));
 
       res.json({
         success: true,
@@ -451,7 +372,7 @@ export const matchSingleCandidate = async (
     try {
       // Get candidate details
       const candidateQuery = `
-        SELECT c.*,
+        SELECT c.*, 
                (
                  SELECT array_agg(DISTINCT s.name)
                  FROM candidate_skills cs
@@ -462,17 +383,13 @@ export const matchSingleCandidate = async (
                  SELECT json_agg(we.*)
                  FROM work_history we
                  WHERE we.candidate_id = c.id
-               ) as work_history,
+               ) as work_experience,
                (
                  SELECT json_agg(ed.*)
                  FROM education ed
                  WHERE ed.candidate_id = c.id
                ) as education,
-               (
-                 SELECT json_agg(cert.*)
-                 FROM certifications cert
-                 WHERE cert.candidate_id = c.id
-               ) as certifications
+               c.years_of_experience
         FROM candidates c
         WHERE c.id = $1
       `;
@@ -524,7 +441,8 @@ export const matchSingleCandidate = async (
           linkedin: candidate.linkedin_url,
           github: candidate.github_url,
           skills: candidate.skills || [],
-          work_history: candidate.work_history && candidate.work_history[0] !== null ? candidate.work_history : [],
+          years_of_experience: candidate.years_of_experience || undefined,
+          work_experience: candidate.work_experience && candidate.work_experience[0] !== null ? candidate.work_experience : [],
           education: candidate.education || [],
         },
         job_data: {
@@ -651,14 +569,14 @@ export const parseJDAndMatch = async (
           c.phone,
           c.location,
           c.summary,
-          c.years_of_experience as years_experience,
+          c.raw_resume_text,
+          c.years_of_experience,
           c.projects,
           -- Skills array
           (
             SELECT array_agg(DISTINCT s.name)
-            FROM candidate_skills cs
-            JOIN skills s ON cs.skill_id = s.id
-            WHERE cs.candidate_id = c.id
+            FROM skills s
+            WHERE s.candidate_id = c.id
               AND s.name IS NOT NULL
           ) AS skills,
           -- Work history
@@ -688,15 +606,12 @@ export const parseJDAndMatch = async (
             FROM education ed
             WHERE ed.candidate_id = c.id
           ) AS education,
-          -- Certifications (handle missing table gracefully)
-          COALESCE(
-            (
-              SELECT array_agg(DISTINCT cert.name)
-              FROM certifications cert
-              WHERE cert.candidate_id = c.id
-                AND cert.name IS NOT NULL
-            ),
-            ARRAY[]::text[]
+          -- Certifications
+          (
+            SELECT array_agg(DISTINCT cert.name)
+            FROM certifications cert
+            WHERE cert.candidate_id = c.id
+              AND cert.name IS NOT NULL
           ) AS certifications,
           -- Latest parsed data (skills, summary, projects from AI parser)
           (
@@ -734,7 +649,10 @@ export const parseJDAndMatch = async (
         phone: row.phone,
         location: row.location,
         summary: row.summary,
-        years_of_experience: row.years_of_experience,
+        raw_resume_text: row.raw_resume_text,
+        years_of_experience: row.years_of_experience
+          ? parseFloat(row.years_of_experience)
+          : undefined,
         skills: (row.skills || []).filter(Boolean) as string[],
         work_history: (row.work_history && row.work_history[0] !== null
           ? row.work_history
@@ -752,12 +670,6 @@ export const parseJDAndMatch = async (
       const ranked = rankCandidates(extractedJD, candidates);
       console.log(`✅ ATS Ranking complete. Top score: ${ranked[0]?.overall_score ?? 0}%`);
 
-      // Transform ATS results to match frontend expected structure
-      const transformedMatches = ranked.map((match) => ({
-        ...match,
-        recommendation: match.match_label,
-      }));
-
       // 5. Return results (stateless — no DB write required for JD matching)
       res.json({
         success: true,
@@ -767,7 +679,7 @@ export const parseJDAndMatch = async (
         role_keywords: extractedJD.roleKeywords,
         education_keywords: extractedJD.educationKeywords,
         total_candidates: candidates.length,
-        matches: transformedMatches,
+        matches: ranked,
       });
     } finally {
       client.release();

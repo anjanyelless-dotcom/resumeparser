@@ -8,7 +8,7 @@ import util from 'util';
 const logsDir = path.join(__dirname, '../../logs');
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
-}   
+}
 
 const logFilePath = path.join(logsDir, 'resume_parser.log');
 
@@ -71,7 +71,7 @@ declare global {
   namespace Express {
     interface Request {
       requestId?: string;
-      logger?: InstanceType<typeof Logger>;
+      logger?: Logger;
     }
   }
 }
@@ -85,10 +85,10 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
   req.requestId = requestId;
   
   // Create child logger with request ID
-  const childLogger = logger.child({ requestId });
-  req.logger = childLogger;
+  req.logger = logger.child({ requestId });
   
-  childLogger.info('📥 INCOMING REQUEST', {
+  // Log incoming request
+  req.logger.info('📥 INCOMING REQUEST', {
     method: req.method,
     url: req.url,
     path: req.path,

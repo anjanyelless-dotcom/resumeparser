@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useJobStore } from "../store/useJobStore";
 import toast from "react-hot-toast";
 import {
@@ -17,7 +17,6 @@ import {
 
 export default function MatchingPage() {
   const location = useLocation();
-  const navigate = useNavigate();
   const [selectedJob, setSelectedJob] = useState<string>(location.state?.jobId || "");
   const [isMatching, setIsMatching] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -242,42 +241,13 @@ export default function MatchingPage() {
   ];
 
   return (
-    <div className="p-6 max-w-full w-full overflow-hidden">
+    <div className="p-6">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Candidate Matching</h1>
         <p className="text-gray-600">
           Match candidates against job requirements
         </p>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="mb-6 border-b border-gray-200">
-        <nav className="flex space-x-8">
-          <button
-            className="py-2 px-1 border-b-2 border-indigo-500 text-indigo-600 font-medium text-sm"
-          >
-            JD Matching
-          </button>
-          <button
-            onClick={() => navigate("/candidates/filter-search")}
-            className="py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors"
-          >
-            Filter Search
-          </button>
-          <button
-            onClick={() => navigate("/candidates/xray-search")}
-            className="py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors"
-          >
-            X-Ray Search
-          </button>
-          <button
-            onClick={() => navigate("/candidates/boolean-search")}
-            className="py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors"
-          >
-            Boolean Search
-          </button>
-        </nav>
       </div>
 
       {/* Controls */}
@@ -378,9 +348,9 @@ export default function MatchingPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="flex gap-6">
         {selectedJob && !isActive ? (
-          <div className="lg:col-span-4 bg-white rounded-lg shadow-sm p-12 flex flex-col items-center justify-center text-center">
+          <div className="flex-1 bg-white rounded-lg shadow-sm p-12 flex flex-col items-center justify-center text-center">
             {isDraft && (
               <div className="max-w-md">
                 <div className="text-4xl mb-4">📝</div>
@@ -424,7 +394,7 @@ export default function MatchingPage() {
         ) : (
           <>
             {/* Results Table */}
-            <div className="lg:col-span-3">
+            <div className="flex-1">
               {showSuccessBanner && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-start">
                   <span className="text-green-500 mr-3 text-xl">✅</span>
@@ -649,18 +619,18 @@ export default function MatchingPage() {
         </div>
 
         {/* Side Panel - Charts */}
-        <div className="lg:col-span-1">
+        <div className="w-80">
           <div className="space-y-6">
             {/* Score Distribution */}
-            <div className="bg-white rounded-lg shadow-sm p-5">
+            <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Score Distribution
+                Score 
               </h3>
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={scoreDistribution}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="range" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="range" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Bar dataKey="count" fill="#6366f1" />
                 </BarChart>
@@ -668,18 +638,18 @@ export default function MatchingPage() {
             </div>
 
             {/* Recommendation Breakdown */}
-            <div className="bg-white rounded-lg shadow-sm p-5">
+            <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 Recommendations
               </h3>
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
                     data={recommendationData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={35}
-                    outerRadius={70}
+                    innerRadius={40}
+                    outerRadius={80}
                     paddingAngle={5}
                     dataKey="value"
                   >
@@ -712,7 +682,7 @@ export default function MatchingPage() {
             </div>
 
             {/* Summary Stats */}
-            <div className="bg-white rounded-lg shadow-sm p-5">
+            <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 Summary
               </h3>

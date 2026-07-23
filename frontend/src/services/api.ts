@@ -9,8 +9,8 @@ import { useAuthStore } from "../store/useAuthStore";
 
 // Create axios instance
 export const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  timeout: 120000,
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1",
+  timeout: 60000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -32,19 +32,13 @@ api.interceptors.request.use(
   },
 );
 
-// Response interceptor - Handle auth errors
+// Response interceptor - Handle 401 errors
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
   (error) => {
-    const status = error.response?.status;
-    const errorMessage = error.response?.data?.error;
-    const isAuthError =
-      status === 401 ||
-      (status === 403 && errorMessage === "Invalid or expired token");
-
-    if (isAuthError) {
+    if (error.response?.status === 401) {
       // Clear token and redirect to login
       useAuthStore.getState().clearAuth();
 
