@@ -88,7 +88,7 @@ const normalizeJobData = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
-// All job routes require authentication
+// All job  routes require authentication
 router.use(authenticateToken);
 
 /**
