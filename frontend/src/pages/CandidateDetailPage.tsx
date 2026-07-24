@@ -4,14 +4,16 @@ import { useCandidateStore } from "../store/useCandidateStore";
 import toast from "react-hot-toast";
 import { MapPin, Calendar, Clock, Briefcase } from "lucide-react";
 import { calculateTotalExperience } from "../utils/experienceCalculator";
+import ExtractedTextViewer from "../components/candidate-detail/ExtractedTextViewer";
 
-type TabType = "overview" | "skills" | "experience" | "education";
+type TabType = "overview" | "skills" | "experience" | "education" | "extracted_text";
 
 export default function CandidateDetailPage() {
   const { id, jobId } = useParams<{ id: string; jobId?: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [showExtractedTextModal, setShowExtractedTextModal] = useState(false);
 
   const { currentCandidate, fetchCandidate } = useCandidateStore();
 
@@ -72,11 +74,16 @@ export default function CandidateDetailPage() {
   const groupSkillsByCategory = (skills: any[]) => {
     const grouped: Record<string, any[]> = {};
     skills?.forEach((skill) => {
+      // Clean skill name by removing unwanted suffixes like "_d1f65732_mryjz3f4"
+      let cleanName = skill.name || skill.skill_name || "";
+      if (cleanName.match(/_[a-f0-9]{8}_[a-z0-9]+$/)) {
+        cleanName = cleanName.replace(/_[a-f0-9]{8}_[a-z0-9]+$/, "");
+      }
       const category = skill.category || "Other";
       if (!grouped[category]) {
         grouped[category] = [];
       }
-      grouped[category].push(skill);
+      grouped[category].push({ ...skill, name: cleanName });
     });
     return grouped;
   };
@@ -96,6 +103,7 @@ export default function CandidateDetailPage() {
     { id: "skills" as TabType, label: "Skills" },
     { id: "experience" as TabType, label: "Experience" },
     { id: "education" as TabType, label: "Education" },
+    { id: "extracted_text" as TabType, label: "Extracted Text" },
   ];
 
   const groupedSkills = groupSkillsByCategory(currentCandidate.skills || []);
@@ -547,11 +555,53 @@ export default function CandidateDetailPage() {
                   )}
                 </div>
               )}
+
+              {/* Extracted Text Tab */}
+              {activeTab === "extracted_text" && (
+                <div className="space-y-6">
+                  {currentCandidate.raw_resume_text ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">Original Extracted Text</h3>
+                          <p className="text-sm text-gray-500">
+                            {currentCandidate.raw_resume_text.length} characters • {currentCandidate.raw_resume_text.split('\n').length} lines
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setShowExtractedTextModal(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                        >
+                          View Full Text
+                        </button>
+                      </div>
+                      <div className="bg-gray-900 rounded-lg p-4 max-h-64 overflow-auto">
+                        <pre className="font-mono text-sm text-gray-100 whitespace-pre-wrap">
+                          {currentCandidate.raw_resume_text.substring(0, 2000)}
+                          {currentCandidate.raw_resume_text.length > 2000 && '\n\n... (truncated)'}
+                        </pre>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">
+                      No extracted text available for this candidate
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
         </div>
       </div>
+
+      {/* Extracted Text Modal */}
+      {showExtractedTextModal && currentCandidate.raw_resume_text && (
+        <ExtractedTextViewer
+          rawText={currentCandidate.raw_resume_text}
+          onClose={() => setShowExtractedTextModal(false)}
+        />
+      )}
     </div>
   );
 }

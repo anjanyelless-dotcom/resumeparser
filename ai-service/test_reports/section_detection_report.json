@@ -1,0 +1,658 @@
+{
+  "generated_at": "2026-07-24T02:47:12.414276",
+  "summary": {
+    "total_tests": 40,
+    "passed": 40,
+    "failed": 0,
+    "pass_rate": 100.0
+  },
+  "results": [
+    {
+      "test_name": "Regex Detection",
+      "test_type": "Unit",
+      "passed": true,
+      "duration_ms": 30.122995376586914,
+      "memory_mb": 0.3773527145385742,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "experience",
+          "education"
+        ]
+      }
+    },
+    {
+      "test_name": "Fuzzy Detection",
+      "test_type": "Unit",
+      "passed": true,
+      "duration_ms": 2.3229122161865234,
+      "memory_mb": 0.2081460952758789,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "skills",
+          "education"
+        ]
+      }
+    },
+    {
+      "test_name": "Content-based Detection",
+      "test_type": "Unit",
+      "passed": true,
+      "duration_ms": 2.244710922241211,
+      "memory_mb": 0.20794296264648438,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "education",
+          "experience"
+        ]
+      }
+    },
+    {
+      "test_name": "Fallback Detection",
+      "test_type": "Unit",
+      "passed": true,
+      "duration_ms": 1.421213150024414,
+      "memory_mb": 0.20792388916015625,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "contact"
+        ]
+      }
+    },
+    {
+      "test_name": "Validation",
+      "test_type": "Unit",
+      "passed": true,
+      "duration_ms": 2.813100814819336,
+      "memory_mb": 0.20844650268554688,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "experience",
+          "education"
+        ]
+      }
+    },
+    {
+      "test_name": "Duplicate Handling",
+      "test_type": "Unit",
+      "passed": true,
+      "duration_ms": 2.9921531677246094,
+      "memory_mb": 0.20867919921875,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "experience",
+          "education"
+        ]
+      }
+    },
+    {
+      "test_name": "Confidence Scoring",
+      "test_type": "Unit",
+      "passed": true,
+      "duration_ms": 2.2268295288085938,
+      "memory_mb": 0.20772075653076172,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "experience",
+          "education"
+        ]
+      }
+    },
+    {
+      "test_name": "Pattern Caching",
+      "test_type": "Unit",
+      "passed": true,
+      "duration_ms": 0.0011920928955078125,
+      "memory_mb": 0.0,
+      "error_message": "",
+      "details": {
+        "cached": true
+      }
+    },
+    {
+      "test_name": "Integration: software_engineer",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 23.760080337524414,
+      "memory_mb": 0.21703052520751953,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "contact",
+          "summary",
+          "experience",
+          "education",
+          "skills",
+          "certifications",
+          "projects"
+        ],
+        "resume_type": "software_engineer"
+      }
+    },
+    {
+      "test_name": "Integration: java_developer",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 22.193193435668945,
+      "memory_mb": 0.2156972885131836,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "contact",
+          "summary",
+          "experience",
+          "education",
+          "skills",
+          "certifications",
+          "projects"
+        ],
+        "resume_type": "java_developer"
+      }
+    },
+    {
+      "test_name": "Integration: python_developer",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 25.409936904907227,
+      "memory_mb": 0.21523094177246094,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "contact",
+          "experience",
+          "education",
+          "skills",
+          "certifications",
+          "projects"
+        ],
+        "resume_type": "python_developer"
+      }
+    },
+    {
+      "test_name": "Integration: data_scientist",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 21.919965744018555,
+      "memory_mb": 0.21444320678710938,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "summary",
+          "education",
+          "skills",
+          "certifications"
+        ],
+        "resume_type": "data_scientist"
+      }
+    },
+    {
+      "test_name": "Integration: qa_engineer",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 20.395994186401367,
+      "memory_mb": 0.21492290496826172,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "contact",
+          "summary",
+          "experience",
+          "education",
+          "skills",
+          "certifications",
+          "projects"
+        ],
+        "resume_type": "qa_engineer"
+      }
+    },
+    {
+      "test_name": "Integration: hr_manager",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 19.746065139770508,
+      "memory_mb": 0.21324443817138672,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "experience",
+          "education",
+          "skills",
+          "certifications"
+        ],
+        "resume_type": "hr_manager"
+      }
+    },
+    {
+      "test_name": "Integration: finance_analyst",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 18.960952758789062,
+      "memory_mb": 0.2126455307006836,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "contact",
+          "summary",
+          "experience",
+          "education",
+          "skills",
+          "certifications",
+          "projects"
+        ],
+        "resume_type": "finance_analyst"
+      }
+    },
+    {
+      "test_name": "Integration: healthcare",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 21.108150482177734,
+      "memory_mb": 0.2115793228149414,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "contact",
+          "summary",
+          "experience",
+          "education",
+          "skills"
+        ],
+        "resume_type": "healthcare"
+      }
+    },
+    {
+      "test_name": "Integration: fresher",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 17.988204956054688,
+      "memory_mb": 0.21160507202148438,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "education",
+          "projects",
+          "skills"
+        ],
+        "resume_type": "fresher"
+      }
+    },
+    {
+      "test_name": "Integration: experienced",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 23.634910583496094,
+      "memory_mb": 0.21339797973632812,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "summary",
+          "experience",
+          "education",
+          "skills",
+          "certifications"
+        ],
+        "resume_type": "experienced"
+      }
+    },
+    {
+      "test_name": "Integration: international",
+      "test_type": "Integration",
+      "passed": true,
+      "duration_ms": 23.49996566772461,
+      "memory_mb": 0.2123870849609375,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "contact",
+          "skills",
+          "certifications"
+        ],
+        "resume_type": "international"
+      }
+    },
+    {
+      "test_name": "Edge Case: Empty Resume",
+      "test_type": "Edge Case",
+      "passed": true,
+      "duration_ms": 0.408172607421875,
+      "memory_mb": 0.17374515533447266,
+      "error_message": "",
+      "details": {
+        "sections_found": []
+      }
+    },
+    {
+      "test_name": "Edge Case: One-line Resume",
+      "test_type": "Edge Case",
+      "passed": true,
+      "duration_ms": 1.5170574188232422,
+      "memory_mb": 0.20615673065185547,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "contact"
+        ]
+      }
+    },
+    {
+      "test_name": "Edge Case: Multi-column Resume",
+      "test_type": "Edge Case",
+      "passed": true,
+      "duration_ms": 5.698204040527344,
+      "memory_mb": 0.2077312469482422,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "experience",
+          "skills"
+        ]
+      }
+    },
+    {
+      "test_name": "Edge Case: Very Large Resume",
+      "test_type": "Edge Case",
+      "passed": true,
+      "duration_ms": 5573.494672775269,
+      "memory_mb": 1.5903959274291992,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "experience",
+          "education"
+        ]
+      }
+    },
+    {
+      "test_name": "Edge Case: Multiple Experience Sections",
+      "test_type": "Edge Case",
+      "passed": true,
+      "duration_ms": 3.762960433959961,
+      "memory_mb": 0.20769786834716797,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "experience"
+        ]
+      }
+    },
+    {
+      "test_name": "Edge Case: Missing Headers",
+      "test_type": "Edge Case",
+      "passed": true,
+      "duration_ms": 2.086162567138672,
+      "memory_mb": 0.2071685791015625,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "contact"
+        ]
+      }
+    },
+    {
+      "test_name": "Edge Case: Mixed Language Resume",
+      "test_type": "Edge Case",
+      "passed": true,
+      "duration_ms": 2.9151439666748047,
+      "memory_mb": 0.20790863037109375,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "experience",
+          "education"
+        ]
+      }
+    },
+    {
+      "test_name": "Edge Case: Bullet-only Resume",
+      "test_type": "Edge Case",
+      "passed": true,
+      "duration_ms": 5.403757095336914,
+      "memory_mb": 0.2080221176147461,
+      "error_message": "",
+      "details": {
+        "sections_found": [
+          "skills"
+        ]
+      }
+    },
+    {
+      "test_name": "Performance: Detection Time",
+      "test_type": "Performance",
+      "passed": true,
+      "duration_ms": 23.955106735229492,
+      "memory_mb": 0,
+      "error_message": "",
+      "details": {
+        "avg_time_ms": 2.366185188293457,
+        "max_time_ms": 2.775907516479492,
+        "min_time_ms": 2.1409988403320312
+      }
+    },
+    {
+      "test_name": "Performance: Memory Usage",
+      "test_type": "Performance",
+      "passed": true,
+      "duration_ms": 2058.0270290374756,
+      "memory_mb": 0.23558998107910156,
+      "error_message": "",
+      "details": {
+        "peak_memory_mb": 0.23558998107910156
+      }
+    },
+    {
+      "test_name": "Performance: Cache Hit Ratio",
+      "test_type": "Performance",
+      "passed": true,
+      "duration_ms": 0.34117698669433594,
+      "memory_mb": 0,
+      "error_message": "",
+      "details": {
+        "first_call_ms": 0.31495094299316406,
+        "cached_call_ms": 0.0011920928955078125,
+        "speedup": 264.2
+      }
+    },
+    {
+      "test_name": "Accuracy: Experience Detection",
+      "test_type": "Accuracy",
+      "passed": true,
+      "duration_ms": 0.9241104125976562,
+      "memory_mb": 0,
+      "error_message": "",
+      "details": {
+        "accuracy": 100.0,
+        "passed": 6,
+        "total": 6
+      }
+    },
+    {
+      "test_name": "Accuracy: Education Detection",
+      "test_type": "Accuracy",
+      "passed": true,
+      "duration_ms": 0.7412433624267578,
+      "memory_mb": 0,
+      "error_message": "",
+      "details": {
+        "accuracy": 80.0,
+        "passed": 4,
+        "total": 5
+      }
+    },
+    {
+      "test_name": "Accuracy: Skills Detection",
+      "test_type": "Accuracy",
+      "passed": true,
+      "duration_ms": 0.7731914520263672,
+      "memory_mb": 0,
+      "error_message": "",
+      "details": {
+        "accuracy": 100.0,
+        "passed": 5,
+        "total": 5
+      }
+    },
+    {
+      "test_name": "Accuracy: Projects Detection",
+      "test_type": "Accuracy",
+      "passed": true,
+      "duration_ms": 0.7061958312988281,
+      "memory_mb": 0,
+      "error_message": "",
+      "details": {
+        "accuracy": 100.0,
+        "passed": 5,
+        "total": 5
+      }
+    },
+    {
+      "test_name": "Accuracy: Certifications Detection",
+      "test_type": "Accuracy",
+      "passed": true,
+      "duration_ms": 0.6992816925048828,
+      "memory_mb": 0,
+      "error_message": "",
+      "details": {
+        "accuracy": 100.0,
+        "passed": 5,
+        "total": 5
+      }
+    },
+    {
+      "test_name": "Regression: Backward Compatibility",
+      "test_type": "Regression",
+      "passed": true,
+      "duration_ms": 2.1250247955322266,
+      "memory_mb": 0,
+      "error_message": "",
+      "details": {
+        "sections": [
+          "contact",
+          "summary",
+          "experience",
+          "education",
+          "skills",
+          "certifications",
+          "projects"
+        ]
+      }
+    },
+    {
+      "test_name": "Regression: API Response Format",
+      "test_type": "Regression",
+      "passed": true,
+      "duration_ms": 2.064943313598633,
+      "memory_mb": 0,
+      "error_message": "",
+      "details": {
+        "sections": [
+          "contact",
+          "summary",
+          "experience",
+          "education",
+          "skills",
+          "certifications",
+          "projects"
+        ]
+      }
+    },
+    {
+      "test_name": "Stress: 100 Resumes",
+      "test_type": "Stress",
+      "passed": true,
+      "duration_ms": 2084.001064300537,
+      "memory_mb": 0.22097206115722656,
+      "error_message": "",
+      "details": {
+        "peak_memory_mb": 0.22097206115722656
+      }
+    },
+    {
+      "test_name": "Stress: Thread Safety",
+      "test_type": "Stress",
+      "passed": true,
+      "duration_ms": 2237.6837730407715,
+      "memory_mb": 1.766261100769043,
+      "error_message": "",
+      "details": {
+        "errors": 0
+      }
+    },
+    {
+      "test_name": "Stress: Memory Leaks",
+      "test_type": "Stress",
+      "passed": true,
+      "duration_ms": 2012.0728015899658,
+      "memory_mb": 0.23474884033203125,
+      "error_message": "",
+      "details": {
+        "memory_growth_mb": 0.01894378662109375,
+        "snapshots": [
+          0.2158050537109375,
+          0.22137832641601562,
+          0.22424793243408203,
+          0.22649860382080078,
+          0.22745513916015625,
+          0.22844219207763672,
+          0.22894859313964844,
+          0.23052406311035156,
+          0.23249340057373047,
+          0.23474884033203125
+        ]
+      }
+    }
+  ],
+  "accuracy_metrics": {
+    "experience": {
+      "section_type": "experience",
+      "total_tests": 6,
+      "passed": 6,
+      "accuracy": 100.0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "avg_confidence": 0
+    },
+    "education": {
+      "section_type": "education",
+      "total_tests": 5,
+      "passed": 4,
+      "accuracy": 80.0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "avg_confidence": 0
+    },
+    "skills": {
+      "section_type": "skills",
+      "total_tests": 5,
+      "passed": 5,
+      "accuracy": 100.0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "avg_confidence": 0
+    },
+    "projects": {
+      "section_type": "projects",
+      "total_tests": 5,
+      "passed": 5,
+      "accuracy": 100.0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "avg_confidence": 0
+    },
+    "certifications": {
+      "section_type": "certifications",
+      "total_tests": 5,
+      "passed": 5,
+      "accuracy": 100.0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "avg_confidence": 0
+    }
+  },
+  "suggested_improvements": []
+}

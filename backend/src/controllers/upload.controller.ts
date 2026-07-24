@@ -748,8 +748,14 @@ export const previewSections = async (
       console.warn(`⚠️ Failed to delete temporary file: ${req.file.path}`);
     }
 
-    // 5. Return response from Python service
-    res.status(200).json(response.data);
+    // 5. Add raw_text_length to response
+    const responseData = response.data;
+    if (responseData.raw_text && !responseData.raw_text_length) {
+      responseData.raw_text_length = responseData.raw_text.length;
+    }
+
+    // 6. Return response from Python service
+    res.status(200).json(responseData);
 
   } catch (error: any) {
     console.error("❌ Error in preview sections:", error.message);
@@ -861,6 +867,8 @@ export const parseSections = async (
           certifications: existingResult.certifications || [],
           projects: existingResult.projects || [],
           contact: existingResult.contact || {},
+          raw_text: req.body.raw_text || existingResult.raw_text || "",
+          raw_text_length: (req.body.raw_text || existingResult.raw_text || "").length,
           processing_time_ms: openaiResult.processing_time_ms,
           message: `Successfully parsed with OpenAI (experience/education) + Existing parser (skills/contact/summary): ${openaiResult.work_history.length} experience entries, ${openaiResult.education.length} education entries, ${existingResult.skills?.length || 0} skills`,
           metadata: {
@@ -896,7 +904,17 @@ export const parseSections = async (
     });
 
     console.log(`✅ Parse sections completed successfully (DeBERTa)`);
-    res.status(200).json(response.data);
+    
+    // Add raw_text and raw_text_length to response if not present
+    const responseData = response.data;
+    if (!responseData.raw_text && req.body.raw_text) {
+      responseData.raw_text = req.body.raw_text;
+    }
+    if (!responseData.raw_text_length && responseData.raw_text) {
+      responseData.raw_text_length = responseData.raw_text.length;
+    }
+    
+    res.status(200).json(responseData);
 
   } catch (error: any) {
     console.error("❌ Error in parse sections:", error.message);

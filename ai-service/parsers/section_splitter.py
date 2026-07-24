@@ -5,14 +5,102 @@ Identifies and splits resume into logical sections like experience, education, s
 
 import re
 import logging
-from typing import Dict, List, Optional, Tuple
+import json
+import time
+import threading
+import os
+from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
+from pathlib import Path
+from functools import lru_cache
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Pattern cache singleton
+_pattern_cache = {}
+_pattern_cache_lock = threading.Lock()
 
-import re
+# Metrics tracking singleton
+_metrics_lock = threading.Lock()
+_benchmark_metrics = {
+    'total_detections': 0,
+    'total_processing_time_ms': 0,
+    'regex_detections': 0,
+    'fuzzy_detections': 0,
+    'content_based_detections': 0,
+    'fallback_detections': 0,
+    'merged_detections': 0,
+    'failed_detections': 0,
+    'sections_validated': 0,
+    'sections_rejected': 0
+}
+
+def load_section_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    if config_path is None:
+        config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'section_patterns.json')
+    try:
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        logger.warning(f"Config file not found at {config_path}, using defaults")
+        return {
+            'section_patterns': {},
+            'detection_methods': {
+                'regex': {'base_confidence': 0.95},
+                'fuzzy': {'base_confidence': 0.75},
+                'content_based': {'base_confidence': 0.65},
+                'fallback': {'base_confidence': 0.50},
+                'merged': {'base_confidence': 0.85}
+            }
+        }
+
+def get_compiled_patterns(config: Dict[str, Any] = None) -> Dict[str, re.Pattern]:
+    global _pattern_cache
+    with _pattern_cache_lock:
+        if _pattern_cache:
+            return _pattern_cache
+        if config is None:
+            config = load_section_config()
+        patterns = {}
+        section_patterns = config.get('section_patterns', {})
+        for section_name, section_config in section_patterns.items():
+            pattern_list = section_config.get('patterns', [])
+            combined_pattern = '|'.join(f'^{re.escape(p)}$' for p in pattern_list)
+            if combined_pattern:
+                patterns[section_name] = re.compile(combined_pattern, re.IGNORECASE)
+        if not patterns:
+            patterns = SECTION_PATTERNS.copy()
+        _pattern_cache = patterns
+        return patterns
+
+def get_detection_method_confidence(method: str) -> float:
+    config = load_section_config()
+    detection_methods = config.get('detection_methods', {})
+    method_config = detection_methods.get(method, {})
+    return method_config.get('base_confidence', 0.5)
+
+def log_section_detection_failure(resume_id: str, section_name: str, method: str, reason: str):
+    logger.error(f"Section detection failure - Resume: {resume_id}, Section: {section_name}, Method: {method}, Reason: {reason}")
+    update_benchmark_metrics('failed_detections')
+
+def update_benchmark_metrics(metric_name: str, value: int = 1):
+    global _benchmark_metrics
+    with _metrics_lock:
+        if metric_name in _benchmark_metrics:
+            _benchmark_metrics[metric_name] += value
+        else:
+            _benchmark_metrics[metric_name] = value
+
+def get_benchmark_metrics() -> Dict[str, Any]:
+    with _metrics_lock:
+        return _benchmark_metrics.copy()
+
+def reset_benchmark_metrics():
+    global _benchmark_metrics
+    with _metrics_lock:
+        for key in _benchmark_metrics:
+            _benchmark_metrics[key] = 0
 
 
 
@@ -263,35 +351,10 @@ SECTION_PATTERNS = {
 }
 
 
-def split_sections(text: str) -> dict:
-    sections = {
-        'header': '',
-        'summary': '',
-        'experience': '',
-        'education': '',
-        'skills': '',
-        'certifications': '',
-        'other': '',
-    }
-
-    found = []
-    for section_name, pattern in SECTION_PATTERNS.items():
-        for match in pattern.finditer(text):
-            found.append((match.start(), match.end(), section_name))
-
-    found.sort(key=lambda x: x[0])
-
-    if not found:
-        sections['experience'] = text
-        return sections
-
-    sections['header'] = text[:found[0][0]].strip()
-
-    for i, (start, end, name) in enumerate(found):
-        next_start = found[i + 1][0] if i + 1 < len(found) else len(text)
-        sections[name] = text[end:next_start].strip()
-
-    return sections
+def split_sections(text: str, font_metadata: Dict[str, Dict] = None, baseline_font_size: float = 11.0, include_metadata: bool = False, resume_id: Optional[str] = None) -> Dict[str, Any]:
+    """Standalone function for section splitting - delegates to SectionSplitter class."""
+    splitter = SectionSplitter(resume_id=resume_id)
+    return splitter.split_sections(text, font_metadata, baseline_font_size, include_metadata, resume_id)
 
 
 class SectionSplitter:
@@ -304,11 +367,17 @@ class SectionSplitter:
     ~2000+ keyword variants across 25 section types.
     """
     
-    def __init__(self):
+    def __init__(self, config_path: Optional[str] = None, resume_id: Optional[str] = None):
         self.logger = logging.getLogger(__name__)
-        
-        # Pre-compile patterns for better performance
+        self.config_path = config_path
+        self.resume_id = resume_id or f"resume_{int(time.time() * 1000)}"
+        self.config = load_section_config(config_path)
+        self.patterns = get_compiled_patterns(self.config)
         self._compile_patterns()
+        self._detected_sections = set()
+        self._instance_lock = threading.Lock()
+        self._last_detection_method = None
+        self._section_candidates = {}
     
     def _compile_patterns(self):
         """Pre-compile regex patterns for section detection."""
@@ -336,6 +405,29 @@ class SectionSplitter:
             r'^[\s]*[•\-\*\+]\s*(.+)$',
             re.MULTILINE
         )
+    
+    def _add_section_candidate(self, section_name: str, text: str, method: str, confidence: float):
+        if section_name not in self._section_candidates:
+            self._section_candidates[section_name] = []
+        self._section_candidates[section_name].append({
+            'text': text,
+            'confidence': confidence,
+            'detection_method': method,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    def _select_highest_confidence_sections(self) -> Dict[str, Any]:
+        final_sections = {}
+        for section_name, candidates in self._section_candidates.items():
+            if not candidates:
+                continue
+            sorted_candidates = sorted(candidates, key=lambda x: x['confidence'], reverse=True)
+            best_candidate = sorted_candidates[0]
+            final_sections[section_name] = best_candidate
+            update_benchmark_metrics(f"{best_candidate['detection_method']}_detections")
+            if len(candidates) > 1:
+                update_benchmark_metrics('merged_detections')
+        return final_sections
     
     def _clean_pdf_artifacts(self, text: str) -> str:
         """Remove common PDF extraction artifacts that break section detection."""
@@ -457,7 +549,7 @@ class SectionSplitter:
         
         return result.strip()
 
-    def split_sections(self, text: str, font_metadata: Dict[str, Dict] = None, baseline_font_size: float = 11.0) -> Dict[str, str]:
+    def split_sections(self, text: str, font_metadata: Dict[str, Dict] = None, baseline_font_size: float = 11.0, include_metadata: bool = False, resume_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Detect section headers and split text into named sections.
         
@@ -465,93 +557,114 @@ class SectionSplitter:
             text: Resume text to split into sections
             font_metadata: Optional font metadata dictionary for font-based scoring
             baseline_font_size: Baseline font size for the document (default 11.0)
+            include_metadata: If True, returns sections with confidence scores and detection methods
+            resume_id: Optional resume identifier for logging purposes
             
         Returns:
-            Dictionary with section names as keys and section text as values
+            Dictionary with section names as keys and section text as values.
+            If include_metadata=True, values are dicts: {'text': str, 'confidence': float, 'detection_method': str}
         """
-        try:
-            text = self._clean_pdf_artifacts(text)
-            
-            # Enhanced preprocessing for malformed raw text with inline headers
-            text = self._preprocess_inline_headers(text)
-            
-            # Normalize section headers that are on the same line as content
-            # e.g. "...some text. Skills" becomes "...some text.\nSkills"
-            # Handle both single and multiple spaces
-            text = re.sub(r'(?<=[a-z.!?])\s+([A-Z][a-zA-Z\s]{3,20})\s*\n', r'\n\1\n', text)
-            
-            # Pre-process: Split Title Case headers (e.g., "Work Experience", "Technical Skills")
-            # that appear after sentence endings
-            text = re.sub(r'([a-z.!?])\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*\n', r'\1\n\2\n', text)
-            
-            # Pre-process: Split ALL CAPS headers that are merged with content
-            # e.g. "some text. PROFESSIONAL EXPERIENCE" -> "some text.\nPROFESSIONAL EXPERIENCE"
-            # Match: lowercase/punctuation + space + 2+ ALL CAPS words
-            text = re.sub(r'([a-z.!?])\s+([A-Z]{2,}(?:\s+[A-Z]{2,})+)\s*$', r'\1\n\2', text, flags=re.MULTILINE)
-            text = re.sub(r'([a-z.!?])\s+([A-Z]{2,}(?:\s+[A-Z]{2,})+)(?=\s)', r'\1\n\2', text)
-            
-            sections = {}
-            current_section = 'contact'
-            current_content = []
-            
-            lines = text.split('\n')
-            
-            for i, line in enumerate(lines):
-                stripped_line = line.strip()
+        start_time = time.time()
+        
+        # Use passed resume_id if provided, otherwise use instance resume_id
+        current_resume_id = resume_id if resume_id else self.resume_id
+        
+        # Thread-safe execution
+        with self._instance_lock:
+            try:
+                # Reset section candidates for this parse
+                self._section_candidates = {}
                 
-                # Get prev and next lines for heuristic scoring context
-                prev_line = lines[i - 1] if i > 0 else ''
-                next_line = lines[i + 1] if i < len(lines) - 1 else ''
+                text = self._clean_pdf_artifacts(text)
                 
-                # Check if this line is a section header (with optional font metadata)
-                section_name = self.detect_section_header(stripped_line, prev_line, next_line, 
-                                                         font_metadata, baseline_font_size)
+                # Enhanced preprocessing for malformed raw text with inline headers
+                text = self._preprocess_inline_headers(text)
                 
-                if section_name:
-                    # Save previous section content
-                    if current_content:
-                        content_text = '\n'.join(current_content).strip()
-                        # If section already exists, append with separator
-                        if current_section in sections:
-                            sections[current_section] += '\n\n' + content_text
-                        else:
-                            sections[current_section] = content_text
+                # Normalize section headers that are on the same line as content
+                # e.g. "...some text. Skills" becomes "...some text.\nSkills"
+                # Handle both single and multiple spaces
+                text = re.sub(r'(?<=[a-z.!?])\s+([A-Z][a-zA-Z\s]{3,20})\s*\n', r'\n\1\n', text)
+                
+                # Pre-process: Split Title Case headers (e.g., "Work Experience", "Technical Skills")
+                # that appear after sentence endings
+                text = re.sub(r'([a-z.!?])\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*\n', r'\1\n\2\n', text)
+                
+                # Pre-process: Split ALL CAPS headers that are merged with content
+                # e.g. "some text. PROFESSIONAL EXPERIENCE" -> "some text.\nPROFESSIONAL EXPERIENCE"
+                # Match: lowercase/punctuation + space + 2+ ALL CAPS words
+                text = re.sub(r'([a-z.!?])\s+([A-Z]{2,}(?:\s+[A-Z]{2,})+)\s*$', r'\1\n\2', text, flags=re.MULTILINE)
+                text = re.sub(r'([a-z.!?])\s+([A-Z]{2,}(?:\s+[A-Z]{2,})+)(?=\s)', r'\1\n\2', text)
+                
+                sections = {}
+                current_section = 'contact'
+                current_content = []
+                
+                lines = text.split('\n')
+                
+                for i, line in enumerate(lines):
+                    stripped_line = line.strip()
                     
-                    # Start new section
-                    current_section = section_name
-                    current_content = []
-                    self.logger.debug(f"Found section header: {section_name}")
+                    # Get prev and next lines for heuristic scoring context
+                    prev_line = lines[i - 1] if i > 0 else ''
+                    next_line = lines[i + 1] if i < len(lines) - 1 else ''
                     
+                    # Check if this line is a section header (with optional font metadata)
+                    section_name = self.detect_section_header(stripped_line, prev_line, next_line, 
+                                                             font_metadata, baseline_font_size)
+                    
+                    if section_name:
+                        # Save previous section content as candidate
+                        if current_content:
+                            content_text = '\n'.join(current_content).strip()
+                            detection_method = self._last_detection_method or 'regex'
+                            confidence = get_detection_method_confidence(detection_method)
+                            self._add_section_candidate(current_section, content_text, detection_method, confidence)
+                        
+                        # Start new section
+                        current_section = section_name
+                        current_content = []
+                        self.logger.debug(f"Found section header: {section_name}")
+                        
+                    else:
+                        # Add line to current section content
+                        if stripped_line or current_content:  # Preserve empty lines within sections
+                            current_content.append(line)
+                
+                # Save the last section as candidate
+                if current_content:
+                    content_text = '\n'.join(current_content).strip()
+                    detection_method = self._last_detection_method or 'regex'
+                    confidence = get_detection_method_confidence(detection_method)
+                    self._add_section_candidate(current_section, content_text, detection_method, confidence)
+                
+                self._detected_sections = set()
+                
+                # Select highest confidence for each section
+                final_sections = self._select_highest_confidence_sections()
+                
+                self.logger.info(f"Split resume into {len(final_sections)} sections: {list(final_sections.keys())}")
+                
+                final_sections = self._fix_scrambled_sections(text, final_sections)
+                
+                # Update metrics
+                processing_time_ms = (time.time() - start_time) * 1000
+                update_benchmark_metrics('total_processing_time_ms', int(processing_time_ms))
+                update_benchmark_metrics('total_detections', len(final_sections))
+                update_benchmark_metrics('sections_validated', len(final_sections))
+                
+                # Return with or without metadata based on include_metadata parameter
+                if include_metadata:
+                    return final_sections
                 else:
-                    # Add line to current section content
-                    if stripped_line or current_content:  # Preserve empty lines within sections
-                        current_content.append(line)
-            
-            # Save the last section
-            if current_content:
-                content_text = '\n'.join(current_content).strip()
-                if current_section in sections:
-                    sections[current_section] += '\n\n' + content_text
-                else:
-                    sections[current_section] = content_text
-            
-            # If we only have the default contact section, rename it to 'other' to ensure compatibility
-            if len(sections) == 1 and 'contact' in sections:
-                sections['other'] = sections.pop('contact')
-            
-            # Log section detection results
-            self.logger.info(f"Split resume into {len(sections)} sections: {list(sections.keys())}")
-            
-            # Post-process: Fix scrambled sections from multi-column PDFs
-            sections = self._fix_scrambled_sections(text, sections)
-            
-            return sections
-            
-        except Exception as e:
-            self.logger.error(f"Error splitting sections: {e}")
-            return {'other': text}
+                    # Backward compatibility: return just text
+                    return {k: v['text'] if isinstance(v, dict) else v for k, v in final_sections.items()}
+                    
+            except Exception as e:
+                self.logger.error(f"Error splitting sections: {e}")
+                log_section_detection_failure(current_resume_id, 'all', 'split_sections', str(e))
+                return {'other': text}
     
-    def _fix_scrambled_sections(self, original_text: str, sections: Dict[str, str]) -> Dict[str, str]:
+    def _fix_scrambled_sections(self, original_text: str, sections: Dict[str, Any]) -> Dict[str, Any]:
         """
         Fix scrambled sections caused by multi-column PDF layouts.
         Detects when section headers appear in wrong order and reassigns content.
@@ -588,6 +701,7 @@ class SectionSplitter:
             self.logger.info(f"Detected {len(header_positions)} headers in original text: {list(header_positions.keys())}")
             
             # If we found headers in scrambled order, try to fix content assignment
+            # Only apply scrambling fix if we have enough headers (>= 3)
             if len(header_positions) >= 3:
                 # Check if headers are out of logical order
                 # Expected order: summary < skills < experience < projects < education < certifications
@@ -632,7 +746,20 @@ class SectionSplitter:
                     self.logger.debug(f"Section '{section_name}': extracted {len(section_text)} chars (pos {start_pos}-{end_pos})")
                     
                     if section_text:
-                        fixed_sections[section_name] = section_text
+                        # Preserve metadata if section exists, otherwise create new entry
+                        if section_name in sections:
+                            existing = sections[section_name]
+                            if isinstance(existing, dict):
+                                fixed_sections[section_name] = {
+                                    'text': section_text,
+                                    'confidence': existing.get('confidence', 0.5),
+                                    'detection_method': existing.get('detection_method', 'content_based'),
+                                    'timestamp': existing.get('timestamp', datetime.now().isoformat())
+                                }
+                            else:
+                                fixed_sections[section_name] = section_text
+                        else:
+                            fixed_sections[section_name] = section_text
                     else:
                         self.logger.warning(f"Section '{section_name}' has no content after header removal")
                 
@@ -820,17 +947,17 @@ class SectionSplitter:
         # We'll reconstruct it here for partial matching
         KEYWORD_MAP = {
             'experience': [
-                'experience', 'work', 'employment', 'career', 'job', 'professional',
-                'positions', 'roles', 'history', 'background', 'internship',
-                'freelance', 'contract', 'consulting', 'volunteer'
+                'experience', 'work experience', 'employment', 'career history', 'professional experience',
+                'positions held', 'roles', 'work history', 'background', 'internship',
+                'freelance work', 'contract work', 'consulting', 'volunteer work'
             ],
             'education': [
-                'education', 'academic', 'qualification', 'degree', 'university',
-                'college', 'school', 'training', 'certification', 'studies'
+                'education', 'academic background', 'qualification', 'degree', 'university',
+                'college', 'school', 'training', 'certification', 'academic studies'
             ],
             'skills': [
                 'skills', 'competencies', 'expertise', 'technologies', 'tools',
-                'proficiencies', 'capabilities', 'technical', 'programming'
+                'proficiencies', 'capabilities', 'technical skills', 'programming'
             ],
             'summary': [
                 'summary', 'profile', 'objective', 'about', 'overview',
@@ -850,18 +977,16 @@ class SectionSplitter:
             ],
         }
         
-        # Try partial matching: check if any word in header partially matches any keyword
+        # Try partial matching: check if the full text matches any keyword
+        # This prevents matching content lines like "work experience here" as section headers
+        clean_lower = clean_text.lower()
         for section_name, keywords in KEYWORD_MAP.items():
-            for header_word in header_words:
-                # Skip very short words (< 3 chars)
-                if len(header_word) < 3:
-                    continue
-                    
-                for keyword in keywords:
-                    # Check if header word is in keyword or keyword is in header word
-                    if header_word in keyword or keyword in header_word:
-                        self.logger.info(f"🔍 Partial match: '{header_text}' → section: {section_name} (matched '{header_word}' with '{keyword}')")
-                        return section_name
+            for keyword in keywords:
+                keyword_lower = keyword.lower()
+                # Only match if the line is exactly the keyword - no partial matches
+                if clean_lower == keyword_lower:
+                    self.logger.info(f"🔍 Partial match: '{header_text}' (len={len(clean_lower)}) → section: {section_name} (matched with '{keyword}' (len={len(keyword_lower)}))")
+                    return section_name
         
         # No partial match found - DO NOT create custom section
         # Return None to keep content in current section and prevent data fragmentation
@@ -886,6 +1011,7 @@ class SectionSplitter:
         """
         try:
             if not line or len(line.strip()) < 3:
+                self._last_detection_method = None
                 return None
             
             # HEADER NORMALIZATION - Handle whitespace and case variations
@@ -903,6 +1029,7 @@ class SectionSplitter:
                 # Only skip if there is real content after the colon (more than 10 chars)
                 # Short content like "Experience:" or "Skills: " should still be detected
                 if len(after_colon) > 10:
+                    self._last_detection_method = None
                     return None
             
             # ENHANCED KEYWORD MATCHING - Try exact matches first for better accuracy
@@ -912,9 +1039,12 @@ class SectionSplitter:
                 'SUMMARY': 'summary', 
                 'TECHNICAL SKILLS': 'skills',
                 'SKILLS': 'skills',
+                'SKILS': 'skills',  # Common typo
                 'PROFESSIONAL EXPERIENCE': 'experience',
                 'EXPERIENCE': 'experience',
                 'EDUCATION': 'education',
+                'EDUCAION': 'education',  # Common typo
+                'EDUCATON': 'education',  # Common typo
                 'CERTIFICATIONS': 'certifications',
                 'KEY PROJECTS': 'projects',
                 'PROJECTS': 'projects',
@@ -928,6 +1058,7 @@ class SectionSplitter:
             clean_upper = clean_line.upper().strip(':')
             if clean_upper in exact_headers:
                 self.logger.info(f"Exact header match: '{clean_line}' -> section: {exact_headers[clean_upper]}")
+                self._last_detection_method = 'regex'
                 return exact_headers[clean_upper]
             
             # Strategy 2: Check normalized version against keywords (handles all case variations)
@@ -940,6 +1071,7 @@ class SectionSplitter:
                     sentence_indicators = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'have', 'has', 'had']
                     if not any(word in normalized.split() for word in sentence_indicators):
                         self.logger.info(f"Detected header: '{clean_line}' -> section: {result}")
+                        self._last_detection_method = 'regex'
                         return result
             
             # Strategy 3: Title Case headers (short only)
@@ -947,6 +1079,7 @@ class SectionSplitter:
                 result = self._match_section_keywords(normalized)
                 if result:
                     self.logger.info(f"✅ Detected title case header: '{clean_line}' → section: {result}")
+                    self._last_detection_method = 'regex'
                     return result
             
             # STRICT FILTERING - Prevent job titles, companies, and dates from being headers
@@ -954,6 +1087,7 @@ class SectionSplitter:
             date_pattern = re.compile(r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december|\d{4})\b', re.IGNORECASE)
             if date_pattern.search(clean_line):
                 self.logger.debug(f"❌ Contains date - not a section header: '{clean_line}'")
+                self._last_detection_method = None
                 return None
             
             # Check for common job title indicators
@@ -961,12 +1095,14 @@ class SectionSplitter:
                             'architect', 'specialist', 'director', 'lead', 'senior', 'junior', 'intern']
             if any(indicator in normalized for indicator in job_indicators):
                 self.logger.debug(f"❌ Contains job title indicator - not a section header: '{clean_line}'")
+                self._last_detection_method = None
                 return None
             
             # Check for company indicators
             company_indicators = ['inc', 'llc', 'ltd', 'corp', 'pvt', 'limited', 'company', 'technologies', 'solutions', 'systems']
             if any(indicator in normalized for indicator in company_indicators):
                 self.logger.debug(f"❌ Contains company indicator - not a section header: '{clean_line}'")
+                self._last_detection_method = None
                 return None
             
             # KEYWORD MATCHING FAILED - Use heuristic scoring as fallback
@@ -977,13 +1113,15 @@ class SectionSplitter:
             word_count = len(clean_line.split())
             if word_count < 2:
                 self.logger.debug(f"❌ Single word - not a section header: '{clean_line}'")
+                self._last_detection_method = None
                 return None
             
-            # Score ≥ 7: Very likely heading with unknown section name
+            # Score ≥ 9: Very likely heading with unknown section name
             # Try partial matching to assign to nearest section
-            if heuristic_score >= 7:
+            if heuristic_score >= 9:
                 self.logger.info(f"✅ Detected unknown section header (score={heuristic_score}): '{clean_line}'")
                 matched_section = self._match_unknown_section_partial(clean_line)
+                self._last_detection_method = 'regex'
                 return matched_section
             
             # Score 3-4: Possible heading, needs font layer confirmation
@@ -996,25 +1134,30 @@ class SectionSplitter:
                     if font_score >= 3:
                         self.logger.info(f"✅ Upgraded to confirmed header (heuristic={heuristic_score}, font={font_score}): '{clean_line}'")
                         matched_section = self._match_unknown_section_partial(clean_line)
+                        self._last_detection_method = 'regex'
                         return matched_section
                     
                     # Font score < 2: Downgrade to content
                     elif font_score < 2:
                         self.logger.info(f"❌ Downgraded to content (heuristic={heuristic_score}, font={font_score}): '{clean_line}'")
+                        self._last_detection_method = None
                         return None
                     
                     # Font score 2: Treat as content, not header
                     else:
                         self.logger.debug(f"⚠️ Low font score (heuristic={heuristic_score}, font={font_score}): '{clean_line}' - treating as content")
+                        self._last_detection_method = None
                         return None
                 else:
                     # No font metadata available - treat as content to prevent fragmentation
                     self.logger.debug(f"⚠️ Ambiguous header (score={heuristic_score}, no font data): '{clean_line}' - treating as content")
+                    self._last_detection_method = None
                     return None
             
             # Score < 3: Treat as content, not a header
             else:
                 self.logger.debug(f"❌ Not a header (score={heuristic_score}): '{clean_line}'")
+                self._last_detection_method = None
                 return None
             
         except Exception as e:
@@ -1421,9 +1564,8 @@ class SectionSplitter:
 
         for section_name, keywords in KEYWORD_MAP.items():
             for keyword in keywords:
+                # Only match exact keywords - no partial matches
                 if clean_lower == keyword:
-                    return section_name
-                if clean_lower.startswith(keyword) and len(clean_lower) <= len(keyword) + 5:
                     return section_name
 
         return None

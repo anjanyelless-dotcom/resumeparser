@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Briefcase, Building, Calendar, GraduationCap } from "lucide-react";
+import { User, Briefcase, Building, Calendar, GraduationCap, CheckSquare, Square } from "lucide-react";
 import { calculateTotalExperience } from "../../utils/experienceCalculator";
 
 // Use a more flexible candidate type to handle both store and types
@@ -72,9 +72,11 @@ type FlexibleCandidate = {
 type CandidateCardProps = {
   candidate: FlexibleCandidate;
   onViewProfile?: (id: string) => void;
+  isSelected?: boolean;
+  onSelect?: (id: string) => void;
 };
 
-export default function CandidateCard({ candidate, onViewProfile }: CandidateCardProps) {
+export default function CandidateCard({ candidate, onViewProfile, isSelected, onSelect }: CandidateCardProps) {
   const [showAllSkills, setShowAllSkills] = useState(false);
 
   const fullName = candidate.full_name || (candidate as any).name || "Unnamed candidate";
@@ -135,21 +137,38 @@ export default function CandidateCard({ candidate, onViewProfile }: CandidateCar
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full">
       {/* Modern Header Section */}
       <div className="flex items-start justify-between mb-5">
-        {/* Avatar and Info */}
+        {/* Checkbox and Info */}
         <div className="flex items-center gap-4 min-w-0 flex-1">
-          {/* Fixed 56px Avatar */}
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-sm">
-            {initials || <User className="w-6 h-6" />}
-          </div>
+          {/* Checkbox */}
+          {onSelect && (
+            <button
+              onClick={() => onSelect(candidate.id)}
+              className="shrink-0"
+            >
+              {isSelected ? (
+                <CheckSquare className="w-5 h-5 text-indigo-600" />
+              ) : (
+                <Square className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+          )}
           
-          {/* Name and Email */}
-          <div className="min-w-0 flex-1">
-            <h3 className="text-base font-semibold text-gray-900 truncate leading-tight">
-              {fullName}
-            </h3>
-            <p className="text-sm text-gray-500 mt-0.5 truncate">
-              {email}
-            </p>
+          {/* Avatar and Info */}
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            {/* Fixed 56px Avatar */}
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-sm">
+              {initials || <User className="w-6 h-6" />}
+            </div>
+            
+            {/* Name and Email */}
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-semibold text-gray-900 truncate leading-tight">
+                {fullName}
+              </h3>
+              <p className="text-sm text-gray-500 mt-0.5 truncate">
+                {email}
+              </p>
+            </div>
           </div>
         </div>
 

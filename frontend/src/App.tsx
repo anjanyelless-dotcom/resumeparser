@@ -88,7 +88,7 @@ import { usePermissionStore } from "./store/usePermissionStore";
 
 // ─── Protected Route ────────────────────────────────────────
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, token } = useAuthStore();
+  const { isAuthenticated, token, user } = useAuthStore();
   const hasPermission = usePermissionStore((state) => state.hasPermission);
   const isInitialized = usePermissionStore((state) => state.isInitialized);
   const location = useLocation();
@@ -105,8 +105,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Admin users bypass permission checks
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  
   const requiredPermission = getRequiredPermission(location.pathname);
-  if (requiredPermission) {
+  if (requiredPermission && !isAdmin) {
     const isAllowed = hasPermission(requiredPermission.module, requiredPermission.action);
     if (!isAllowed) {
       return (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MoreVertical, User, Eye, Edit, Download, Trash2, ArrowUpDown, Building, Briefcase } from 'lucide-react';
+import { MoreVertical, User, Eye, Edit, Download, Trash2, ArrowUpDown, Building, Briefcase, CheckSquare, Square } from 'lucide-react';
 import { calculateTotalExperience } from '../../utils/experienceCalculator';
 import { useCandidateStore } from '../../store/useCandidateStore';
 import toast from 'react-hot-toast';
@@ -47,9 +47,11 @@ type SortDirection = 'asc' | 'desc';
 
 interface CandidateTableProps {
   candidates: FlexibleCandidate[];
+  selectedCandidates?: Set<string>;
+  onSelectCandidate?: (id: string) => void;
 }
 
-export default function CandidateTable({ candidates }: CandidateTableProps) {
+export default function CandidateTable({ candidates, selectedCandidates, onSelectCandidate }: CandidateTableProps) {
   const navigate = useNavigate();
   const { jobId } = useParams<{ jobId: string }>();
   const { deleteCandidate } = useCandidateStore();
@@ -161,6 +163,30 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
+              {onSelectCandidate && (
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[50px]">
+                  <button
+                    onClick={() => {
+                      if (selectedCandidates?.size === candidates.length) {
+                        // Deselect all
+                        selectedCandidates.clear();
+                      } else {
+                        // Select all
+                        candidates.forEach(c => selectedCandidates?.add(c.id));
+                      }
+                      // Force re-render by creating new Set
+                      onSelectCandidate && candidates[0]?.id && onSelectCandidate('');
+                    }}
+                    className="flex items-center justify-center"
+                  >
+                    {selectedCandidates?.size === candidates.length ? (
+                      <CheckSquare className="w-5 h-5 text-indigo-600" />
+                    ) : (
+                      <Square className="w-5 h-5 text-gray-400" />
+                    )}
+                  </button>
+                </th>
+              )}
               <th 
                 className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[280px]"
                 onClick={() => handleSort('name')}
@@ -214,6 +240,20 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
 
               return (
                 <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
+                  {onSelectCandidate && (
+                    <td className="px-4 py-4">
+                      <button
+                        onClick={() => onSelectCandidate(candidate.id)}
+                        className="flex items-center justify-center"
+                      >
+                        {selectedCandidates?.has(candidate.id) ? (
+                          <CheckSquare className="w-5 h-5 text-indigo-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400" />
+                        )}
+                      </button>
+                    </td>
+                  )}
                   <td className="px-4 py-4">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">

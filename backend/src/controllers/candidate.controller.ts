@@ -212,6 +212,12 @@ export const createCandidate = async (
       tenantId: (req as any).user?.tenant_id || "default",
     };
 
+    console.log("DEBUG: raw_resume_text in candidateData:", {
+      hasRawText: !!candidateData.raw_resume_text,
+      length: candidateData.raw_resume_text?.length || 0,
+      preview: candidateData.raw_resume_text?.substring(0, 100) || "N/A"
+    });
+
     // Handle field name mapping: work_experience -> work_history
     if (candidateData.work_experience && !candidateData.work_history) {
       console.log("Mapping work_experience to work_history");
@@ -803,6 +809,40 @@ export const deleteCandidate = async (
   } catch (error) {
     console.error("Delete candidate error:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const bulkDeleteCandidates = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: "Candidate IDs array is required" });
+      return;
+    }
+
+    const client = await getClient();
+    try {
+      let deletedCount = 0;
+      for (const id of ids) {
+        const deleted = await CandidateModel.softDelete(client, id);
+        if (deleted) deletedCount++;
+      }
+
+      res.json({
+        message: `Successfully deleted ${deletedCount} candidates`,
+        deletedCount,
+        totalRequested: ids.length,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error("Bulk delete candidates error:", error);
+    res.status(500).json({ error: "Internal server error", message: error.message });
   }
 };
 
@@ -1519,8 +1559,9 @@ async function saveCandidateWithDuplicateHandling(client: any, candidateData: an
             linkedin_url = COALESCE($4, linkedin_url),
             github_url = COALESCE($5, github_url),
             location = COALESCE($6, location),
+            raw_resume_text = COALESCE($7, raw_resume_text),
             updated_at = NOW()
-        WHERE id = $7
+        WHERE id = $8
         RETURNING *
       `;
 
@@ -1531,6 +1572,7 @@ async function saveCandidateWithDuplicateHandling(client: any, candidateData: an
         candidateData.linkedin_url || existing.linkedin_url,
         candidateData.github_url || existing.github_url,
         candidateData.location || existing.location,
+        candidateData.raw_resume_text || existing.raw_resume_text,
         existing.id
       ]);
 
@@ -1589,13 +1631,12 @@ async function saveSkillsBestEffort(client: any, candidateId: string, skills: an
         // display value in `skill_name`.
         const displayName = skillName.trim();
         const normalizedName = displayName.toLowerCase();
-        const uniqueName = `${normalizedName}_${candidateId.replace(/-/g, '').substring(0, 8)}_${Date.now().toString(36)}`;
-
+        // Use the actual skill name instead of generating a unique name with suffixes
         const skillId = crypto.randomUUID();
         await client.query(
           `INSERT INTO skills (id, candidate_id, name, skill_name, category)
            VALUES ($1, $2, $3, $4, $5)`,
-          [skillId, candidateId, uniqueName, displayName, 'technical']
+          [skillId, candidateId, displayName, displayName, 'technical']
         );
 
         // Also maintain candidate_skills join table for matching/search compatibility

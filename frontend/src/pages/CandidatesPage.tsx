@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCandidateStore } from "../store/useCandidateStore";
 import { useFilterStore } from "../store/filterStore";
+import { useAuthStore } from "../store/useAuthStore";
 import toast from "react-hot-toast";
-import { Users, Search, RefreshCw, User, Award, X } from "lucide-react";
+import { Users, Search, RefreshCw, User, Award, X, Trash2, CheckSquare, Square } from "lucide-react";
 import CandidateCard from "../components/candidates/CandidateCard";
 import CandidateViewToggle from "../components/candidates/CandidateViewToggle";
 import CandidateTable from "../components/candidates/CandidateTable";
@@ -20,9 +21,12 @@ export default function CandidatesPage() {
     const saved = localStorage.getItem('candidate_view');
     return saved === 'table' ? 'table' : 'grid';
   });
+  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const { candidates, pagination, isLoading, fetchCandidates } = useCandidateStore();
   const { searchTerm, company, jobTitle, certification, salaryMin, salaryMax, setSearchTerm, setCompany, setJobTitle, setCertification, resetFilters } = useFilterStore();
+  const { token } = useAuthStore();
   const navigate = useNavigate();
 
   // Local input state — holds raw typed values before debounce commits them
@@ -141,6 +145,92 @@ export default function CandidatesPage() {
   const hasActiveFilters =
     inputSearchTerm || inputCompany || inputJobTitle || inputCertification;
 
+  // Handle checkbox selection
+  const handleSelectCandidate = (candidateId: string) => {
+    setSelectedCandidates(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(candidateId)) {
+        newSet.delete(candidateId);
+      } else {
+        newSet.add(candidateId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedCandidates.size === candidates.length) {
+      setSelectedCandidates(new Set());
+    } else {
+      setSelectedCandidates(new Set(candidates.map(c => c.id)));
+    }
+  };
+
+  // Bulk delete function
+  const handleBulkDelete = async () => {
+    if (selectedCandidates.size === 0) {
+      toast.error("No candidates selected");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedCandidates.size} candidate(s)?`)) {
+      return;
+    }
+
+    const token = useAuthStore.getState().token;
+    console.log('Bulk delete token check:', { hasToken: !!token, tokenLength: token?.length });
+    
+    if (!token || token.trim() === '') {
+      toast.error("Authentication required. Please log in again.");
+      navigate('/login');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const requestBody = { ids: Array.from(selectedCandidates).filter(id => id && id.trim() !== '') };
+      console.log('Bulk delete request:', requestBody);
+      
+      if (requestBody.ids.length === 0) {
+        toast.error("No valid candidates selected");
+        setIsDeleting(false);
+        return;
+      }
+      
+      const response = await fetch('http://localhost:3001/api/candidates/bulk-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('Bulk delete response status:', response.status);
+      console.log('Bulk delete response:', response);
+
+      if (response.status === 401 || response.status === 403) {
+        toast.error("Session expired. Please log in again.");
+        localStorage.removeItem('token');
+        navigate('/login');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to delete candidates');
+      }
+
+      const data = await response.json();
+      toast.success(data.message || `Successfully deleted ${selectedCandidates.size} candidates`);
+      setSelectedCandidates(new Set());
+      loadCandidates();
+    } catch (error) {
+      toast.error('Failed to delete candidates');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Client-side filter and sort (search is handled server-side)
   const filteredCandidates = useMemo(() => {
     return candidates
@@ -191,7 +281,19 @@ export default function CandidatesPage() {
                 Manage and review candidate profiles with AI-powered resume parsing insights
               </p>
             </div>
-            <CandidateViewToggle onViewChange={setViewMode} />
+            <div className="flex items-center gap-3">
+              {selectedCandidates.size > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={isDeleting}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-400 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete {selectedCandidates.size}</span>
+                </button>
+              )}
+              <CandidateViewToggle onViewChange={setViewMode} />
+            </div>
           </div>
         )}
 
@@ -262,7 +364,24 @@ export default function CandidatesPage() {
             </div>
 
             {/* Filter Buttons and Sort */}
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col lg:flex-row gap-4 items-center">
+              {/* Select All Checkbox */}
+              {candidates.length > 0 && (
+                <button
+                  onClick={handleSelectAll}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                >
+                  {selectedCandidates.size === candidates.length ? (
+                    <CheckSquare className="w-4 h-4 text-indigo-600" />
+                  ) : (
+                    <Square className="w-4 h-4 text-gray-400" />
+                  )}
+                  <span className="text-sm text-gray-700">
+                    {selectedCandidates.size === candidates.length ? 'Deselect All' : 'Select All'}
+                  </span>
+                </button>
+              )}
+
               {/* Filter Buttons */}
               <div className="flex gap-2">
                 <button
@@ -359,11 +478,17 @@ export default function CandidatesPage() {
                     const route = jobId ? `/recruiter/workspace/${jobId}/candidates/${id}` : `/candidates/${id}`;
                     navigate(route);
                   }}
+                  isSelected={selectedCandidates.has(candidate.id)}
+                  onSelect={handleSelectCandidate}
                 />
               ))}
             </div>
           ) : (
-            <CandidateTable candidates={paginatedCandidates as any} />
+            <CandidateTable 
+              candidates={paginatedCandidates as any} 
+              selectedCandidates={selectedCandidates}
+              onSelectCandidate={handleSelectCandidate}
+            />
           )
         ) : (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-200">

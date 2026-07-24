@@ -92,15 +92,31 @@ export class CandidateModel {
       // Get skills
       let skillRows: any[] = [];
       try {
-        const skillsResult = await client.query(
-          `SELECT id, COALESCE(skill_name, name) as skill_name, category
-           FROM skills
-           WHERE candidate_id = $1
-           ORDER BY COALESCE(skill_name, name)`,
+        // Try the relational schema first (candidate_skills junction table)
+        const relationalSkillsResult = await client.query(
+          `SELECT s.id, s.name as skill_name, s.category, s.normalized_name
+           FROM skills s
+           INNER JOIN candidate_skills cs ON s.id = cs.skill_id
+           WHERE cs.candidate_id = $1
+           ORDER BY s.name`,
           [id]
         );
-        console.log("Skills query result for candidate", id, ":", skillsResult.rows.length, "skills found");
-        skillRows = skillsResult.rows;
+        
+        if (relationalSkillsResult.rows.length > 0) {
+          skillRows = relationalSkillsResult.rows;
+          console.log("Skills query result for candidate", id, ":", skillRows.length, "skills found (relational schema)");
+        } else {
+          // Fallback to old schema where candidate_id is directly in skills table
+          const legacySkillsResult = await client.query(
+            `SELECT id, COALESCE(skill_name, name) as skill_name, category
+             FROM skills
+             WHERE candidate_id = $1
+             ORDER BY COALESCE(skill_name, name)`,
+            [id]
+          );
+          skillRows = legacySkillsResult.rows;
+          console.log("Skills query result for candidate", id, ":", skillRows.length, "skills found (legacy schema)");
+        }
       } catch (skillErr: any) {
         console.warn("skills query failed:", skillErr.message);
       }
@@ -143,7 +159,12 @@ export class CandidateModel {
         education: educationResult.rows,
         certifications: certificationRows,
         projects: projectRows,
-        skills: skillRows.map(row => row.skill_name)
+        skills: skillRows.map(row => ({
+          id: row.id,
+          name: row.skill_name,
+          category: row.category,
+          normalized_name: row.normalized_name
+        }))
       };
       console.log("Returning candidate with", skillRows.length, "skills");
     } catch (error) {
@@ -165,8 +186,9 @@ export class CandidateModel {
         review_status,
         linkedin_url, github_url, location,
         tenant_id,
+        raw_resume_text,
         created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW()) RETURNING *`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW()) RETURNING *`,
       [
         id,
         data.email || null,
@@ -178,7 +200,8 @@ export class CandidateModel {
         data.linkedin_url || null,
         data.github_url || null,
         data.location || null,
-        data.tenant_id || "default"
+        data.tenant_id || "default",
+        data.raw_resume_text || null
       ]
     );
     return result.rows[0];

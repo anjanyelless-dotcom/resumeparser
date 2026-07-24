@@ -6,6 +6,7 @@ import {
   updateCandidate,
   updateCandidateWithFullData,
   deleteCandidate,
+  bulkDeleteCandidates,
   getCandidateParsingStatus,
   importCandidatesFromCSV,
   getDuplicates,
@@ -459,6 +460,36 @@ router.put("/:id/update-full", updateCandidateWithFullData);
  *         description: Unauthorized
  */
 router.delete("/:id", deleteCandidate);
+
+/**
+ * @swagger
+3 * /api/candidates/bulk-delete:
+ *   post:
+ *     summary: Delete multiple candidates at once
+ *     tags: [Candidates]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of candidate IDs to delete
+ *     responses:
+ *       200:
+ *         description: Candidates deleted successfully
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/bulk-delete", bulkDeleteCandidates);
 
 /**
  * @swagger

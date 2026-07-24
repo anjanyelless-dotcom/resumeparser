@@ -1,0 +1,434 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Section Detection Engine Test Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+        .summary { margin: 20px 0; }
+        .pass { color: green; }
+        .fail { color: red; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #4CAF50; color: white; }
+        .test-section { margin: 30px 0; }
+        .accuracy-table { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Section Detection Engine Test Report</h1>
+        <p>Generated: 2026-07-24 02:47:12</p>
+    </div>
+    
+    <div class="summary">
+        <h2>Summary</h2>
+        <p>Total Tests: 40</p>
+        <p class="pass">Passed: 40</p>
+        <p class="fail">Failed: 0</p>
+        <p>Pass Rate: 100.00%</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Results by Type</h2>
+        <table>
+            <tr>
+                <th>Test Type</th>
+                <th>Test Name</th>
+                <th>Status</th>
+                <th>Duration (ms)</th>
+                <th>Memory (MB)</th>
+            </tr>
+        
+            <tr>
+                <td>Unit</td>
+                <td>Regex Detection</td>
+                <td class="pass">PASS</td>
+                <td>30.12</td>
+                <td>0.38</td>
+            </tr>
+            
+            <tr>
+                <td>Unit</td>
+                <td>Fuzzy Detection</td>
+                <td class="pass">PASS</td>
+                <td>2.32</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Unit</td>
+                <td>Content-based Detection</td>
+                <td class="pass">PASS</td>
+                <td>2.24</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Unit</td>
+                <td>Fallback Detection</td>
+                <td class="pass">PASS</td>
+                <td>1.42</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Unit</td>
+                <td>Validation</td>
+                <td class="pass">PASS</td>
+                <td>2.81</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Unit</td>
+                <td>Duplicate Handling</td>
+                <td class="pass">PASS</td>
+                <td>2.99</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Unit</td>
+                <td>Confidence Scoring</td>
+                <td class="pass">PASS</td>
+                <td>2.23</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Unit</td>
+                <td>Pattern Caching</td>
+                <td class="pass">PASS</td>
+                <td>0.00</td>
+                <td>0.00</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: software_engineer</td>
+                <td class="pass">PASS</td>
+                <td>23.76</td>
+                <td>0.22</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: java_developer</td>
+                <td class="pass">PASS</td>
+                <td>22.19</td>
+                <td>0.22</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: python_developer</td>
+                <td class="pass">PASS</td>
+                <td>25.41</td>
+                <td>0.22</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: data_scientist</td>
+                <td class="pass">PASS</td>
+                <td>21.92</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: qa_engineer</td>
+                <td class="pass">PASS</td>
+                <td>20.40</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: hr_manager</td>
+                <td class="pass">PASS</td>
+                <td>19.75</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: finance_analyst</td>
+                <td class="pass">PASS</td>
+                <td>18.96</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: healthcare</td>
+                <td class="pass">PASS</td>
+                <td>21.11</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: fresher</td>
+                <td class="pass">PASS</td>
+                <td>17.99</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: experienced</td>
+                <td class="pass">PASS</td>
+                <td>23.63</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Integration</td>
+                <td>Integration: international</td>
+                <td class="pass">PASS</td>
+                <td>23.50</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Edge Case</td>
+                <td>Edge Case: Empty Resume</td>
+                <td class="pass">PASS</td>
+                <td>0.41</td>
+                <td>0.17</td>
+            </tr>
+            
+            <tr>
+                <td>Edge Case</td>
+                <td>Edge Case: One-line Resume</td>
+                <td class="pass">PASS</td>
+                <td>1.52</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Edge Case</td>
+                <td>Edge Case: Multi-column Resume</td>
+                <td class="pass">PASS</td>
+                <td>5.70</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Edge Case</td>
+                <td>Edge Case: Very Large Resume</td>
+                <td class="pass">PASS</td>
+                <td>5573.49</td>
+                <td>1.59</td>
+            </tr>
+            
+            <tr>
+                <td>Edge Case</td>
+                <td>Edge Case: Multiple Experience Sections</td>
+                <td class="pass">PASS</td>
+                <td>3.76</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Edge Case</td>
+                <td>Edge Case: Missing Headers</td>
+                <td class="pass">PASS</td>
+                <td>2.09</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Edge Case</td>
+                <td>Edge Case: Mixed Language Resume</td>
+                <td class="pass">PASS</td>
+                <td>2.92</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Edge Case</td>
+                <td>Edge Case: Bullet-only Resume</td>
+                <td class="pass">PASS</td>
+                <td>5.40</td>
+                <td>0.21</td>
+            </tr>
+            
+            <tr>
+                <td>Performance</td>
+                <td>Performance: Detection Time</td>
+                <td class="pass">PASS</td>
+                <td>23.96</td>
+                <td>0.00</td>
+            </tr>
+            
+            <tr>
+                <td>Performance</td>
+                <td>Performance: Memory Usage</td>
+                <td class="pass">PASS</td>
+                <td>2058.03</td>
+                <td>0.24</td>
+            </tr>
+            
+            <tr>
+                <td>Performance</td>
+                <td>Performance: Cache Hit Ratio</td>
+                <td class="pass">PASS</td>
+                <td>0.34</td>
+                <td>0.00</td>
+            </tr>
+            
+            <tr>
+                <td>Accuracy</td>
+                <td>Accuracy: Experience Detection</td>
+                <td class="pass">PASS</td>
+                <td>0.92</td>
+                <td>0.00</td>
+            </tr>
+            
+            <tr>
+                <td>Accuracy</td>
+                <td>Accuracy: Education Detection</td>
+                <td class="pass">PASS</td>
+                <td>0.74</td>
+                <td>0.00</td>
+            </tr>
+            
+            <tr>
+                <td>Accuracy</td>
+                <td>Accuracy: Skills Detection</td>
+                <td class="pass">PASS</td>
+                <td>0.77</td>
+                <td>0.00</td>
+            </tr>
+            
+            <tr>
+                <td>Accuracy</td>
+                <td>Accuracy: Projects Detection</td>
+                <td class="pass">PASS</td>
+                <td>0.71</td>
+                <td>0.00</td>
+            </tr>
+            
+            <tr>
+                <td>Accuracy</td>
+                <td>Accuracy: Certifications Detection</td>
+                <td class="pass">PASS</td>
+                <td>0.70</td>
+                <td>0.00</td>
+            </tr>
+            
+            <tr>
+                <td>Regression</td>
+                <td>Regression: Backward Compatibility</td>
+                <td class="pass">PASS</td>
+                <td>2.13</td>
+                <td>0.00</td>
+            </tr>
+            
+            <tr>
+                <td>Regression</td>
+                <td>Regression: API Response Format</td>
+                <td class="pass">PASS</td>
+                <td>2.06</td>
+                <td>0.00</td>
+            </tr>
+            
+            <tr>
+                <td>Stress</td>
+                <td>Stress: 100 Resumes</td>
+                <td class="pass">PASS</td>
+                <td>2084.00</td>
+                <td>0.22</td>
+            </tr>
+            
+            <tr>
+                <td>Stress</td>
+                <td>Stress: Thread Safety</td>
+                <td class="pass">PASS</td>
+                <td>2237.68</td>
+                <td>1.77</td>
+            </tr>
+            
+            <tr>
+                <td>Stress</td>
+                <td>Stress: Memory Leaks</td>
+                <td class="pass">PASS</td>
+                <td>2012.07</td>
+                <td>0.23</td>
+            </tr>
+            
+        </table>
+    </div>
+    
+    <div class="test-section">
+        <h2>Accuracy Metrics</h2>
+        <table class="accuracy-table">
+            <tr>
+                <th>Section Type</th>
+                <th>Total Tests</th>
+                <th>Passed</th>
+                <th>Accuracy</th>
+            </tr>
+        
+            <tr>
+                <td>experience</td>
+                <td>6</td>
+                <td>6</td>
+                <td>100.00%</td>
+            </tr>
+            
+            <tr>
+                <td>education</td>
+                <td>5</td>
+                <td>4</td>
+                <td>80.00%</td>
+            </tr>
+            
+            <tr>
+                <td>skills</td>
+                <td>5</td>
+                <td>5</td>
+                <td>100.00%</td>
+            </tr>
+            
+            <tr>
+                <td>projects</td>
+                <td>5</td>
+                <td>5</td>
+                <td>100.00%</td>
+            </tr>
+            
+            <tr>
+                <td>certifications</td>
+                <td>5</td>
+                <td>5</td>
+                <td>100.00%</td>
+            </tr>
+            
+        </table>
+    </div>
+    
+    <div class="test-section">
+        <h2>Failed Tests</h2>
+        <table>
+            <tr>
+                <th>Test Name</th>
+                <th>Error Message</th>
+            </tr>
+        
+        </table>
+    </div>
+    
+    <div class="test-section">
+        <h2>Suggested Improvements</h2>
+        <ul>
+    <li>All tests passed. No immediate improvements needed.</li>
+        </ul>
+    </div>
+</body>
+</html>
+        

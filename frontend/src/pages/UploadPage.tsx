@@ -1138,6 +1138,7 @@ export default function UploadPage() {
         education: parsedSections.education,
         certifications: parsedSections.certifications,
         projects: parsedSections.projects,
+        raw_resume_text: rawResumeText || undefined,
         // Contact info from parsed sections
         linkedin_url: parsedLinkedin || parsedSections.contact?.linkedin || undefined,
         github_url: parsedSections.contact?.github || undefined,
